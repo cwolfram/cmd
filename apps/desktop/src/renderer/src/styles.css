@@ -466,8 +466,9 @@ kbd {
 
 /* Unfocused windows are dimmed by an overlay (not a filter, which would soften text).
    It stops inside the outline, so outlines match across the board and the
-   sidebars, and below the chrome (title bar, and a toolbar at the top of the content), which
-   keeps its colour: only the content recedes. Sidebars are always dimmed, selected or not, so they look like an
+   sidebars, and short of the chrome (the title bar, a toolbar at the top of the
+   content, a footer bar at its bottom), which keeps its colour: only the content
+   recedes. Sidebars are always dimmed, selected or not, so they look like an
    unselected window. Amount: ui.unfocusedDim (--window-dim-amount, set in App) times
    the theme's --window-dim. A window that needs you isn't dimmed. */
 :is(.windows-track, .dock) > .tile > .tile-frame::after {
@@ -475,14 +476,16 @@ kbd {
   position: absolute;
   inset: var(--edge-w);
   top: calc(var(--window-outline) + var(--chrome-h, 0px));
+  bottom: calc(var(--window-outline) + var(--chrome-bottom, 0px));
   background: var(--scrim);
   opacity: min(1, calc(var(--window-dim) * var(--window-dim-amount, 0.1)));
   --dim-r: max(0px, calc(var(--window-radius) - var(--edge-w)));
-  border-radius: var(--dim-top-r, var(--dim-r)) var(--dim-top-r, var(--dim-r)) var(--dim-r) var(--dim-r);
+  border-radius: var(--dim-top-r, var(--dim-r)) var(--dim-top-r, var(--dim-r)) var(--dim-bottom-r, var(--dim-r)) var(--dim-bottom-r, var(--dim-r));
   transition: opacity var(--dur) var(--ease);
 }
 :is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title) { --chrome-h: var(--window-bar-h); --dim-top-r: 0px; }
 :is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title + * > .ui-tb:first-child) { --chrome-h: calc(var(--window-bar-h) + var(--toolbar-h)); }
+:is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title + * > .ui-view-footer:last-child) { --chrome-bottom: var(--footer-h); --dim-bottom-r: 0px; }
 .windows-track > .tile.sel > .tile-frame::after,
 .windows-track > .tile.lifted > .tile-frame::after,
 :is(.windows-track, .dock) > .tile.needs > .tile-frame::after,
