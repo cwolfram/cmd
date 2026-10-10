@@ -268,6 +268,8 @@ const api = {
   chooseFolder: (): Promise<string | null> => ipcRenderer.invoke("choose-folder"),
   /** Native save panel (untitled text windows), starting at `defaultPath`; null when cancelled. */
   chooseSavePath: (defaultPath: string): Promise<string | null> => ipcRenderer.invoke("choose-save-path", defaultPath),
+  /** Write bytes the renderer made (a Jam rendered to audio) to a path from chooseSavePath. */
+  writeFile: (file: string, data: Uint8Array): Promise<void> => ipcRenderer.invoke("write-file", file, data),
   /** Native sheet; resolves true when confirmed. */
   confirm: (o: { message: string; detail?: string; confirm: string }): Promise<boolean> => ipcRenderer.invoke("confirm", o),
   /** Native sheet with only OK: something couldn't be done, and why. */

@@ -691,6 +691,11 @@ ipcMain.handle("choose-save-path", async (e, defaultPath: string) => {
   const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
   return r.canceled ? null : (r.filePath ?? null);
 });
+// A file the renderer made itself (a Jam rendered to audio), at a path from the save panel.
+ipcMain.handle("write-file", async (_e, file: string, data: Uint8Array) => {
+  if (typeof file !== "string" || !path.isAbsolute(file) || !(data instanceof Uint8Array)) throw new Error("bad write-file");
+  await fs.promises.writeFile(file, data);
+});
 ipcMain.on("close-window", (e) => winOf(e)?.close());
 ipcMain.on("edit-native", (e, op: string, guestId?: number) => editNative(e.sender, op, guestId));
 ipcMain.on("clipboard-write", (_e, text: unknown) => typeof text === "string" && clipboard.writeText(text));

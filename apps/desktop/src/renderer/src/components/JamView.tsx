@@ -13,8 +13,10 @@
 //    queried), the error goes back to the AI, twice at most; then the edit is
 //    undone and the last good code plays on.
 //  - The window's sound is a Visualizer source (audio.ts publishLevels).
+//  - Render to Audio: the code's first cycles into a WAV file, rendered offline
+//    (faster than playing it) by a second frame made for it, while the music plays on.
 
-import { AiField, LinkButton, ToolbarButton, type AiState, ToolbarGroup, ToolbarSpacer, WindowToolbar } from "@cmd/ui";
+import { AiField, Button, Inline, LinkButton, NumberField, Popover, Stack, Text, ToolbarButton, type AiState, ToolbarGroup, ToolbarSpacer, WindowToolbar } from "@cmd/ui";
 import { useTheme } from "@cmd/ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { basicSetup } from "codemirror";
@@ -46,6 +48,11 @@ const versionsOf = (v: unknown): Version[] => (Array.isArray(v) ? (v as Version[
 const ATTEMPTS = 3;
 
 type Result = { ok: true } | { ok: false; error: string };
+type Rendered = { ok: true; wav: ArrayBuffer; seconds: number } | { ok: false; error: string };
+
+/** Where a render is saved first: beside the window's file, named after it. */
+const wavPath = (file: string) => (file ? file.replace(/\.[^./]*$/, "") + ".wav" : "~/Untitled.wav");
+const baseName = (p: string) => p.slice(p.lastIndexOf("/") + 1);
 
 export function JamView({ win }: WindowViewProps) {
   const host = useRef<HTMLDivElement>(null);
@@ -78,6 +85,16 @@ export function JamView({ win }: WindowViewProps) {
 
   // Evals in flight, by id: the frame answers each.
   const evals = useRef(new Map<number, (r: Result) => void>());
+  /** The render under way: its frame, mounted for it, and what to do with its answer. */
+  const renderFrame = useRef<HTMLIFrameElement>(null);
+  const renderJob = useRef<{ code: string; cycles: number; resolve: (r: Rendered) => void } | null>(null);
+  /** Cycles a second at the tempo last played, for the render's length in seconds. */
+  const [cps, setCps] = useState(0.5);
+  const [cycles, setCycles] = useState(8);
+  const [renderOpen, setRenderOpen] = useState(false);
+  const [rendering, setRendering] = useState(false);
+
+  const renderButton = useRef<HTMLButtonElement>(null);
   const nextId = useRef(1);
   const ready = useRef<Promise<void>>(null as never);
   const markReady = useRef<() => void>(() => {});
@@ -104,16 +121,17 @@ export function JamView({ win }: WindowViewProps) {
   /** The file's text as last read or saved; the editor differs from it while there are unsaved changes. */
   const savedText = useRef<string | null>(null);
   const unsaved = useRef(false);
-  const lastStatus = useRef<{ label: string; key: string }>({ label: "Stopped", key: "stopped" });
-  const status = (label: string, key: string) => {
-    lastStatus.current = { label, key };
-    setWindowStatus(win.id, { label, key, dirty: unsaved.current });
+  type Action = { run: () => void; title: string };
+  const lastStatus = useRef<{ label: string; key: string; action?: Action }>({ label: "Stopped", key: "stopped" });
+  const status = (label: string, key: string, action?: Action) => {
+    lastStatus.current = { label, key, action };
+    setWindowStatus(win.id, { label, key, dirty: unsaved.current, action });
   };
   const markUnsaved = (text: string) => {
     const now = !!fileRef.current && savedText.current !== null && text !== savedText.current;
     if (now === unsaved.current) return;
     unsaved.current = now;
-    status(lastStatus.current.label, lastStatus.current.key);
+    status(lastStatus.current.label, lastStatus.current.key, lastStatus.current.action);
   };
 
   /** ⌘S: to its file, or, untitled, to one the save panel asks for (it becomes the window's). */
@@ -133,6 +151,30 @@ export function JamView({ win }: WindowViewProps) {
       markUnsaved(v.state.doc.toString());
     } catch (e) {
       status(`Couldn't save: ${(e as Error).message}`, "error");
+    }
+  };
+
+  /** Render to Audio: a save panel, then the frame renders the editor's code offline. */
+  const render = async () => {
+    const v = view.current;
+    if (!v || renderJob.current) return;
+    setRenderOpen(false);
+    const target = await cmd.chooseSavePath(wavPath(fileRef.current));
+    if (!target) return;
+    const code = v.state.doc.toString();
+    const r = new Promise<Rendered>((resolve) => (renderJob.current = { code, cycles, resolve }));
+    setRendering(true); // mounts the frame; it asks for the job once it's ready
+    status("Rendering…", "rendering");
+    try {
+      const done = await r;
+      if (!done.ok) return status(`Couldn't render: ${done.error}`, "error");
+      await cmd.writeFile(target, new Uint8Array(done.wav));
+      status(`Saved ${baseName(target)}`, "rendered", { run: () => cmd.revealPath(target), title: "Show in Finder" });
+    } catch (e) {
+      status(`Couldn't render: ${(e as Error).message}`, "error");
+    } finally {
+      renderJob.current = null;
+      setRendering(false);
     }
   };
 
@@ -289,8 +331,16 @@ export function JamView({ win }: WindowViewProps) {
   // The frame's messages: only from our own frame (opaque origins all say "null").
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
+      if (e.source && e.source === renderFrame.current?.contentWindow && e.data && typeof e.data === "object") {
+        const m = e.data as { type?: string; ok?: boolean; wav?: ArrayBuffer; seconds?: number; error?: string };
+        const job = renderJob.current;
+        if (!job) return;
+        if (m.type === "ready") renderFrame.current.contentWindow.postMessage({ type: "render", id: 1, code: job.code, cycles: job.cycles }, "*");
+        else if (m.type === "rendered") job.resolve(m.ok && m.wav ? { ok: true, wav: m.wav, seconds: m.seconds ?? 0 } : { ok: false, error: m.error ?? "Didn't render" });
+        return;
+      }
       if (e.source !== frame.current?.contentWindow || !e.data || typeof e.data !== "object") return;
-      const m = e.data as { type?: string; id?: number; ok?: boolean; error?: string | null; started?: boolean; sounds?: unknown; t?: Uint8Array<ArrayBuffer>; l?: Uint8Array<ArrayBuffer>; r?: Uint8Array<ArrayBuffer> };
+      const m = e.data as { type?: string; id?: number; ok?: boolean; error?: string | null; started?: boolean; sounds?: unknown; cps?: number | null; t?: Uint8Array<ArrayBuffer>; l?: Uint8Array<ArrayBuffer>; r?: Uint8Array<ArrayBuffer> };
       if (m.type === "levels" && m.t && m.l && m.r) levels.current = { t: m.t, l: m.l, r: m.r };
       else if (m.type === "ready") {
         if (Array.isArray(m.sounds)) sounds.current = m.sounds.filter((s): s is string => typeof s === "string");
@@ -299,6 +349,7 @@ export function JamView({ win }: WindowViewProps) {
         evals.current.get(m.id)?.(m.ok ? { ok: true } : { ok: false, error: m.error ?? "Didn't play" });
         evals.current.delete(m.id);
       } else if (m.type === "state") {
+        if (typeof m.cps === "number" && m.cps > 0) setCps(m.cps);
         started.current = !!m.started;
         const next = m.started ? "playing" : pausing.current ? "paused" : "stopped";
         if (m.started) pausing.current = false;
@@ -317,9 +368,10 @@ export function JamView({ win }: WindowViewProps) {
   // Menu, commands (⌘R plays, ⌘. stops, ⌘L asks), and the window's sound for Visualizers.
   const latest = useRef({ play, stop, change, save });
   latest.current = { play, stop, change, save };
+  const openRender = () => !renderJob.current && setRenderOpen(true);
   useEffect(() => {
     const focusAsk = () => ask.current?.focus();
-    const c = { play: () => void latest.current.play(), stop: () => latest.current.stop(), ask: focusAsk, save: () => void latest.current.save() };
+    const c = { play: () => void latest.current.play(), stop: () => latest.current.stop(), ask: focusAsk, save: () => void latest.current.save(), render: openRender };
     controls.set(win.id, c);
     const offActions = registerWindowActions(win.id, { refresh: c.play, stop: c.stop, change: focusAsk, save: c.save });
     const offLevels = publishLevels(win.id, win.title, { read: () => (started.current ? levels.current : null), listen: (on) => post({ type: "listen", on }) });
@@ -341,14 +393,38 @@ export function JamView({ win }: WindowViewProps) {
         </ToolbarGroup>
         <ToolbarSpacer />
         <ToolbarButton
+          ref={renderButton}
+          icon="square.and.arrow.down"
+          label="Render to Audio"
+          priority={2}
+          pressed={renderOpen}
+          disabled={rendering}
+          onClick={() => (renderOpen ? setRenderOpen(false) : openRender())}
+        />
+        <ToolbarButton
           icon="waveform"
           label="Open Visualizer"
           priority={1}
           onClick={() => void cmd.call("window.open", { kind: "visualizer", input: { source: `window:${win.id}` }, workspaceId: win.workspaceId }).catch(() => {})}
         />
       </WindowToolbar>
+      <Popover anchor={renderButton} open={renderOpen} onClose={() => setRenderOpen(false)} align="end" width={260} label="Render to Audio">
+        <Stack gap="md" pad="lg">
+          <Inline justify="between" gap="md">
+            <Text>Length</Text>
+            <NumberField label="Length" value={cycles} min={1} max={256} unit="cycles" onChange={setCycles} />
+          </Inline>
+          <Text tone="dim">{`About ${formatSeconds(cycles / cps)}, saved as a WAV file.`}</Text>
+          <Inline justify="end">
+            <Button variant="primary" onClick={() => void render()}>
+              Render…
+            </Button>
+          </Inline>
+        </Stack>
+      </Popover>
       <div className="jam-editor" ref={host} />
       <iframe ref={frame} className="jam-frame" sandbox="allow-scripts" src="cmd-jam://frame/" title="Player" aria-hidden tabIndex={-1} />
+      {rendering && <iframe ref={renderFrame} className="jam-frame" sandbox="allow-scripts" src="cmd-jam://frame/" title="Renderer" aria-hidden tabIndex={-1} />}
       <div className="jam-ask">
         <AiField
           ref={ask}
@@ -367,6 +443,12 @@ export function JamView({ win }: WindowViewProps) {
     </div>
   );
 }
+
+/** 16 s, 2 min 5 s. */
+const formatSeconds = (s: number) => {
+  const r = Math.round(s);
+  return r < 60 ? `${Math.max(1, r)} s` : `${Math.floor(r / 60)} min${r % 60 ? ` ${r % 60} s` : ""}`;
+};
 
 /** The editor's theme, swapped when the font or appearance changes. */
 const theme = new Compartment();
