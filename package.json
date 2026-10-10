@@ -19,6 +19,7 @@
     "workbench": "node scripts/workbench.mjs",
     "tokens": "node packages/ui/tokens/build.ts",
     "design-debt": "UPDATE_DESIGN_DEBT=1 vitest run apps/desktop/test/design-css.test.ts",
+    "layout-debt": "UPDATE_LAYOUT_DEBT=1 vitest run test/layout.test.ts",
     "remote:device": "node --no-warnings packages/cli/src/remote-device.ts",
     "dev": "node scripts/build-web.mjs --if-missing && pnpm --filter @cmd/desktop dev",
     "test": "vitest run",

@@ -22,6 +22,7 @@ pnpm core:stop               # stop the core of $CMD_HOME, else the dev one; cor
 pnpm cmd <args>              # run the CLI from source
 pnpm tokens                  # build packages/ui/tokens/*.tokens.json (DTCG) into tokens.css and tokens.gen.ts; --check fails when stale
 pnpm design-debt             # lower apps/desktop/test/design-debt.json after removing literal colours/sizes from a stylesheet
+pnpm layout-debt             # lower test/layout-debt.json after moving loose files into folders or splitting a long file
 pnpm ui                      # the @cmd/ui gallery in a browser (every component, every theme); `pnpm --filter @cmd/ui shots` screenshots it
 pnpm workbench <story>       # one component from a *.story.tsx in the real app, to iterate on with the user (prototype skill)
 pnpm release <ver|patch|minor>  # needs the version's CHANGELOG.md section (changelog skill); bump, tag v<ver>, push; CI publishes the GitHub release

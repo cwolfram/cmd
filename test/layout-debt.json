@@ -1,0 +1,14 @@
+{
+  "flat files in packages/core/src": 28,
+  "flat files in apps/desktop/src/renderer/src": 40,
+  "entries in apps/desktop/src/renderer/src/components": 66,
+  "files over 600 lines in packages/cli": 1,
+  "files over 600 lines in packages/core": 7,
+  "files over 600 lines in packages/protocol": 1,
+  "files over 600 lines in packages/remote-crypto": 0,
+  "files over 600 lines in packages/tours": 0,
+  "files over 600 lines in packages/ui": 2,
+  "files over 600 lines in apps/desktop": 6,
+  "files over 600 lines in apps/relay": 0,
+  "files over 600 lines in apps/web": 0
+}
