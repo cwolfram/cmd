@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { EventEmitter } from "node:events";
 import { currentSecretKey, isSecretKey, SECRETS, type SecretKey, type SecretsStatus } from "@cmd/protocol";
+import type { CoreContext } from "./context.ts";
 
 /** Read the secrets file directly (the `cmd magic` prompt lab runs without a core). Renamed keys come back under their new name. */
 export function readSecrets(file: string): Partial<Record<SecretKey, string>> {
@@ -94,4 +95,11 @@ export class SecretsService extends EventEmitter<{ updated: [SecretsStatus] }> {
     this.emit("updated", status);
     return status;
   }
+}
+
+/** The secrets (`core.secrets`); clients hear which are set, never their values. */
+export function createSecrets(core: Pick<CoreContext, "broadcast">, file: string | null, fallback?: DevKeys): SecretsService {
+  const secrets = new SecretsService(file, fallback);
+  secrets.on("updated", (status) => core.broadcast({ type: "secrets.updated", status }));
+  return secrets;
 }

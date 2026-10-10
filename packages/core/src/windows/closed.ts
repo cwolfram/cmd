@@ -7,6 +7,7 @@
 import { EventEmitter } from "node:events";
 import type { AppWindow, ClosedWindow, WindowId, WorkspaceId } from "@cmd/protocol";
 import type { Store } from "../kernel/store.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 /** Closed windows kept per workspace; older ones are forgotten. */
 export const CLOSED_PER_WORKSPACE = 20;
@@ -91,4 +92,15 @@ export class ClosedWindows extends EventEmitter<{ changed: []; forgotten: [Close
     this.#store?.deleteClosedWindow(id);
     return r;
   }
+}
+
+/** Closed windows (`core.closed`): clients told when the list changes; what one kept goes once it can't come back. */
+export function createClosed(core: Pick<CoreContext, "store" | "panes" | "broadcast">): ClosedWindows {
+  const closed = new ClosedWindows(core.store);
+  closed.on("changed", () => core.broadcast({ type: "window.closedChanged" }));
+  closed.on("forgotten", (r) => {
+    core.store.deleteUiStateOf(r.id);
+    if (r.terminal) core.panes.forgetHistory(r.id);
+  });
+  return closed;
 }

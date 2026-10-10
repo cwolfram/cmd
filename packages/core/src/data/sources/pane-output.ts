@@ -14,6 +14,7 @@ import type { AgentTurn, PaneId } from "@cmd/protocol";
 import type { PaneManager } from "../../terminals/panes.ts";
 import type { DataService } from "../service.ts";
 import type { ActivityView } from "../views/activity.ts";
+import type { CoreContext } from "../../kernel/context.ts";
 
 /** Quiet longer than this starts a new stretch. */
 export const STRETCH_GAP_MS = 1000;
@@ -141,4 +142,9 @@ export function turnScreen(screen: string, prompt: string | null): string {
   for (const l of out) if (l || kept.at(-1)) kept.push(l);
   while (kept.length && !kept.at(-1)) kept.pop();
   return kept.join("\n");
+}
+
+/** Terminal output recorded per agent turn, from the core's terminals and agents. */
+export function createPaneOutput(core: Pick<CoreContext, "data" | "panes" | "agents">, activity: ActivityView): PaneOutputRecorder {
+  return new PaneOutputRecorder({ data: core.data, panes: core.panes, activity, paneOf: (id) => core.agents.get(id)?.paneId ?? null });
 }

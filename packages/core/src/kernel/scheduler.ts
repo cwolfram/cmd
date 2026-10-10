@@ -21,6 +21,7 @@
 import { EventEmitter } from "node:events";
 import { logger } from "@cmd/protocol/node";
 import type { Stall, StartupStatus } from "@cmd/protocol";
+import type { CoreContext } from "./context.ts";
 
 const log = logger("scheduler");
 const lag = logger("lag");
@@ -245,4 +246,11 @@ export class Scheduler extends EventEmitter<{ startup: [StartupStatus]; stall: [
     }, TICK_MS);
     this.#tick.unref();
   }
+}
+
+/** The scheduler (`core.scheduler`); clients see which startup job runs (core.startup). */
+export function createScheduler(core: Pick<CoreContext, "broadcast">, o: SchedulerOptions): Scheduler {
+  const scheduler = new Scheduler(o);
+  scheduler.on("startup", (status) => core.broadcast({ type: "core.startup", status }));
+  return scheduler;
 }

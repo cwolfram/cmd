@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { EventEmitter } from "node:events";
 import { logger } from "@cmd/protocol/node";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("watch");
 
@@ -192,4 +193,11 @@ async function changedIn(dir: string, since: number): Promise<boolean> {
     if (batch.includes(true)) return true;
   }
   return false;
+}
+
+/** File watches for windows (`core.watches`): a change goes to clients (fs.changed). */
+export function createWatches(core: Pick<CoreContext, "broadcast">): WatchService {
+  const watches = new WatchService();
+  watches.on("changed", (path) => core.broadcast({ type: "fs.changed", path }));
+  return watches;
 }

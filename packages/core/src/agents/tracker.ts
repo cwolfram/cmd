@@ -32,6 +32,7 @@ import { DEFAULT_SETTINGS as DEFAULTS } from "@cmd/protocol";
 import type { RawEvent } from "./activity/normalize.ts";
 import { ActivityReducer, addFile, type Reduction } from "./activity/reduce.ts";
 import { drainSpool } from "./activity/spool.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("agents");
 
@@ -901,4 +902,9 @@ export function launchCommand(
   }
   if (kind === "codex") return { command: `${settings["agents.codex.command"]}${arg}` };
   return { command: `${kind}${arg}` };
+}
+
+/** The agents (`core.agents`) over the core's terminals, store, settings and transcript sources. */
+export function createAgents(core: Pick<CoreContext, "panes" | "store" | "settings" | "transcripts">, o: Omit<TrackerOptions, "store" | "settings" | "sources">): AgentTracker {
+  return new AgentTracker(core.panes, { ...o, store: core.store, settings: () => core.settings.settings, sources: core.transcripts });
 }

@@ -9,10 +9,11 @@
 
 import crypto from "node:crypto";
 import path from "node:path";
-import type { CoreEvent, PaneId, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteSession, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
+import type { CoreEvent, PaneId, RemoteAccessMode, RemoteTheme, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteSession, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import { encodePairing, equal, fromBase64Url, randomBytes, toBase64Url, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import type { Connection, Served } from "../kernel/connection.ts";
+import type { CoreContext } from "../kernel/context.ts";
 import type { SettingsService } from "../kernel/settings.ts";
 import type { RemoteDeviceRecord, Store } from "../kernel/store.ts";
 import { exec as loginExec } from "../terminals/loginpath.ts";
@@ -442,4 +443,23 @@ function builtinModes(): AccessModes {
   const m = new AccessModes();
   registerBuiltinModes(m);
   return m;
+}
+
+/** The Mac's theme as paired phones draw it (they never get settings.updated). */
+export const remoteTheme = (s: Settings): RemoteTheme => ({ appearance: s["theme.appearance"], dark: s["theme.dark"], light: s["theme.light"] });
+
+/** Remote access (`core.remote`): the audit log as events in the core's log, sessions served like the socket's, phones told when the theme changes. */
+export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast">, stateDir: string | null): RemoteService {
+  core.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => core.broadcast({ type: "theme.updated", theme: remoteTheme(core.settings.settings) }));
+  return new RemoteService({
+    store: core.store,
+    audit: {
+      record: (kind, deviceId, detail) => core.data.record({ id: `remote:${Date.now()}:${kind}:${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
+      list: (limit) => core.data.query({ types: ["remote.audit"], by: "time", order: "desc", limit }).map((e) => ({ at: e.at, kind: (e.data as { kind: string }).kind, deviceId: e.deviceId, detail: (e.data as { detail: string | null }).detail })),
+    },
+    settings: core.settings,
+    stateDir,
+    serve: (conn) => core.serve(conn),
+    broadcast: (e) => core.broadcast(e),
+  });
 }

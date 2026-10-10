@@ -6,6 +6,7 @@
 // one before Core made it throws, so construction order can't go wrong quietly.
 
 import type { AgentId, AppWindow, CoreEvent, Placement, Workspace } from "@cmd/protocol";
+import type { Connection, Served } from "./connection.ts";
 import type { ActionsService } from "../actions/service.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
 import type { AgentHomes } from "../agents/homes.ts";
@@ -76,6 +77,8 @@ export interface CoreActions {
   libraryChanged(): void;
   /** Who renders widget previews: the app, else Playwright; null: nobody. */
   previewer(): Promise<Previewer | null>;
+  /** Answers JSON-RPC on a connection: the socket's, or a paired device's session. */
+  serve(conn: Connection): Served;
 }
 
 export type CoreContext = Services & CoreActions;

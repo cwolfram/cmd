@@ -12,6 +12,8 @@ import type { Store } from "../kernel/store.ts";
 import { expandHome } from "./builtin.ts";
 import { targetFor, TEXT_MAX_BYTES } from "./routing.ts";
 import type { WindowTypes } from "./types.ts";
+import type { CoreContext } from "../kernel/context.ts";
+import { parseOverrides } from "./types.ts";
 
 export { normalizeUrl } from "./builtin.ts";
 
@@ -220,4 +222,11 @@ export function writeText(file: string, text: string, expectMtime?: number): { s
   fs.writeFileSync(abs, text);
   const st = fs.statSync(abs);
   return { size: st.size, mtime: st.mtimeMs };
+}
+
+/** The windows (`core.windows`), opened by the user's open.handlers, each change told to clients. */
+export function createWindows(core: Pick<CoreContext, "panes" | "store" | "windowTypes" | "settings" | "broadcast">): WindowManager {
+  const windows = new WindowManager(core.panes, core.store, core.windowTypes, () => parseOverrides(core.settings.settings["open.handlers"]));
+  windows.on("updated", (window) => core.broadcast({ type: "window.updated", window }));
+  return windows;
 }

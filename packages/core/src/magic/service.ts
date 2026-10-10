@@ -928,6 +928,8 @@ export function createMagic(
   core: Pick<CoreContext, "windows" | "settings" | "ai" | "notifications" | "workspaces" | "widgetTokens" | "broadcast" | "previewer" | "watched" | "libraryChanged">,
   o: Pick<MagicServiceOptions, "backend" | "stateDir" | "deno" | "installDeno"> & { widgetSocket: string | null },
 ): MagicService {
+  // Developer widgets come and go from the library with their setting.
+  core.settings.bind(["widgets.developer"], () => core.libraryChanged());
   return new MagicService({
     widgetSocket: o.widgetSocket ? { path: o.widgetSocket, token: (widgetId, workspaceId, events) => core.widgetTokens.issue({ widgetId, workspaceId, events }) } : null,
     windows: core.windows,

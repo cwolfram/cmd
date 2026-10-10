@@ -18,6 +18,7 @@
 import { createHmac } from "node:crypto";
 import os from "node:os";
 import { logger, takeUsageCounts } from "@cmd/protocol/node";
+import type { CoreContext } from "./context.ts";
 
 export const USAGE_URL = "https://endtime-instruments.org/cmd/usage/ingest.php";
 
@@ -163,4 +164,9 @@ export function macosVersion(platform: string = process.platform, release: strin
   const d = Number.parseInt(release, 10);
   if (platform !== "darwin" || !Number.isFinite(d)) return platform;
   return String(d >= 25 ? d + 1 : d - 9);
+}
+
+/** Usage stats (`core.usage`), on while diagnostics.usageStats is. */
+export function createUsage(core: Pick<CoreContext, "settings">, o: Omit<UsageOptions, "enabled">): UsageStats {
+  return new UsageStats({ ...o, enabled: () => core.settings.settings["diagnostics.usageStats"] });
 }

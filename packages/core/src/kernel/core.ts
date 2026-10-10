@@ -6,10 +6,10 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, RemoteTheme, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, AppNotification, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
+import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { EXPORT_FORMAT, lineSplitter, TURN_FORMAT } from "@cmd/protocol";
 import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
-import { AgentTracker } from "../agents/tracker.ts";
+import { createAgents, type AgentTracker } from "../agents/tracker.ts";
 import type { JournalService } from "../journal/service.ts";
 import { createJournal } from "../journal/feature.ts";
 import { ALL, featureHandlers } from "./features.ts";
@@ -19,25 +19,25 @@ import { recordNames, recordNotifications, recordWorkspaces, recordWindows } fro
 import { removeOldBackups } from "../data/migrations.ts";
 import { DataService } from "../data/service.ts";
 import { describeAgent, describePane } from "../data/describe.ts";
-import { PaneOutputRecorder } from "../data/sources/pane-output.ts";
+import { createPaneOutput, type PaneOutputRecorder } from "../data/sources/pane-output.ts";
 import { projectIdOf } from "../data/project.ts";
 import { matchesQuery } from "../data/match.ts";
 import { WidgetTokens, widgetRead, type WidgetIdentity } from "../data/widgets.ts";
 import { ViewsStore } from "../data/views/views.ts";
 import { ActivityView } from "../data/views/activity.ts";
 import { SessionsView } from "../data/views/sessions.ts";
-import { Scheduler } from "./scheduler.ts";
+import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { SearchView } from "../data/views/search.ts";
 import { TranscriptIngest } from "../data/sources/ingest.ts";
 import { rewrite } from "../agents/activity/fixture.ts";
-import { AgentHomes } from "../agents/homes.ts";
+import { createHomes, type AgentHomes } from "../agents/homes.ts";
 import { createNaming, type AgentNaming } from "../agents/naming.ts";
 import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefingFlag, writeHookFiles, type HookFiles } from "../agents/hooks.ts";
 import { hookEventName } from "../agents/state.ts";
 import { createNotifications, type NotificationCenter } from "../notifications/center.ts";
 import { CommandLog, indexCommandOutput } from "../terminals/commands.ts";
 import { createTimers, type TimerAlarms } from "../windows/timers.ts";
-import { PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
+import { createPanes, type PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
 import { isDir, restoredText, restoreSession } from "../terminals/restore.ts";
 import type { TermBackend } from "../terminals/types.ts";
 import { ProcessSampler, ResourceMonitor, type ProcSampler, type TreeSampler } from "../terminals/resources.ts";
@@ -45,25 +45,27 @@ import { registerBuiltinSources } from "../search/builtin.ts";
 import { FileSearch } from "../search/files.ts";
 import { checkoutOf } from "../lib/checkout.ts";
 import { locateContext, TranscriptSources, type LocateContext, type TranscriptRoot } from "../search/sources.ts";
-import { listDir, parseOverrides, readText, resolvePaths, registerBuiltins, shellOpenEnv, terminalWindow, WindowManager, WindowTypes, writeText, ClosedWindows } from "../windows/index.ts";
-import { WatchService } from "../lib/watch.ts";
+import { listDir, readText, resolvePaths, registerBuiltins, terminalWindow, WindowTypes, writeText, type ClosedWindows, type WindowManager } from "../windows/index.ts";
+import { createClosed } from "../windows/closed.ts";
+import { createWindows } from "../windows/manager.ts";
+import { createWatches } from "../lib/watch.ts";
 import { gitDiff, gitStatus } from "../lib/git.ts";
 import { SqliteService } from "../sqlite/service.ts";
 import { createPath, duplicatePath, renamePath, transferPaths } from "../lib/fileops.ts";
 import { Store } from "./store.ts";
-import { SettingsService } from "./settings.ts";
-import { WorkspaceManager } from "../workspaces/manager.ts";
+import { createSettings, type SettingsService } from "./settings.ts";
+import { createWorkspaces, type WorkspaceManager } from "../workspaces/manager.ts";
 import { createMagic, type MagicService } from "../magic/service.ts";
-import { SecretsService } from "./secrets.ts";
+import { createSecrets, type SecretsService } from "./secrets.ts";
 import type { Backend } from "../ai/backends.ts";
 import { createAi, type AiService } from "../ai/service.ts";
 import { playwrightPreviewer, type Previewer } from "../widgets/preview.ts";
 import type { MagicPreviewRequest, MagicPreviewShot } from "@cmd/protocol";
 import type { Connection, Served } from "./connection.ts";
 import { checkRemoteCall, RemoteDenied, remoteEventVisible, type PolicyContext } from "../remote/policy.ts";
-import { RemoteService } from "../remote/service.ts";
+import { createRemote, remoteTheme, type RemoteService } from "../remote/service.ts";
 import { createSummaries, type SummaryService } from "../summaries/service.ts";
-import { UsageStats } from "./usage.ts";
+import { createUsage, type UsageStats } from "./usage.ts";
 import { changeCode } from "../jam/change.ts";
 import type { DevKeys } from "./secrets.ts";
 import type { ActionsService } from "../actions/service.ts";
@@ -143,9 +145,6 @@ const NO_SEARCH = { sessions: 0, files: 0, indexing: false, done: 0, total: 0 };
 /** ui_state key: agent configs the user removed cmd's hook from. */
 const DECLINED_KEY = "core.hooks.declined";
 
-/** A comma-separated setting as a list. */
-const splitList = (v: string) => v.split(",").map((d) => d.trim()).filter(Boolean);
-
 /** Whether a view row answers a view query. */
 function viewMatches(q: ViewQuery, r: TurnRow | SessionInfo, workspaceOf: (cwd: string | null) => string): boolean {
   if (q.workspaceId && workspaceOf(r.cwd) !== q.workspaceId) return false;
@@ -168,6 +167,17 @@ export const widgetsSocketPath = (socketPath: string) => path.join(path.dirname(
 export const SOCKET_PATH_MAX = 103;
 
 export class Core {
+  /** What services and features get (context.ts). */
+  readonly #ctx: CoreContext = contextOf(this, {
+    broadcast: (e) => this.#broadcast(e),
+    place: (p, o) => this.#place(p, o),
+    opened: (w) => this.#opened(w),
+    watched: () => this.#subscribers.size > 0,
+    libraryChanged: () => this.#libraryChanged(),
+    previewer: () => this.#previewer(),
+    serve: (conn) => this.serve(conn),
+  });
+
   readonly panes: PaneManager;
   readonly agents: AgentTracker;
   readonly notifications: NotificationCenter;
@@ -219,7 +229,7 @@ export class Core {
   #sockError: string | null = null;
   /** Subscribed connections and which events each wants. */
   #subscribers = new Map<Connection, (e: CoreEvent) => boolean>();
-  readonly watches = new WatchService();
+  readonly watches = createWatches(this.#ctx);
   /** SQLite windows' reads, a worker per open database. */
   readonly sqlite = new SqliteService();
   /** fs.watch subscriptions per connection, released when it closes. */
@@ -255,24 +265,15 @@ export class Core {
 
   constructor(opts: CoreOptions) {
     this.#opts = opts;
-    this.scheduler = new Scheduler({ watchdog: !!opts.stateDir });
-    this.scheduler.on("startup", (status) => this.#broadcast({ type: "core.startup", status }));
+    this.scheduler = createScheduler(this.#ctx, { watchdog: !!opts.stateDir });
     this.store = new Store(opts.dbPath ?? ":memory:");
-    this.settings = new SettingsService(opts.settingsPath ?? null);
+    this.settings = createSettings(this.#ctx, opts.settingsPath ?? null);
     // Before anything that counts (windows, terminals, agents): services may use it from their first call.
-    this.usage = new UsageStats({
-      url: opts.usageUrl ?? null,
-      key: opts.usageKey ?? null,
-      enabled: () => this.settings.settings["diagnostics.usageStats"],
-      id: machineId,
-      version: process.env.CMD_APP_VERSION ?? "source",
-    });
-    const settings = () => this.settings.settings;
+    this.usage = createUsage(this.#ctx, { url: opts.usageUrl ?? null, key: opts.usageKey ?? null, id: machineId, version: process.env.CMD_APP_VERSION ?? "source" });
     // Window types (built-ins now; plugins register more through the same API).
     this.windowTypes = new WindowTypes();
     registerBuiltins(this.windowTypes);
     this.transcripts = registerBuiltinSources(new TranscriptSources());
-    const overrides = () => parseOverrides(this.settings.settings["open.handlers"]);
     // cmd's hook script and CLI wrapper for agents, rewritten for this build (agents/hooks.ts).
     if (opts.stateDir && opts.statusRoot) {
       const files = hookFiles(opts.stateDir);
@@ -284,28 +285,13 @@ export class Core {
         log.error(`could not write the agent hook: ${(err as Error).message}`);
       }
     }
-    this.panes = new PaneManager(opts.terminals, {
+    this.panes = createPanes(this.#ctx, opts.terminals, {
       binDir: this.#hooks?.bin ?? null,
       socketPath: opts.socketPath,
       pollMs: opts.pollMs,
-      settings,
       inspector: opts.inspector ?? null,
-      // The shells' `open` learns what cmd can open from the registry.
-      shellEnv: () => shellOpenEnv(this.windowTypes, overrides()),
       rulesFile: opts.shellRulesFile ?? null,
-      store: this.store,
       historyDir: opts.stateDir ? path.join(opts.stateDir, "history") : null,
-    });
-    // Paired phones draw in the Mac's themes; they never get settings.updated.
-    this.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => this.#broadcast({ type: "theme.updated", theme: this.#remoteTheme() }));
-    // Developer widgets come and go from the library with their setting.
-    this.settings.bind(["widgets.developer"], () => this.#libraryChanged());
-    this.settings.bind(["shell.openFolders", "shell.openFiles", "shell.openUrls", "open.handlers"], () => {
-      try {
-        this.panes.writeShellRules();
-      } catch (err) {
-        log.error(`could not write shell rules: ${(err as Error).message}`);
-      }
     });
     // Every event says which cmd recorded it: the app's version, or the checkout's build.
     // A real core opens the log now (an older one is migrated first: data/migrations.ts) and imports and rebuilds views in start(), once it answers.
@@ -325,16 +311,9 @@ export class Core {
     activity.onTurn((t, cwd) => this.#viewChanged("turns", [{ ...t, cwd }]));
     this.#searchView = new SearchView(this.data, this.sessions, { viewsFile: this.views.file });
     this.#fileSearch = new FileSearch({ excluded: () => this.data.rules().folders });
-    this.agents = new AgentTracker(this.panes, {
-      store: this.store,
-      settings,
-      statusRoot: opts.statusRoot ?? null,
-      sources: this.transcripts,
-      activity,
-      git: !!opts.stateDir,
-    });
-    this.#paneOutput = new PaneOutputRecorder({ data: this.data, panes: this.panes, activity, paneOf: (id) => this.agents.get(id)?.paneId ?? null });
-    this.homes = new AgentHomes(this.store.db, opts.homesContext ?? locateContext, () => splitList(this.settings.settings["agents.homes"]));
+    this.agents = createAgents(this.#ctx, { statusRoot: opts.statusRoot ?? null, activity, git: !!opts.stateDir });
+    this.#paneOutput = createPaneOutput(this.#ctx, activity);
+    this.homes = createHomes(this.#ctx, opts.homesContext ?? locateContext);
     this.agents.on("home", (agent, dir) => this.#newHome(this.homes.learn(agent, dir, "hook")));
     this.agents.on("transcript", (agent, file) => {
       const dir = this.homes.homeOfTranscript(agent, file);
@@ -350,11 +329,9 @@ export class Core {
     }
     this.notifications = createNotifications(this.#ctx);
     this.commands = new CommandLog(this.panes, this.data);
-    this.resources = opts.sampler ? new ResourceMonitor(this.panes, opts.sampler, 2000, () => this.#subscribers.size > 0) : null;
+    this.resources = opts.sampler ? new ResourceMonitor(this.panes, opts.sampler, 2000, this.#ctx.watched) : null;
     this.processes = opts.procSampler ? new ProcessSampler(opts.procSampler) : null;
-    this.workspaces = new WorkspaceManager(this.store, opts.home);
-    this.workspaces.on("updated", (workspace) => this.#broadcast({ type: "workspace.updated", workspace }));
-    this.workspaces.on("removed", (id) => this.#broadcast({ type: "workspace.removed", id }));
+    this.workspaces = createWorkspaces(this.#ctx, opts.home);
     // A workspace opened or closed moves folders between workspaces: live queries by workspace start over.
     let roots = "";
     const rootsChanged = () => {
@@ -364,20 +341,13 @@ export class Core {
     rootsChanged();
     this.workspaces.on("updated", rootsChanged);
     this.workspaces.on("removed", rootsChanged);
-    this.windows = new WindowManager(this.panes, this.store, this.windowTypes, overrides);
+    this.windows = createWindows(this.#ctx);
     // Windows of a workspace that is gone or closed (e.g. the core died mid-close) go Home.
     for (const w of this.windows.others()) {
       if (this.workspaces.get(w.workspaceId)?.closedAt !== null) this.windows.move(w.id, this.workspaces.home().id);
     }
-    this.windows.on("updated", (window) => this.#broadcast({ type: "window.updated", window }));
     this.timers = createTimers(this.#ctx);
-    this.closed = new ClosedWindows(this.store);
-    this.closed.on("changed", () => this.#broadcast({ type: "window.closedChanged" }));
-    // What a closed window kept, once it can't be reopened any more.
-    this.closed.on("forgotten", (r) => {
-      this.store.deleteUiStateOf(r.id);
-      if (r.terminal) this.panes.forgetHistory(r.id);
-    });
+    this.closed = createClosed(this.#ctx);
     this.windows.on("removed", (id, w) => {
       if (this.#keepsClosed(w.workspaceId)) {
         this.closed.add({ id, workspaceId: w.workspaceId, kind: w.kind, title: w.title, closedAt: Date.now(), window: w, terminal: null });
@@ -387,8 +357,7 @@ export class Core {
       this.#broadcast({ type: "window.removed", id });
       this.#libraryChanged();
     });
-    this.secrets = new SecretsService(opts.secretsPath ?? null, opts.devKeys);
-    this.secrets.on("updated", (status) => this.#broadcast({ type: "secrets.updated", status }));
+    this.secrets = createSecrets(this.#ctx, opts.secretsPath ?? null, opts.devKeys);
     this.ai = createAi(this.#ctx, { stateDir: opts.stateDir ?? null, listModels: opts.aiListModels });
     if (opts.stateDir) this.ai.start();
     this.naming = createNaming(this.#ctx);
@@ -400,10 +369,7 @@ export class Core {
     this.magic = createMagic(this.#ctx, { widgetSocket: path.isAbsolute(opts.socketPath) ? widgetsSocketPath(opts.socketPath) : null, backend: opts.magicBackend, stateDir: opts.stateDir ?? null, deno: opts.magicDeno, installDeno: opts.magicInstallDeno });
     this.actions = createActions(this.#ctx);
     this.panes.on("request", (paneId, action, arg) => this.#onShellRequest(paneId, action, arg));
-    this.watches.on("changed", (path) => this.#broadcast({ type: "fs.changed", path }));
-    this.settings.on("updated", (snapshot) => this.#broadcast({ type: "settings.updated", snapshot }));
 
-    this.panes.on("output", (paneId, data, seq) => this.#broadcast({ type: "pane.output", paneId, data, seq }));
     this.panes.on("updated", (pane) => {
       this.#broadcast({ type: "pane.updated", pane });
       describePane(this.data, pane);
@@ -433,17 +399,7 @@ export class Core {
       this.#countedAgents.delete(agentId);
       this.#broadcast({ type: "agent.removed", agentId });
     });
-    this.remote = new RemoteService({
-      store: this.store,
-      audit: {
-        record: (kind, deviceId, detail) => this.data.record({ id: `remote:${Date.now()}:${kind}:${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
-        list: (limit) => this.data.query({ types: ["remote.audit"], by: "time", order: "desc", limit }).map((e) => ({ at: e.at, kind: (e.data as { kind: string }).kind, deviceId: e.deviceId, detail: (e.data as { detail: string | null }).detail })),
-      },
-      settings: this.settings,
-      stateDir: opts.stateDir ?? null,
-      serve: (conn) => this.serve(conn),
-      broadcast: (e) => this.#broadcast(e),
-    });
+    this.remote = createRemote(this.#ctx, opts.stateDir ?? null);
   }
 
   #started = false;
@@ -522,16 +478,6 @@ export class Core {
     const home = os.homedir();
     return at === home || home.startsWith(at.endsWith(path.sep) ? at : at + path.sep) ? null : at;
   }
-
-  /** What services and features get (context.ts). */
-  readonly #ctx: CoreContext = contextOf(this, {
-    broadcast: (e) => this.#broadcast(e),
-    place: (p, o) => this.#place(p, o),
-    opened: (w) => this.#opened(w),
-    watched: () => this.#subscribers.size > 0,
-    libraryChanged: () => this.#libraryChanged(),
-    previewer: () => this.#previewer(),
-  });
 
   readonly handlers: Handlers = {
     "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") }),
@@ -805,7 +751,7 @@ export class Core {
       windowTypes: this.windowTypes.info(),
       device: null,
       host: { name: computerName() },
-      theme: this.#remoteTheme(),
+      theme: remoteTheme(this.settings.settings),
     }),
     "window.follow": () => null,
     "events.subscribe": () => ({
@@ -818,11 +764,6 @@ export class Core {
       ui: this.store.uiState(),
     }),
   };
-
-  #remoteTheme(): RemoteTheme {
-    const s = this.settings.settings;
-    return { appearance: s["theme.appearance"], dark: s["theme.dark"], light: s["theme.light"] };
-  }
 
   #hookTargets(): HookTarget[] {
     if (!this.#hooks) return [];

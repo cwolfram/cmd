@@ -11,6 +11,7 @@ import { HOME_WORKSPACE_ID, ICON_NAME, type Workspace, type WorkspaceId } from "
 import type { Store } from "../kernel/store.ts";
 import { placeOf } from "../lib/checkout.ts";
 import { canonical, deepest, gitRoot, nameFor } from "./paths.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const VIEW_MAX = 256 * 1024;
 
@@ -219,4 +220,12 @@ export class WorkspaceManager extends EventEmitter<{ updated: [Workspace]; remov
     this.#store?.saveWorkspace(s);
     this.emit("updated", { ...s });
   }
+}
+
+/** The workspaces (`core.workspaces`), each change told to clients. */
+export function createWorkspaces(core: Pick<CoreContext, "store" | "broadcast">, home?: string): WorkspaceManager {
+  const workspaces = new WorkspaceManager(core.store, home);
+  workspaces.on("updated", (workspace) => core.broadcast({ type: "workspace.updated", workspace }));
+  workspaces.on("removed", (id) => core.broadcast({ type: "workspace.removed", id }));
+  return workspaces;
 }

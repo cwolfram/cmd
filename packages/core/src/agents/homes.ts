@@ -13,6 +13,7 @@ import type { AgentHome, AgentKind } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { LocateContext } from "../search/sources.ts";
 import { decodeDoc, decodeHome } from "../kernel/stored.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("homes");
 
@@ -158,4 +159,9 @@ export class AgentHomes {
   #save(h: AgentHome): void {
     this.#db?.prepare(`INSERT OR REPLACE INTO agent_homes (dir, doc) VALUES (?, ?)`).run(h.dir, JSON.stringify(h));
   }
+}
+
+/** Where agents keep their config (`core.homes`), plus the folders the person added (agents.homes). */
+export function createHomes(core: Pick<CoreContext, "store" | "settings">, context: () => LocateContext): AgentHomes {
+  return new AgentHomes(core.store.db, context, () => core.settings.settings["agents.homes"].split(",").map((d) => d.trim()).filter(Boolean));
 }

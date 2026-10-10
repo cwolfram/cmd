@@ -21,6 +21,7 @@ import {
   type Settings,
   type SettingsSnapshot,
 } from "@cmd/protocol";
+import type { CoreContext } from "./context.ts";
 
 const log = logger("settings");
 
@@ -171,4 +172,11 @@ export class SettingsService extends EventEmitter<{ updated: [SettingsSnapshot] 
 
 function overridesOf(raw: Record<string, unknown>): SettingKey[] {
   return [...new Set(Object.keys(raw).map(currentKey))].filter(isSettingKey);
+}
+
+/** The settings (`core.settings`): every change goes to clients (settings.updated). */
+export function createSettings(core: Pick<CoreContext, "broadcast">, file: string | null): SettingsService {
+  const settings = new SettingsService(file);
+  settings.on("updated", (snapshot) => core.broadcast({ type: "settings.updated", snapshot }));
+  return settings;
 }

@@ -22,6 +22,9 @@ import { ptysExhausted } from "./ptys.ts";
 import { LocalBackend } from "./local.ts";
 import type { PtyFactory } from "./pty.ts";
 import type { Term, TermBackend } from "./types.ts";
+import type { CoreContext } from "../kernel/context.ts";
+import { shellOpenEnv } from "../windows/routing.ts";
+import { parseOverrides } from "../windows/types.ts";
 
 export type { Pty, PtyFactory, SpawnOptions } from "./pty.ts";
 export { nodePtyFactory } from "./pty.ts";
@@ -814,4 +817,24 @@ export class PaneManager extends EventEmitter<PaneEvents> {
     if (!l) throw new Error(`no such pane: ${id}`);
     return l;
   }
+}
+
+/** The terminals (`core.panes`): the shells learn what cmd opens from the window types, and their output goes to clients. */
+export function createPanes(core: Pick<CoreContext, "settings" | "windowTypes" | "store" | "broadcast">, backend: TermBackend | PtyFactory, o: Omit<PaneManagerOptions, "settings" | "shellEnv" | "store">): PaneManager {
+  const panes = new PaneManager(backend, {
+    ...o,
+    settings: () => core.settings.settings,
+    // The shells' `open` learns what cmd can open from the registry.
+    shellEnv: () => shellOpenEnv(core.windowTypes, parseOverrides(core.settings.settings["open.handlers"])),
+    store: core.store,
+  });
+  core.settings.bind(["shell.openFolders", "shell.openFiles", "shell.openUrls", "open.handlers"], () => {
+    try {
+      panes.writeShellRules();
+    } catch (err) {
+      log.error(`could not write shell rules: ${(err as Error).message}`);
+    }
+  });
+  panes.on("output", (paneId, data, seq) => core.broadcast({ type: "pane.output", paneId, data, seq }));
+  return panes;
 }
