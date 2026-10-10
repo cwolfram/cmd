@@ -119,7 +119,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 **Success criteria.**
 
-- [ ] `packages/core/src/context.ts` exists and every service in the graph above takes `Pick<CoreContext, …>` (or nothing) instead of a bag of closures into `Core`
+- [x] `packages/core/src/context.ts` exists and every service in the graph above takes `Pick<CoreContext, …>` (or nothing) instead of a bag of closures into `Core`
 - [ ] `grep -c "=>" core.ts` constructor region under 25, and `grep -n "workspaceOf =" core.ts` returns nothing
 - [x] No lambda in the constructor reads a `this.*` field assigned on a later line (a test constructs `Core` with `usage` stubbed to throw and calls `actions.run`/`agent.summarize` paths)
 - [x] `dependency-cruiser` (00-research §9) or a small script lists services → context slices with no edge into `core.ts`
@@ -130,7 +130,8 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 - The services keep their narrow option interfaces, which their tests fake; what moved is the wiring. Each gets a `createX(ctx: Pick<CoreContext, …>)` beside it that turns the context into its options: `createNotifications` (with `#writeNotice`, now in `notifications/center.ts`), `createNaming`, `createSummaries`, `createAi` (the `onCall` recorder, its settings binding, `ai.updated`), `createMagic`, and, from the feature work, `createJournal`, `createActions`, `createTimers`. So a service's dependencies are in that function's signature, and Core's constructor calls it.
 - Both `workspaceOf` property injections are constructor arguments now (`NotificationCenter`, `ActivityView`).
 - `packages/core/test/core-context.test.ts`: the context throws on a service not made yet; no file but `main.ts` and `index.ts` imports `kernel/core.ts`; naming, summaries, actions and the journal are made from a fake context with no Core.
-- Not yet: the constructor still has 54 `=>` (from 84; the target is 25). What's left is mostly Core's own work: forwarding service events to clients, the subscriptions behind `#dataChanged`/`#viewChanged`, closed windows, agent homes. Those move out with AR1-03-01. `PaneManager`, `AgentTracker`, `WindowManager`, `AgentHomes`, `PaneOutputRecorder` and `RemoteService` still take their options inline; `RemoteService` is left for whoever works on remote.
+- Then every other service the same way: `createRemote` (the audit log, serving sessions, and the theme phones draw in, which was Core's `#remoteTheme`), `createPanes` (shell rules, output to clients), `createAgents`, `createHomes`, `createPaneOutput`, `createWindows`, `createWorkspaces`, `createSecrets`, `createClosed`, `createWatches`, `createScheduler`, `createSettings`, `createUsage`. Each forwards its own events to clients. `serve` joined the context's Core actions.
+- Not yet: the constructor has 29 `=>` (from 84; the target is 25), `core.ts` 1,581 lines (from 1,747). What's left is Core's own work, not wiring: the subscriptions behind `#dataChanged`/`#viewChanged`/`#viewReset`, closed windows and panes on close, agent homes and hooks (`#newHome`, `#discoverHomes`, `#autoHooks`), counting agents. Those move out with AR1-03-01, which closes this issue's last box.
 
 
 ### AR1-03-03 · Give handlers the connection and delete `#afterCall`
