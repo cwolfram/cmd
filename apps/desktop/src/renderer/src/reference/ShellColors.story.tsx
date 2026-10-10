@@ -13,11 +13,16 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import tokensCss from "../../../../../../packages/ui/src/tokens.css?raw";
 
 type Base = "bg" | "bg-sidebar" | "well" | "bg-elevated";
-type Surface = { base: Base; shift: number };
+/** A base token, optionally mixed toward another (`toward` at `mix` %), then shifted lighter or darker. */
+type Surface = { base: Base; shift: number; toward?: Base | null; mix?: number };
 type Recipe = {
   backdrop: Surface;
   bar: Surface;
   toolbar: Surface;
+  /** The toolbar takes the title bar's recipe: one chrome surface. */
+  toolbarIsBar?: boolean;
+  /** The outline premixed over the title bar's colour instead of --bg-sidebar. */
+  edgeOverChrome?: boolean;
   edgeMix: number;
   /** ui.unfocusedDim, %: times the theme's --window-dim. */
   dim: number;
@@ -35,9 +40,14 @@ const TODAY: Recipe = {
   dimScope: "window",
   tint: "subtle",
   barLine: true,
+  toolbarIsBar: false,
+  edgeOverChrome: false,
 };
+/** Backdrop → chrome → content, one step each way: chrome between --bg and --well, one tone for bar and toolbar. */
+const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, barLine: false, tint: "off", dimScope: "content" };
 const PRESETS: Record<string, Recipe> = {
   Today: TODAY,
+  Ordered: ORDERED,
   "Toolbar = bar": { ...TODAY, toolbar: { base: "bg-sidebar", shift: 0 } },
   "One chrome, no line": { ...TODAY, toolbar: { base: "bg-sidebar", shift: 0 }, barLine: false },
   "Chrome from well": { ...TODAY, bar: { base: "well", shift: 2 }, toolbar: { base: "well", shift: 2 }, barLine: false },
@@ -58,14 +68,17 @@ function useRecipe(): [Recipe, (r: Recipe) => void] {
 }
 
 /** A base token shifted lighter (+) or darker (−) by |shift| % of white or black. */
-const surface = ({ base, shift }: Surface) => (shift === 0 ? `var(--${base})` : `color-mix(in oklab, ${shift > 0 ? "#fff" : "#000"} ${Math.abs(shift)}%, var(--${base}))`);
+function surface({ base, shift, toward, mix = 50 }: Surface): string {
+  const c = toward ? `color-mix(in oklab, var(--${toward}) ${mix}%, var(--${base}))` : `var(--${base})`;
+  return shift === 0 ? c : `color-mix(in oklab, ${shift > 0 ? "#fff" : "#000"} ${Math.abs(shift)}%, ${c})`;
+}
 const TINT = { off: 0, subtle: 8, strong: 18 };
 
 function recipeVars(r: Recipe): Record<string, string> {
   return {
     "--shell-backdrop": surface(r.backdrop),
     "--window-bar-bg": surface(r.bar),
-    "--toolbar-bg": surface(r.toolbar),
+    "--toolbar-bg": r.toolbarIsBar ? "var(--window-bar-bg)" : surface(r.toolbar),
     "--window-edge-mix": `${r.edgeMix}%`,
     "--window-dim-amount": String(r.dim / 100),
   };
@@ -87,7 +100,7 @@ function Shell({ r, name, icon, selected, toolbar = true, width, height }: { r: 
   const dimTop = r.dimScope === "content" ? `calc(var(--window-bar-h) + ${toolbar ? "var(--toolbar-h)" : "0px"})` : "0px";
   const tint = selected && TINT[r.tint] ? { background: `color-mix(in srgb, var(--ring-color) ${TINT[r.tint]}%, var(--window-bar-bg))` } : undefined;
   return (
-    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative" }}>
+    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative", ...(r.edgeOverChrome && { "--window-edge": "color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg))" }) } as CSSProperties}>
       <WindowBody style={{ height: "100%" }}>
         <WindowBar icon={icon} name={name} style={{ ...tint, ...(r.barLine || !toolbar ? null : { boxShadow: "none" }) }} />
         {toolbar && (
@@ -158,10 +171,16 @@ function Range({ value, min, max, onChange, unit = "" }: { value: number; min: n
 
 function SurfaceRow({ title, s, onChange }: { title: string; s: Surface; onChange: (s: Surface) => void }) {
   return (
-    <Row title={title}>
-      <Select size="sm" width={104} value={s.base} options={BASES} onChange={(base) => onChange({ ...s, base })} />
-      <Range value={s.shift} min={-12} max={12} onChange={(shift) => onChange({ ...s, shift })} />
-    </Row>
+    <>
+      <Row title={title}>
+        <Select size="sm" width={104} value={s.base} options={BASES} onChange={(base) => onChange({ ...s, base })} />
+        <Range value={s.shift} min={-12} max={12} onChange={(shift) => onChange({ ...s, shift })} />
+      </Row>
+      <Row title="  toward">
+        <Select size="sm" width={104} value={s.toward ?? "none"} options={["none", ...BASES]} labels={{ none: "—" }} onChange={(t) => onChange({ ...s, toward: t === "none" ? null : t })} />
+        {s.toward && <Range value={s.mix ?? 50} min={0} max={100} unit="%" onChange={(mix) => onChange({ ...s, mix })} />}
+      </Row>
+    </>
   );
 }
 
@@ -171,6 +190,7 @@ function css(r: Recipe): string {
     `--shell-backdrop: ${v["--shell-backdrop"]};`,
     `--window-bar-bg: ${v["--window-bar-bg"]};`,
     `--toolbar-bg: ${v["--toolbar-bg"]};`,
+    ...(r.edgeOverChrome ? ["--window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg));"] : []),
     `--window-edge-mix: ${v["--window-edge-mix"]};`,
     `/* ui.unfocusedDim ${r.dim}, dim ${r.dimScope}, title tint ${r.tint}, bar line ${r.barLine ? "on" : "off"} */`,
   ].join("\n");
@@ -185,9 +205,16 @@ function Panel({ r, set }: { r: Recipe; set: (r: Recipe) => void }) {
       </Row>
       <SurfaceRow title="Backdrop" s={r.backdrop} onChange={(backdrop) => set({ ...r, backdrop })} />
       <SurfaceRow title="Title bar" s={r.bar} onChange={(bar) => set({ ...r, bar })} />
-      <SurfaceRow title="Toolbar" s={r.toolbar} onChange={(toolbar) => set({ ...r, toolbar })} />
+      <Row title="Toolbar">
+        <Switch size="sm" label="Toolbar takes the title bar's colour" checked={!!r.toolbarIsBar} onChange={(toolbarIsBar) => set({ ...r, toolbarIsBar })} />
+        <span style={{ color: "var(--text-dim)" }}>same as title bar</span>
+      </Row>
+      {!r.toolbarIsBar && <SurfaceRow title="" s={r.toolbar} onChange={(toolbar) => set({ ...r, toolbar })} />}
       <Row title="Bar line">
         <Switch size="sm" label="Line between title bar and toolbar" checked={r.barLine} onChange={(barLine) => set({ ...r, barLine })} />
+      </Row>
+      <Row title="Outline over">
+        <Segmented size="sm" value={r.edgeOverChrome ? "chrome" : "sidebar"} options={["sidebar", "chrome"]} labels={{ sidebar: "bg-sidebar", chrome: "Title bar" }} onChange={(v) => set({ ...r, edgeOverChrome: v === "chrome" })} />
       </Row>
       <Row title="Outline">
         <Range value={r.edgeMix} min={0} max={30} unit="%" onChange={(edgeMix) => set({ ...r, edgeMix })} />
