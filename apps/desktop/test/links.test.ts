@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findLinks, logicalLine, type Row } from "../src/renderer/src/links.ts";
+import { findLinks, logicalLine, type Row } from "../src/renderer/src/windows/terminal/links.ts";
 
 const targets = (s: string) => findLinks(s).map((l) => `${l.kind}:${l.target}`);
 const text = (s: string) => findLinks(s).map((l) => s.slice(l.start, l.end));

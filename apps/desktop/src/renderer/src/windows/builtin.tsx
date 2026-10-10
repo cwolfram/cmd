@@ -6,31 +6,31 @@ import type { MenuEntry } from "../context.ts";
 import { copy } from "../actions.ts";
 import { hostOf, shortPath } from "../model.ts";
 import { windowActions } from "../windowActions.ts";
-import { BrowserView } from "../components/BrowserView.tsx";
-import { DEVICES } from "../devices.ts";
-import { FilesView } from "../components/FilesView.tsx";
-import { MagicView, setEditing } from "../components/MagicView.tsx";
-import { AgentActivity } from "../components/AgentActivity.tsx";
-import { LiveDiff } from "../components/LiveDiff.tsx";
-import { watchUrl, YouTubeView } from "../components/YouTubeView.tsx";
-import { NavigatorView } from "../components/Navigator.tsx";
-import { CommandsView } from "../components/CommandsView.tsx";
-import { ActionsView } from "../components/ActionsView.tsx";
-import { actionsRootOf, lastLists } from "../workspaceActions.ts";
+import { BrowserView } from "./browser/BrowserView.tsx";
+import { DEVICES } from "./browser/devices.ts";
+import { FilesView } from "./files/FilesView.tsx";
+import { MagicView, setEditing } from "./magic/MagicView.tsx";
+import { AgentActivity } from "./agents/AgentActivity.tsx";
+import { LiveDiff } from "./diff/LiveDiff.tsx";
+import { watchUrl, YouTubeView } from "./youtube/YouTubeView.tsx";
+import { NavigatorView } from "./navigator/Navigator.tsx";
+import { CommandsView } from "./commands/CommandsView.tsx";
+import { ActionsView } from "./actions/ActionsView.tsx";
+import { actionsRootOf, lastLists } from "./actions/workspaceActions.ts";
 import { getState } from "../store.ts";
-import { JournalView } from "../components/JournalView.tsx";
-import { NotificationsView } from "../components/NotificationsView.tsx";
-import { ResourcesView } from "../components/ResourcesView.tsx";
-import { TimerView } from "../components/TimerView.tsx";
-import { clearEventStream, eventClasses, EventsView } from "../components/EventsView.tsx";
+import { JournalView } from "./journal/JournalView.tsx";
+import { NotificationsView } from "./notifications/NotificationsView.tsx";
+import { ResourcesView } from "./resources/ResourcesView.tsx";
+import { TimerView } from "./timer/TimerView.tsx";
+import { clearEventStream, eventClasses, EventsView } from "./events/EventsView.tsx";
 import { scopeMenu, scopeOf, setWidgetState } from "../widgets.ts";
-import { intervalLabel, refreshChoices } from "../magic.ts";
+import { intervalLabel, refreshChoices } from "./magic/magic.ts";
 import { lazyView, registerWindowView, stateStr } from "./registry.ts";
-import "./markdown.tsx"; // registers the "markdown" view
-import "./json.tsx"; // registers the "json" view
-import "./sqlite.tsx"; // registers the "sqlite" view
-import "./visualizer.tsx"; // registers the "visualizer" view
-import "./image.tsx"; // registers the "image" view
+import "./markdown/register.tsx"; // registers the "markdown" view
+import "./json/register.tsx"; // registers the "json" view
+import "./sqlite/register.tsx"; // registers the "sqlite" view
+import "./visualizer/register.tsx"; // registers the "visualizer" view
+import "./image/register.tsx"; // registers the "image" view
 import "./jam.tsx"; // registers the "jam" view
 import { previewFor, togglePreview } from "./preview.ts";
 
@@ -95,7 +95,7 @@ registerWindowView({
 registerWindowView({
   kind: "pdf",
   // pdf.js loads on first use, not at startup.
-  View: lazyView(() => import("../components/PdfView.tsx").then((m) => m.PdfView)),
+  View: lazyView(() => import("./pdf/PdfView.tsx").then((m) => m.PdfView)),
   describe: (w) => ({ place: stateStr(w, "path") ? parentOf(stateStr(w, "path")!) : undefined }),
   menu: (w) => {
     const p = stateStr(w, "path");
@@ -116,7 +116,7 @@ registerWindowView({
 registerWindowView({
   kind: "text",
   // CodeMirror loads on first use, not at startup.
-  View: lazyView(() => import("../components/TextView.tsx").then((m) => m.TextView)),
+  View: lazyView(() => import("./text/TextView.tsx").then((m) => m.TextView)),
   describe: (w) => ({ place: stateStr(w, "path") ? parentOf(stateStr(w, "path")!) : undefined }),
   menu: (w) => {
     const p = stateStr(w, "path");

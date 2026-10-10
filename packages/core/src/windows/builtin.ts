@@ -168,7 +168,7 @@ const pdfScale = (v: unknown): PdfScale | undefined =>
   v === "page-width" || v === "page-fit" || v === "auto" ? v : typeof v === "number" && v >= 0.1 && v <= 10 ? v : undefined;
 
 /**
- * A PDF (pdf.js in the renderer, components/PdfView.tsx), reloaded when the file
+ * A PDF (pdf.js in the renderer, windows/pdf/PdfView.tsx), reloaded when the file
  * changes. `page` (1-based) and `scale` are where you were; `sidebar` shows
  * pages or the outline; `dark` inverts the pages for dark themes.
  */

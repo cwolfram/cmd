@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GLIDE_MS, Presence, reducedMotion, Toaster, toast, usePresentValue } from "@cmd/ui";
 import type { ActionsList, PaneId, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
-import { listActions, rerunLastAction, runAction, showActions } from "./workspaceActions.ts";
+import { listActions, rerunLastAction, runAction, showActions } from "./windows/actions/workspaceActions.ts";
 import type { WebviewTag } from "electron";
 import { bucketOf, needsAttention } from "@cmd/protocol";
 import { COMMANDS, prettyAccelerator, type CommandId } from "../../shared/commands.ts";
@@ -33,7 +33,7 @@ import { showContextMenu, type MenuEntry } from "./context.ts";
 import { useKeybindings } from "./keybindings.ts";
 import { ago, arrangeTiles, buildRows, flatten, fieldsOf, inWorkspace, isWidget, nextAfterClose, pushHistory, setCmdNames, shortPath, workspaceAttention, wantsYou, windowAttention, windowIdOf, type SidebarRow } from "./model.ts";
 import { getWorkspaceView, getState, onNotification, onWindowFocus, setWorkspaceView, setUsageShown, workspaceOfWindow, usePersisted, useWorkspaceView, useStore } from "./store.ts";
-import { terminals } from "./terminals.ts";
+import { terminals } from "./windows/terminal/terminals.ts";
 import { DoneBatch, Looks } from "./notify.ts";
 import { DEFAULT_FRACTION, MIN_WIDTH, nextPreset, stepFraction, withWidth } from "./strip.ts";
 import { DEFAULT_CAMERA, type Camera } from "./canvas.ts";
@@ -55,7 +55,7 @@ import { compareVersions, type Release } from "../../shared/changelog.ts";
 import { PairSheet, useRemoteNotifications } from "./components/Remote.tsx";
 import { SitePermissionSheet } from "./components/SitePermissionSheet.tsx";
 import { Palette, SEARCH_PREFIX as SEARCH, type PaletteItem } from "./components/Palette.tsx";
-import { NavigatorContext, type NavigatorData } from "./components/Navigator.tsx";
+import { NavigatorContext, type NavigatorData } from "./windows/navigator/Navigator.tsx";
 import { Dock } from "./components/Dock.tsx";
 import { TopBar } from "./components/TopBar.tsx";
 import { putBack, rememberPlaces, type Layout, type Place } from "./reopen.ts";
@@ -917,7 +917,7 @@ export function App() {
     }),
   ];
 
-  // Every Navigator window shows this (components/Navigator.tsx).
+  // Every Navigator window shows this (windows/navigator/Navigator.tsx).
   const navigatorData: NavigatorData = {
     workspaceId: all.workspaceId,
     rows,

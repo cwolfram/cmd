@@ -1,4 +1,4 @@
-/* The PDF window (components/PdfView.tsx): what pdf.js draws, which isn't the kit's.
+/* The PDF window (windows/pdf/PdfView.tsx): what pdf.js draws, which isn't the kit's.
    Everything around it (toolbar, find bar, sidebar, thumbnails, outline, states) is
    the kit's window pieces. pdf.js wants its container absolutely positioned. */
 

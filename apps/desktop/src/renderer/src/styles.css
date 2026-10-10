@@ -725,7 +725,7 @@ kbd {
 .minimap rect.sel { fill: var(--window-highlight); }
 .minimap rect.view { fill: color-mix(in srgb, var(--ink) 4%, transparent); stroke: color-mix(in srgb, var(--ink) 55%, transparent); stroke-width: 1; }
 
-/* ── JSON windows (windows/json-view.tsx) ───────────── */
+/* ── JSON windows (windows/json/json-view.tsx) ───────────── */
 
 .json-scroll { flex: 1; min-height: 0; overflow: auto; background: var(--well); outline: none; padding: var(--space-sm) 0; }
 .json-rows { position: relative; min-width: 100%; }

@@ -38,7 +38,7 @@ createRoot(document.getElementById("root")!, { onCaughtError: reportRenderError,
 // Views that load on first use (editor, Markdown) are fetched once startup is
 // done, so opening the first one is still instant.
 setTimeout(() => {
-  void import("./components/TextView.tsx");
-  void import("./windows/markdown-view.tsx");
-  void import("./windows/json-view.tsx");
+  void import("./windows/text/TextView.tsx");
+  void import("./windows/markdown/markdown-view.tsx");
+  void import("./windows/json/json-view.tsx");
 }, 2000);

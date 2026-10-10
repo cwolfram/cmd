@@ -24,7 +24,7 @@ function xtermScaledCoords(): Plugin {
   };
 }
 
-// pdf.js loads what it needs for some PDFs on demand (components/PdfView.tsx): character
+// pdf.js loads what it needs for some PDFs on demand (windows/pdf/PdfView.tsx): character
 // maps for CJK text, the standard 14 fonts, wasm image decoders (JPEG 2000, JBIG2) and
 // colour profiles. Served at /pdfjs/<dir>/ in dev, copied to out/renderer/pdfjs/ in builds.
 const PDFJS_DIRS = ["cmaps", "standard_fonts", "wasm", "iccs"];

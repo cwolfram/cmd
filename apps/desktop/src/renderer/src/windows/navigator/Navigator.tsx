@@ -1,0 +1,333 @@
+// The Navigator (docs/21-sidebars.md): what the app's sidebar used to be, now a
+// built-in widget, docked left in every workspace by default. A search field over
+// open windows and the transcript index, then sections (Needs you, Agents,
+// Windows, Widgets, Recent: past sessions and closed windows). It reads App's rows and callbacks
+// through NavigatorContext, so every Navigator window shows the same.
+
+import { Button, EmptyState, List, ToolbarSearchField, useFlip, View, WindowToolbar } from "@cmd/ui";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { ClosedWindow, PaneId, SearchHit, SearchStatus, SessionInfo, WindowId, WorkspaceId } from "@cmd/protocol";
+import { cmd } from "../../bridge.ts";
+import { openSession } from "../../actions.ts";
+import { usePersisted, useStoreValue, subscribeView } from "../../store.ts";
+import { terminals } from "../terminal/terminals.ts";
+import { filterRows, flatten, sectionOf, SECTIONS, type Section, type SidebarRow } from "../../model.ts";
+import { ClosedRow, HistoryRow, SectionHeading, SessionRow, SidebarSection } from "../../components/SidebarRows.tsx";
+import { IndexRing } from "../../components/IndexRing.tsx";
+import { countRender } from "../../perf.ts";
+import type { WindowViewProps } from "../registry.ts";
+
+/** What the Navigator shows and does, from App. */
+export interface NavigatorData {
+  workspaceId: WorkspaceId;
+  /** The workspace's rows, sidebars left out (they are always in view). */
+  rows: SidebarRow[];
+  selected: PaneId | null;
+  onSelect: (row: SidebarRow) => void;
+  onRowMenu: (row: SidebarRow) => void;
+  onClose: (row: SidebarRow) => void;
+  onNewTerminal: () => void;
+  /** Reopen a closed window where it was. */
+  onReopen: (id: WindowId) => void;
+  search: SearchStatus | null;
+}
+
+export const NavigatorContext = createContext<NavigatorData | null>(null);
+
+/** The window view (windows/builtin.tsx). */
+export function NavigatorView({ win }: WindowViewProps) {
+  const data = useContext(NavigatorContext);
+  return data ? <Navigator {...data} key={win.id} /> : null;
+}
+
+const TITLES: Record<Section, string> = { needs: "Needs you", agents: "Agents", windows: "Windows", widgets: "Widgets" };
+
+function Navigator(p: NavigatorData) {
+  countRender("Navigator");
+  const list = useRef<HTMLDivElement>(null);
+  // Rows that move (one inserted or gone above, a group they change to, a row above
+  // growing a detail line) glide there, section headings too; new ones fade in.
+  useFlip(list, {
+    selector: "[data-key], .sb-section > :first-child",
+    keyOf: (el) => el.dataset.key ?? [...(el.parentElement?.classList ?? [])].find((c) => c.startsWith("sb-") && c !== "sb-section"),
+  });
+  const rows = useFrozenOrder(p.rows, list);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  // Open/closed per section.
+  const [openSections, setOpenSections] = usePersisted<Record<string, boolean>>("sidebar.sections", {});
+  const isOpen = (id: string) => openSections[id] ?? true;
+  const toggle = (id: string) => setOpenSections((o) => ({ ...o, [id]: !(o[id] ?? true) }));
+
+  const [query, setQuery] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const searching = query.trim().length > 0;
+
+  const groups = useMemo(() => SECTIONS.map((id) => ({ id, rows: rows.filter((r) => sectionOf(r) === id) })), [rows]);
+  // ⌘1–9 follow the visible order of rows that have a window.
+  const shortcutOf = useMemo(
+    () =>
+      new Map(
+        flatten(groups.flatMap((g) => g.rows))
+          .filter((r) => r.pane || r.win)
+          .slice(0, 9)
+          .map((r, i) => [r.key, i + 1]),
+      ),
+    [groups],
+  );
+
+  const live = useMemo(
+    () =>
+      flatten(p.rows)
+        .flatMap((r) => (r.pane && r.agent ? [r.agent.native.claudeSessionId, r.agent.native.codexThreadId] : []))
+        .filter((x): x is string => !!x),
+    [p.rows],
+  );
+  const recent = useRecent(p.workspaceId, live);
+  const matches = useMemo(() => (searching ? filterRows(p.rows, query, now) : []), [searching, p.rows, query, now]);
+  const hits = useHistorySearch(query);
+
+  // Keyboard selection over the search results: open rows, then history.
+  const results: ({ type: "row"; row: SidebarRow } | { type: "hit"; hit: SearchHit })[] = [
+    ...matches.map((row) => ({ type: "row" as const, row })),
+    ...hits.map((hit) => ({ type: "hit" as const, hit })),
+  ];
+  const [active, setActive] = useState(0);
+  useEffect(() => setActive(0), [query]);
+  const activeKey = (() => {
+    const r = results[Math.min(active, results.length - 1)];
+    return r ? (r.type === "row" ? r.row.key : `h-${r.hit.agent}-${r.hit.sessionId}`) : null;
+  })();
+  useEffect(() => {
+    if (activeKey) list.current?.querySelector(`[data-key="${CSS.escape(activeKey)}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [activeKey]);
+
+  const leaveSearch = () => {
+    setQuery("");
+    input.current?.blur();
+    if (p.selected) terminals.focus(p.selected);
+  };
+  const pick = (r: (typeof results)[number] | undefined) => {
+    if (!r) return;
+    leaveSearch();
+    if (r.type === "row") p.onSelect(r.row);
+    else void openSession(r.hit);
+  };
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const n = results.length;
+      if (n) setActive((i) => (Math.min(i, n - 1) + (e.key === "ArrowDown" ? 1 : n - 1)) % n);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      pick(results[Math.min(active, results.length - 1)]);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      if (query) setQuery("");
+      else leaveSearch();
+    }
+  };
+
+  const rowProps = { now, selected: p.selected, onSelect: p.onSelect, onMenu: p.onRowMenu, onClose: p.onClose, shortcutOf };
+
+  return (
+    <View
+      className="navigator"
+      bodyRef={list}
+      toolbar={
+        <WindowToolbar label="Search">
+          <ToolbarSearchField ref={input} className="sb-search" value={query} placeholder="Search sessions" onChange={setQuery} onKeyDown={onKeyDown} end={<IndexRing status={p.search} />} />
+        </WindowToolbar>
+      }
+    >
+      <List>
+        {searching ? (
+          <>
+            {matches.length > 0 && (
+              <SidebarSection title="Open">
+                <SectionHeading title="Open" count={matches.length} />
+                {matches.map((r, i) => (
+                  <SessionRow key={r.key} row={r} depth={0} flat active={active === i} {...rowProps} />
+                ))}
+              </SidebarSection>
+            )}
+            {hits.length > 0 && (
+              <SidebarSection title="History">
+                <SectionHeading title="History" count={hits.length} />
+                {hits.map((h, i) => (
+                  <HistoryRow key={`${h.agent}-${h.sessionId}`} hit={h} now={now} rich active={active === matches.length + i} onOpen={(x) => pick({ type: "hit", hit: x })} />
+                ))}
+              </SidebarSection>
+            )}
+            {results.length === 0 && <EmptyState compact>{query.trim().length < 2 ? "Keep typing to search past sessions" : "No matches"}</EmptyState>}
+          </>
+        ) : (
+          <>
+            {groups.map(
+              (g) =>
+                g.rows.length > 0 && (
+                  <SidebarSection key={g.id} title={TITLES[g.id]} className={`sb-${g.id}`}>
+                    <SectionHeading
+                      title={TITLES[g.id]}
+                      count={g.rows.length}
+                      tone={g.id === "needs" ? "needs" : undefined}
+                      // Needs you can't be hidden.
+                      open={g.id === "needs" ? undefined : isOpen(g.id)}
+                      onToggle={g.id === "needs" ? undefined : () => toggle(g.id)}
+                    />
+                    {(g.id === "needs" || isOpen(g.id)) &&
+                      g.rows.map((r) => <SessionRow key={r.key} row={r} depth={0} gutter={g.rows.some((x) => x.children.length > 0)} {...rowProps} />)}
+                  </SidebarSection>
+                ),
+            )}
+            {rows.length === 0 && (
+              <EmptyState
+                compact
+                title="Nothing open"
+                action={
+                  <Button onClick={p.onNewTerminal} data-tip-key="⌘T" data-tip="New Terminal">
+                    New Terminal
+                  </Button>
+                }
+              />
+            )}
+            {recent.length > 0 && (
+              <SidebarSection title="Recent" className="sb-recent">
+                <SectionHeading title="Recent" open={isOpen("recent")} onToggle={() => toggle("recent")} />
+                {isOpen("recent") &&
+                  recent.map((r) =>
+                    "hit" in r ? (
+                      <HistoryRow key={`${r.hit.agent}-${r.hit.sessionId}`} hit={r.hit} now={now} onOpen={(x) => void openSession(x)} />
+                    ) : (
+                      <ClosedRow key={`c-${r.win.id}`} win={r.win} now={now} onOpen={p.onReopen} />
+                    ),
+                  )}
+              </SidebarSection>
+            )}
+          </>
+        )}
+      </List>
+    </View>
+  );
+}
+
+/** Past sessions that aren't open and closed windows, newest first. */
+function useRecent(workspaceId: WorkspaceId, live: string[]): ({ hit: SearchHit; at: number } | { win: ClosedWindow; at: number })[] {
+  const limit = useStoreValue((s) => s.settings.settings["ui.sidebarRecent"]);
+  const sessions = useRecentSessions(workspaceId, live);
+  const closed = useStoreValue((s) => s.closed);
+  return useMemo(() => {
+    const wins = closed.filter((c) => c.workspaceId === workspaceId).map((win) => ({ win, at: win.closedAt }));
+    const hits = sessions.map((hit) => ({ hit, at: hit.updatedAt ?? 0 }));
+    return [...wins, ...hits].sort((a, b) => b.at - a.at).slice(0, limit);
+  }, [closed, sessions, workspaceId, limit]);
+}
+
+/** The workspace's newest past sessions that aren't open: a live query over the sessions view. */
+function useRecentSessions(workspaceId: WorkspaceId, live: string[]): SearchHit[] {
+  const limit = useStoreValue((s) => s.settings.settings["ui.sidebarRecent"]);
+  // Room for the open ones, which are left out below.
+  const want = limit > 0 ? limit + live.length : 0;
+  const [rows, setRows] = useState<SessionInfo[]>([]);
+  useEffect(() => {
+    if (want <= 0) return setRows([]);
+    let have = new Map<string, SessionInfo>();
+    const off = subscribeView({ view: "sessions", workspaceId, limit: want }, (changed, all) => {
+      if (all) have = new Map();
+      for (const r of changed as SessionInfo[]) have.set(r.key, r);
+      // A session only gets newer, so the oldest past `want` can go.
+      const list = [...have.values()].sort((a, b) => (b.updated ?? 0) - (a.updated ?? 0)).slice(0, want);
+      have = new Map(list.map((r) => [r.key, r]));
+      setRows(list);
+    });
+    return () => (off(), setRows([]));
+  }, [workspaceId, want]);
+  const liveKey = live.join("\n");
+  return useMemo(() => {
+    const skip = new Set(live);
+    const out: SearchHit[] = [];
+    for (const r of rows) {
+      if (skip.has(r.id)) continue;
+      skip.add(r.id); // one per session id
+      out.push(hitOf(r));
+      if (out.length === limit) break;
+    }
+    return out;
+  }, [rows, liveKey, limit]);
+}
+
+const hitOf = (r: SessionInfo): SearchHit => ({
+  sessionId: r.id,
+  agent: r.agent as SearchHit["agent"],
+  path: r.path ?? "",
+  env: r.env,
+  cwd: r.cwd,
+  branch: r.branch,
+  title: (r.name ?? r.title ?? r.firstPrompt ?? "").split(/\r?\n/)[0]!.trim().slice(0, 200),
+  updatedAt: r.updated,
+  snippet: null,
+  fuzzy: false,
+});
+
+/** Transcript search for the sidebar field, debounced; from two characters on. */
+function useHistorySearch(query: string): SearchHit[] {
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return setHits([]);
+    let stale = false;
+    const t = setTimeout(() => {
+      cmd.call("search.query", { text: q, limit: 20 }).then(
+        (h) => !stale && setHits(h),
+        () => {},
+      );
+    }, 150);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
+  }, [query]);
+  return hits;
+}
+
+/**
+ * Keeps the row order stable while the pointer is over the list, so rows never
+ * jump under the cursor. New rows are appended; the order catches up on leave.
+ */
+function useFrozenOrder(rows: SidebarRow[], list: React.RefObject<HTMLDivElement | null>): SidebarRow[] {
+  const hovering = useRef(false);
+  const frozen = useRef<string[] | null>(null);
+  const [, force] = useState(0);
+  const latest = useRef(rows);
+  latest.current = rows;
+
+  // Bound once (it re-queried the DOM and re-bound both listeners on every render).
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const enter = () => {
+      hovering.current = true;
+      frozen.current = latest.current.map((r) => r.key);
+    };
+    const leave = () => {
+      hovering.current = false;
+      frozen.current = null;
+      force((n) => n + 1);
+    };
+    el.addEventListener("mouseenter", enter);
+    el.addEventListener("mouseleave", leave);
+    return () => {
+      el.removeEventListener("mouseenter", enter);
+      el.removeEventListener("mouseleave", leave);
+    };
+  }, []);
+
+  if (!hovering.current || !frozen.current) return rows;
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const ordered = frozen.current.map((k) => byKey.get(k)).filter((r): r is SidebarRow => !!r);
+  const known = new Set(frozen.current);
+  return [...ordered, ...rows.filter((r) => !known.has(r.key))];
+}

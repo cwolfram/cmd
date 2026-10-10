@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { copyText, lineStarts, nodeAt, nodeOnLine, parseJson, pathOf, pointerOf, preview, valueOf, type JsonNode } from "../src/renderer/src/windows/json-parse.ts";
+import { copyText, lineStarts, nodeAt, nodeOnLine, parseJson, pathOf, pointerOf, preview, valueOf, type JsonNode } from "../src/renderer/src/windows/json/json-parse.ts";
 
 const parse = (s: string, f?: "json" | "jsonc" | "jsonl") => parseJson(s, f);
 const root = (s: string, f?: "json" | "jsonc" | "jsonl") => {

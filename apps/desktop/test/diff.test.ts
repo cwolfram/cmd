@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDiff } from "../src/renderer/src/diff.ts";
+import { parseDiff } from "../src/renderer/src/windows/diff/diff.ts";
 
 const DIFF = `diff --git a/a.txt b/a.txt
 index 5626abf..f719efd 100644

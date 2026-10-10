@@ -57,7 +57,7 @@ import {
   widthFor,
   type Slot,
 } from "../strip.ts";
-import { TerminalView } from "./TerminalView.tsx";
+import { TerminalView } from "../windows/terminal/TerminalView.tsx";
 import { TileTitle } from "./TileTitle.tsx";
 import { useFooterCentre } from "./StatusBar.tsx";
 import { SlotMotion } from "./Slot.tsx";

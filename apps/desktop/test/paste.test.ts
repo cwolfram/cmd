@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseUriList, pasteRisk, preview, shellWord } from "../src/renderer/src/paste.ts";
+import { parseUriList, pasteRisk, preview, shellWord } from "../src/renderer/src/windows/terminal/paste.ts";
 
 describe("terminal paste", () => {
   it("lets single lines and bracketed pastes through", () => {
