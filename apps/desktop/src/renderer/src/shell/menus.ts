@@ -40,7 +40,7 @@ const sidebarEntries = (id: string): MenuEntry[] => {
   const t: Target = { windowId: id };
   if (!sideOf(boardOf(getState()).docks, id))
     return [{ label: "Make Sidebar", submenu: SIDES.map((sd) => ({ label: sd === "left" ? "Left" : "Right", run: () => setDocks((d) => dock(d, id, sd)) })) }];
-  return [commandItem("window.dockLeft", t), commandItem("window.dockRight", t), commandItem("window.undock", t)].filter((e) => e !== "-" && e.enabled !== false);
+  return [commandItem("window.dockLeft", t), commandItem("window.dockRight", t), commandItem("window.undock", t)].filter((e) => e.enabled !== false);
 };
 
 export function rowMenu(r: SidebarRow): void {
@@ -57,7 +57,7 @@ export function rowMenu(r: SidebarRow): void {
           ...(r.pane ? [muteEntry(r.pane.id)] : []),
           ...sidebarEntries(id),
           commandItem("workspace.moveWindow", t, { label: "Move to Workspace…" }),
-          commandItem("file.close", t, { label: r.pane ? "Close Terminal" : "Close Window" }),
+          commandItem("window.close", t, { label: r.pane ? "Close Terminal" : "Close Window" }),
           "-" as const,
         ]
       : a
@@ -112,7 +112,7 @@ export function terminalMenu(paneId: PaneId): void {
   select(paneId);
   const t: Target = { windowId: paneId };
   void showContextMenu([
-    commandItem("edit.copy", t, { enabled: terminals.hasSelection(paneId) }),
+    commandItem("edit.copy", t),
     { label: "Paste", run: () => void navigator.clipboard.readText().then((x) => terminals.paste(paneId, x)) },
     commandItem("edit.selectAll", t),
     commandItem("edit.copyLastOutput", t),
@@ -130,6 +130,6 @@ export function terminalMenu(paneId: PaneId): void {
     "-",
     muteEntry(paneId),
     "-",
-    commandItem("file.close", t, { label: "Close Terminal" }),
+    commandItem("window.close", t, { label: "Close Terminal" }),
   ]);
 }

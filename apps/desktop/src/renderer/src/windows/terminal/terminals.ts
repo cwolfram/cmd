@@ -196,6 +196,8 @@ let webglLoading: Promise<void> | null = null;
 
 class Terminals {
   #hosts = new Map<PaneId, Host>();
+  #selectionVersion = 0;
+  #selectionListeners = new Set<() => void>();
   /** Terminals a remote device sizes to its screen (see setOverride). */
   #overrides = new Map<PaneId, { cols: number; rows: number }>();
   /** Terminals whose snapshot is still loading (see hold). */
@@ -298,6 +300,14 @@ class Terminals {
       },
     });
     term.registerLinkProvider(linkProvider(term, paneId));
+    // Whether it has a selection (Edit › Copy's enablement): told only when that flips, not on every step of a drag.
+    let selecting = false;
+    term.onSelectionChange(() => {
+      if (term.hasSelection() === selecting) return;
+      selecting = !selecting;
+      this.#selectionVersion++;
+      for (const fn of this.#selectionListeners) fn();
+    });
     const fit = new FitAddon();
     term.loadAddon(fit);
     const search = new SearchAddon();
@@ -586,6 +596,10 @@ class Terminals {
   hasSelection(paneId: PaneId): boolean {
     return !!this.#hosts.get(paneId)?.term.hasSelection();
   }
+
+  /** A terminal got or lost its selection (useSyncExternalStore: subscribe, then the version as the snapshot). */
+  onSelection = (fn: () => void): (() => void) => (this.#selectionListeners.add(fn), () => void this.#selectionListeners.delete(fn));
+  selectionVersion = (): number => this.#selectionVersion;
 
   /** Write live output. */
   write(paneId: PaneId, data: string): void {

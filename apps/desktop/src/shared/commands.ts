@@ -65,6 +65,8 @@ export const COMMANDS = spec([
   { id: "files.up", label: "Enclosing Folder", keys: ["Cmd+Up"], menu: "File/files", scope: "window" },
   { id: "files.open", label: "Open Selection", keys: ["Cmd+Down"], menu: "File/files", scope: "window" },
   { id: "file.close", label: "Close Window", keys: ["Cmd+W"], menu: "File/close" },
+  // A given window (right-click → Close Window/Terminal); ⌘W is file.close: the frontmost thing, this last.
+  { id: "window.close", label: "Close This Window", paletteHidden: true, menu: "File/close", hidden: true },
   { id: "file.closeWindow", label: "Close App Window", keys: ["Shift+Cmd+W"], menu: "File/close" },
   { id: "file.reopenClosed", label: "Reopen Closed Window", keys: ["Shift+Cmd+T"], menu: "File/close" },
   { id: "file.openSettingsFile", label: "Open settings.json", menu: "File/settings" },

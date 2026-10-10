@@ -5,7 +5,7 @@
 // leaves out what doesn't apply), context menus (an entry can be a command, run for the row
 // it is on) and a window's own shortcuts (CommandSpec.scope "window").
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { Agent, AppWindow, Pane, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { needsAttention } from "@cmd/protocol";
 import { COMMAND_BY_ID, COMMANDS, norm, type CommandId, type CommandSpec, type MenuState } from "../../../../shared/commands.ts";
@@ -19,6 +19,7 @@ import { selected as selection } from "../../lib/selection.ts";
 import { getState, useStore, type State } from "../../lib/store.ts";
 import { useWindowActions, windowActions, type WindowActions } from "../../lib/windowActions.ts";
 import { boardOf, type Board } from "../board/board.ts";
+import { terminals } from "../../windows/terminal/terminals.ts";
 import { sideOf, type Side } from "../board/docks.ts";
 import { stateStr } from "../../windows/registry.ts";
 
@@ -43,8 +44,6 @@ export interface CommandContext {
   side: Side | null;
   /** The folder it is in: an agent's or terminal's working directory, a file browser's folder, a file's. */
   folder: string | undefined;
-  /** Run for a window a context menu is on, not for the selection (⌘W's sheets don't count then). */
-  forTarget: boolean;
   /** A text field has focus (a palette, a text window's editor): Edit commands go to it. */
   editing: boolean;
   /** Agents, terminals and widgets waiting for you, in every workspace. */
@@ -116,7 +115,6 @@ export function commandContext(target: Target = {}, state: State = getState()): 
     actions: windowActions(selected),
     side: sideOf(board.docks, selected),
     folder: agent?.cwd ?? pane?.cwd ?? folderOf(window),
-    forTarget: target.windowId !== undefined || target.agentId !== undefined || target.workspaceId !== undefined,
     editing: editingText(),
     attention:
       [...state.agents.values()].filter(needsAttention).length +
@@ -156,16 +154,27 @@ export function menuState(c: CommandContext): MenuState {
 
 let lastMenu = "";
 
-/** Tells the menu bar what is enabled and checked, when that changes (it's IPC and native menu work). */
+/** Focus moving between a terminal and a field changes what Copy applies to (CommandContext.editing). */
+let focusVersion = 0;
+const onFocus = (fn: () => void) => {
+  const bump = () => (focusVersion++, fn());
+  document.addEventListener("focusin", bump);
+  document.addEventListener("focusout", bump);
+  return () => (document.removeEventListener("focusin", bump), document.removeEventListener("focusout", bump));
+};
+
+/** Tells the menu bar what is enabled and checked, when that changes (it's IPC and native menu work): after the store, a window's actions, AI, a terminal's selection or focus change. */
 export function useMenuState(): void {
   const state = useStore();
   const actions = useWindowActions(selection());
   const ai = useAiStatus();
+  const textSelected = useSyncExternalStore(terminals.onSelection, terminals.selectionVersion);
+  const focus = useSyncExternalStore(onFocus, () => focusVersion);
   useEffect(() => {
     const m = menuState(commandContext({}, state));
     const json = JSON.stringify(m);
     if (json !== lastMenu) (lastMenu = json), cmd.setMenuState(m);
-  }, [state, actions, ai]);
+  }, [state, actions, ai, textSelected, focus]);
 }
 
 /** A window's own shortcuts (CommandSpec.scope "window"): run here while they apply, not by the menu, so other windows keep the keys. */
@@ -187,16 +196,12 @@ export function useWindowShortcuts(): void {
   }, []);
 }
 
-/**
- * A context-menu entry that is a command, run for `target`: its label (or a shorter one for the
- * menu it is in) and shortcut, enabled as it applies (or as `enabled` says, for what the menu bar
- * can't follow, like a terminal's text selection).
- */
-export function commandItem(id: CommandId, target: Target = {}, o: { label?: string; enabled?: boolean } = {}): MenuEntry {
+/** A context-menu entry that is a command, run for `target`: its label (or a shorter one for the menu it is in) and shortcut, enabled as it applies. */
+export function commandItem(id: CommandId, target: Target = {}, o: { label?: string } = {}): Extract<MenuEntry, { run: () => void }> {
   return {
     label: o.label ?? COMMAND_BY_ID.get(id)!.label,
     accelerator: keybindings().bindings[id]?.[0],
-    enabled: o.enabled ?? applies(id, commandContext(target)),
+    enabled: applies(id, commandContext(target)),
     run: () => runCommand(id, "other", target),
   };
 }

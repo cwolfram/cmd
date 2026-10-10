@@ -82,7 +82,7 @@ export function WidgetLibrary({ open = true, onClose }: { open?: boolean; onClos
             { label: "Add to Workspace", run: () => void add(e) },
             "-",
             { label: "Rename…", run: () => setRenaming(e) },
-            { label: "Duplicate", run: () => void cmd.call("widget.duplicate", { ref: e.ref }).catch(fail) },
+            { label: "Duplicate Widget", run: () => void cmd.call("widget.duplicate", { ref: e.ref }).catch(fail) },
             { label: "Show in Finder", run: () => e.dir && cmd.revealPath(e.dir), enabled: !!e.dir },
             "-",
             { label: "Delete…", run: () => void remove(e) },

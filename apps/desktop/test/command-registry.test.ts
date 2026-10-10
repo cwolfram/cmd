@@ -38,7 +38,6 @@ function context(agent: boolean) {
     actions: undefined,
     side: null,
     folder: "/w",
-    forTarget: false,
     editing: false,
     attention: 0,
     canReopen: false,
@@ -59,12 +58,6 @@ describe("commands in the renderer", () => {
   });
 
   it("names commands in context menus instead of repeating their labels", () => {
-    // Entries that do something else under the same words.
-    const other: Record<string, string> = {
-      Duplicate: "the Widget Library's: a widget, not a file",
-      "New Folder": "a file browser's empty space: at its root, not in the selected folder",
-      "Actual Size": "the image's zoom menu, a checked choice among sizes",
-    };
     const labels = new Set(COMMANDS.map((c) => c.label as string));
     const root = path.join(import.meta.dirname, "../src/renderer/src");
     const repeated: string[] = [];
@@ -73,7 +66,7 @@ describe("commands in the renderer", () => {
       const src = fs.readFileSync(path.join(root, f), "utf8");
       if (!src.includes("showContextMenu") && !src.includes("MenuEntry")) continue;
       // Labels given to commandItem are a command's own, shorter for its menu.
-      for (const m of src.replace(/commandItem\([^)]*\)/g, "").matchAll(/label: "([^"]+)"/g)) if (labels.has(m[1]!) && !other[m[1]!]) repeated.push(`${f}: ${m[1]}`);
+      for (const m of src.replace(/commandItem\([^)]*\)/g, "").matchAll(/label: "([^"]+)"/g)) if (labels.has(m[1]!)) repeated.push(`${f}: ${m[1]}`);
     }
     expect(repeated).toEqual([]);
   });

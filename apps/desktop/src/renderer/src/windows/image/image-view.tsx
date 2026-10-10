@@ -17,6 +17,7 @@ import { formatBytes } from "../../lib/model.ts";
 import { onFsChanged } from "../../lib/store.ts";
 import { fileUrl } from "../../pdf/lib.ts";
 import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
+import { commandItem } from "../../shell/commands/registry.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
 import { copyImageFile } from "./register.tsx";
 
@@ -210,7 +211,8 @@ export function ImageView({ win, focused }: WindowViewProps) {
   const zoomMenu = () =>
     void showContextMenu([
       { label: "Fit", checked: zoom === "fit", run: () => zoomTo("fit") },
-      { label: "Actual Size", checked: zoom === 1, run: () => zoomTo(1) },
+      // ⌘0 (the image's zoom: windowActions), checked like the sizes below.
+      { ...commandItem("view.zoomReset", { windowId: win.id }), checked: zoom === 1 },
       "-",
       ...MENU_ZOOMS.map((z) => ({ label: pct(z), checked: zoom === z, run: () => zoomTo(z) })),
     ]);

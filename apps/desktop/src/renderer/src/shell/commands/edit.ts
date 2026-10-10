@@ -24,7 +24,8 @@ const canFind = (c: CommandContext) => !!c.pane || !!c.actions?.find;
 
 registerCommands({
   // Terminals copy and select their own buffer; everything else gets the native command.
-  "edit.copy": { run: (c) => (c.editing || !c.pane || !terminals.copy(c.pane.id)) && editNative("copy") },
+  // In a terminal only with text selected (it reports when that flips); elsewhere the field or page decides.
+  "edit.copy": { when: (c) => c.editing || !c.pane || terminals.hasSelection(c.pane.id), run: (c) => (c.editing || !c.pane || !terminals.copy(c.pane.id)) && editNative("copy") },
   "edit.selectAll": { run: (c) => (c.editing || !c.pane ? editNative("selectAll") : terminals.selectAll(c.pane.id)) },
   "edit.clear": { when: (c) => !!c.pane, run: (c) => terminals.clear(c.pane!.id) },
   // Find in the terminal's scrollback, or in a text window (CodeMirror's panel).

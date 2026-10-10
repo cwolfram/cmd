@@ -4,41 +4,26 @@
 // feature that needs one step (a Magic widget without an AI provider: just
 // "ai"). Whatever it showed counts as seen when it closes, done or skipped.
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { Button, Dialog, PageDots, SheetHeader } from "@cmd/ui";
 import { cmd } from "../lib/bridge.ts";
+import { openSheet, useSheet } from "../shell/sheets.ts";
 import { aiStatus, useAiStatus } from "../ai/status.ts";
 import { STEPS, stepById, type OnboardingStep } from "./steps.tsx";
 import { AppIcon } from "./AppIcon.tsx";
 import type { OnboardingClaim } from "../../../main/onboarding.ts";
 
-// ── what is open (any component can ask for a step) ─────
-
-let open: readonly string[] | null = null;
-const listeners = new Set<() => void>();
-const set = (ids: readonly string[] | null) => ((open = ids), listeners.forEach((fn) => fn()));
+// ── what is open (any component can ask for a step): a sheet like the others (shell/sheets.ts) ─────
 
 /** Open the sheet at these steps (default: all of them). */
 export function showSetup(ids: readonly string[] = STEPS.map((s) => s.id)): void {
-  set(ids);
+  openSheet({ kind: "setup", ids });
 }
 
-/** Close it: what it showed counts as seen. */
-export function closeSetup(): void {
-  if (open) cmd.onboardingSeen([...open]);
-  set(null);
-}
-
-/** Whether onboarding is open (What's New waits for it, shell/sheets.ts). */
-export function setupOpen(): boolean {
-  return open !== null;
-}
-
+/** The steps it shows, while it is open. */
 export function useSetup(): readonly string[] | null {
-  return useSyncExternalStore(
-    (fn) => (listeners.add(fn), () => listeners.delete(fn)),
-    () => open,
-  );
+  const sheet = useSheet();
+  return sheet?.kind === "setup" ? sheet.ids : null;
 }
 
 /** At launch: the steps this Mac should see now, or none. Waits for the AI status (a step may be done already). */
@@ -59,7 +44,7 @@ export async function stepsAtLaunch(claim: OnboardingClaim | null): Promise<stri
 
 // ── the sheet ────────────────────────────────────────────
 
-/** onClose: call closeSetup (the app also shows What's New after it, if it waited). */
+/** onClose: close the sheet (its steps count as seen; What's New shows after it, if it waited). */
 export function Onboarding({ open = true, ids, onClose }: { open?: boolean; ids: readonly string[]; onClose: () => void }) {
   const ai = useAiStatus();
   const steps = ids.map(stepById).filter((s): s is OnboardingStep => !!s);

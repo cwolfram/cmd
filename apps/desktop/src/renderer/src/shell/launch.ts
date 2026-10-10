@@ -10,7 +10,7 @@ import { select } from "../lib/selection.ts";
 import { getState, onWindowFocus, workspaceOfWindow } from "../lib/store.ts";
 import { showSetup, stepsAtLaunch } from "../onboarding/Onboarding.tsx";
 import { runCommand } from "./commands/registry.ts";
-import { showWhatsNew } from "./sheets.ts";
+import { queueSheet } from "./sheets.ts";
 import { releasesSince } from "./WhatsNew.tsx";
 
 export function useLaunch(title: string): void {
@@ -27,7 +27,7 @@ export function useLaunch(title: string): void {
     void Promise.all([cmd.onboarding().then(stepsAtLaunch), cmd.whatsNew()]).then(([steps, claim]) => {
       const since = claim && releasesSince(claim.after);
       if (steps.length) showSetup(steps);
-      if (since?.length) showWhatsNew(since);
+      if (since?.length) queueSheet({ kind: "whatsNew", releases: since });
     });
     return () => (offCommand?.(), offUrl?.(), offFocus());
   }, []);

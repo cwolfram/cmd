@@ -7,13 +7,13 @@ import { getState } from "../../lib/store.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
 import { restartCore } from "../coreHealth.ts";
 import { SEARCH_PREFIX } from "../Palette.tsx";
-import { closeSheet, openSheet, toggleSheet } from "../sheets.ts";
+import { openSheet, toggleSheet } from "../sheets.ts";
 import { APP_VERSION, RELEASES } from "../WhatsNew.tsx";
 import { registerCommands } from "./registry.ts";
 
 registerCommands({
   "app.settings": { run: () => cmd.openSettings() },
-  "app.setup": { run: () => (closeSheet(), showSetup()) },
+  "app.setup": { run: () => showSetup() },
   "app.checkUpdates": { run: () => cmd.checkForUpdates() },
   "app.restartCore": { run: () => void restartCore() },
   "app.remoteAccess": { run: () => cmd.openSettings("remote") },

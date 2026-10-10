@@ -38,6 +38,7 @@ import { dragFiles } from "../../lib/drags.ts";
 import { ICON, Symbol } from "../../components/Symbol.tsx";
 import { PlacementContext } from "../registry.ts";
 import { registerWindowActions, type WindowActions } from "../../lib/windowActions.ts";
+import { commandItem } from "../../shell/commands/registry.ts";
 import { useFind } from "../../lib/find.tsx";
 import { domFindable } from "../../lib/find-dom.ts";
 
@@ -591,7 +592,7 @@ export function FilesView({ win, focused }: { win: AppWindow; focused: boolean }
   const listMenu = () =>
     void showContextMenu([
       { label: "New File", run: () => void create("file", root) },
-      { label: "New Folder", run: () => void create("dir", root) },
+      commandItem("files.newFolder", { windowId: win.id }),
       "-",
       { label: "New Terminal Here", run: () => void newTerminalIn(root) },
     ]);
@@ -671,6 +672,8 @@ export function FilesView({ win, focused }: { win: AppWindow; focused: boolean }
         onContextMenu={(ev) => {
           if (ev.target !== ev.currentTarget) return;
           ev.preventDefault();
+          // Like Finder: a click on the empty space selects nothing, so new items go to the top level.
+          setSel(null);
           listMenu();
         }}
       >
