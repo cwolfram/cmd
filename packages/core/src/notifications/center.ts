@@ -19,10 +19,10 @@ import os from "node:os";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Agent, AppNotification, Attention, Pane, PaneId, Settings, WorkspaceId, WindowId } from "@cmd/protocol";
-import type { OscEvent } from "./terminals/osc.ts";
-import type { PaneManager } from "./terminals/panes.ts";
-import type { AgentTracker } from "./agents/tracker.ts";
-import { agentNotice, subjectOf, type NoticeKind } from "./agents/notice.ts";
+import type { OscEvent } from "../terminals/osc.ts";
+import type { PaneManager } from "../terminals/panes.ts";
+import type { AgentTracker } from "../agents/tracker.ts";
+import { agentNotice, subjectOf, type NoticeKind } from "../agents/notice.ts";
 
 /** Writes an agent notification's body with AI; null: use cmd's own (agents/notice.ts). */
 export type NoticeWriter = (a: Agent, kind: NoticeKind, signal: AbortSignal) => Promise<string | null>;

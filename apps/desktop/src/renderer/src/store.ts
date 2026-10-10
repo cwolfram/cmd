@@ -74,7 +74,7 @@ const fsListeners = new Set<(path: string) => void>();
 const actionsListeners = new Set<(root: string) => void>();
 const notificationListeners = new Set<(n: AppNotification) => void>();
 
-/** A notification from the core (packages/core/src/notifications.ts); the UI decides whether to show it. */
+/** A notification from the core (packages/core/src/notifications/center.ts); the UI decides whether to show it. */
 export function onNotification(fn: (n: AppNotification) => void): () => void {
   notificationListeners.add(fn);
   return () => notificationListeners.delete(fn);

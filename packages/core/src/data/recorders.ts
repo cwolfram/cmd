@@ -9,7 +9,7 @@ import type { Agent, AppNotification, AppWindow, NameSource, Workspace } from "@
 import { HOME_WORKSPACE_ID, outputLanguage } from "@cmd/protocol";
 import { sessionIdOf, type AgentTracker } from "../agents/tracker.ts";
 import { projectOf } from "../journal/backfill.ts";
-import type { NotificationCenter } from "../notifications.ts";
+import type { NotificationCenter } from "../notifications/center.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WindowManager } from "../windows/manager.ts";
 import type { DataService } from "./service.ts";

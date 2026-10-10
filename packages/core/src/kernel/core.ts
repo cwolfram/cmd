@@ -34,9 +34,9 @@ import { cleanAiBody, NOTICE_SYSTEM, noticeContext, type NoticeKind } from "../a
 import { AgentNaming } from "../agents/naming.ts";
 import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefingFlag, writeHookFiles, type HookFiles } from "../agents/hooks.ts";
 import { hookEventName } from "../agents/state.ts";
-import { NotificationCenter } from "../notifications.ts";
+import { NotificationCenter } from "../notifications/center.ts";
 import { CommandLog, indexCommandOutput } from "../terminals/commands.ts";
-import { TimerAlarms } from "../timers.ts";
+import { TimerAlarms } from "../windows/timers.ts";
 import { PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
 import { isDir, restoredText, restoreSession } from "../terminals/restore.ts";
 import type { TermBackend } from "../terminals/types.ts";

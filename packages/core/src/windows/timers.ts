@@ -4,8 +4,8 @@
 // fires, the window is marked rung and a notification goes out.
 
 import type { AppWindow, WindowId } from "@cmd/protocol";
-import type { WindowManager } from "./windows/index.ts";
-import { durationLabel, type TimerState } from "./windows/builtin.ts";
+import type { WindowManager } from "./index.ts";
+import { durationLabel, type TimerState } from "./builtin.ts";
 
 /** setTimeout's limit; a longer wait is set again when it fires. */
 const MAX_WAIT = 2 ** 31 - 1;

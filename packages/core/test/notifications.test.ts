@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, type AppNotification, type Settings } from "@cmd/protocol";
 import { AgentTracker } from "../src/agents/tracker.ts";
-import { AI_WAIT_MS, formatDuration, NotificationCenter, QUICK_TURN_MS, type NoticeWriter } from "../src/notifications.ts";
+import { AI_WAIT_MS, formatDuration, NotificationCenter, QUICK_TURN_MS, type NoticeWriter } from "../src/notifications/center.ts";
 import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 

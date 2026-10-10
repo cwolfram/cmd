@@ -598,7 +598,7 @@ ipcMain.on("play-sound", (_e, name: string) => {
   execFile("/usr/bin/afplay", [`/System/Library/Sounds/${name}.aiff`], () => (sounding = false));
 });
 
-// System notifications (the UI decides when; see packages/core/src/notifications.ts).
+// System notifications (the UI decides when; see packages/core/src/notifications/center.ts).
 // Shown from here, not the renderer, for system sounds by name and so a window's
 // newer notification replaces its older one in Notification Center (by tag).
 interface NotifyOptions {

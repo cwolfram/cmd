@@ -276,7 +276,7 @@ export function fieldsOf(r: SidebarRow, live: LiveStatus | undefined, now: numbe
       // An agent's place is where it works: its worktree, when it moved out of its cwd's checkout (docs/35).
       place: a?.git && !(cwd === a.git.top || cwd?.startsWith(a.git.top + "/")) ? shortPath(a.git.top) : cwd ? shortPath(cwd) : undefined,
       // A terminal's attention marker (a bell, a notification, a finished command;
-      // see packages/core/src/notifications.ts) shows like an agent's state until seen.
+      // see packages/core/src/notifications/center.ts) shows like an agent's state until seen.
       status: a ? agentStatus(a, now) : attn ? { text: attn.text, key: `attention:${attn.kind}` } : undefined,
       light: a ? ledOf(a) : undefined,
       tone: !a && attn ? (attn.urgent ? "needs" : "unseen") : undefined,

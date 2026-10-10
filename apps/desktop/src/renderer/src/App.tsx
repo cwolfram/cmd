@@ -362,7 +362,7 @@ export function App() {
   }, [all.panes]);
   useEffect(() => cmd.setProgress(progress), [progress]);
 
-  // Notifications: the core decides what's worth telling (packages/core/src/notifications.ts);
+  // Notifications: the core decides what's worth telling (packages/core/src/notifications/center.ts);
   // here, whether and how to show it, since only the UI knows focus and selection.
   useEffect(() => {
     const offClick = cmd.onNotificationClick((paneId) => select(paneId));

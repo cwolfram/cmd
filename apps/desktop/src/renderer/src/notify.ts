@@ -1,5 +1,5 @@
 // Whether and how the UI shows a notification (App.tsx). The core decides what
-// is worth telling (packages/core/src/notifications.ts); here, whether you've
+// is worth telling (packages/core/src/notifications/center.ts); here, whether you've
 // already seen it (Looks: an agent that finished while or just after you
 // watched it) and how agents that finish close together become one
 // notification instead of several (DoneBatch).

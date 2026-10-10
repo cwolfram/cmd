@@ -19,7 +19,7 @@ import { ActivityReducer, QUIET_MS, type Reduction } from "../src/agents/activit
 import { drainSpool } from "../src/agents/activity/spool.ts";
 import { AgentHomes } from "../src/agents/homes.ts";
 import { AgentTracker } from "../src/agents/tracker.ts";
-import { NotificationCenter } from "../src/notifications.ts";
+import { NotificationCenter } from "../src/notifications/center.ts";
 import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";

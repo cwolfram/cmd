@@ -101,7 +101,7 @@ export interface Methods {
   /** The Mac takes a terminal back from the device sizing it. */
   "pane.reclaim": { params: { paneId: PaneId }; result: null };
   "pane.kill": { params: { paneId: PaneId }; result: null };
-  /** Notifications (packages/core/src/notifications.ts). */
+  /** Notifications (packages/core/src/notifications/center.ts). */
   "pane.setMuted": { params: { paneId: PaneId; muted: boolean }; result: null };
   "pane.clearAttention": { params: { paneId: PaneId }; result: null };
   /** Looking at a window that isn't a terminal clears its attention marker (state.attention). */

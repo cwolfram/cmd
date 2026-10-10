@@ -583,7 +583,7 @@ export class PaneManager extends EventEmitter<PaneEvents> {
     this.#changed(live);
   }
 
-  /** The attention marker (see notifications.ts); null clears it. */
+  /** The attention marker (see notifications/center.ts); null clears it. */
   setAttention(id: PaneId, attention: Attention | null): void {
     const l = this.#panes.get(id);
     if (!l || (l.pane.attention === null && attention === null)) return;

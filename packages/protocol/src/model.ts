@@ -91,7 +91,7 @@ export interface Progress {
 }
 
 /**
- * Why a window wants you, kept until you look (see packages/core/src/notifications.ts):
+ * Why a window wants you, kept until you look (see packages/core/src/notifications/center.ts):
  * a terminal's in Pane.attention, another window's (a widget's notification) in
  * AppWindow.state.attention.
  */

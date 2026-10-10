@@ -1,5 +1,5 @@
 // Notifications, a built-in widget (docs/16-widgets.md): the notifications cmd
-// sent since the last Clear (core/notifications.ts), shown or not, so one
+// sent since the last Clear (core/src/notifications/center.ts), shown or not, so one
 // missed while away is still here: a live query over notification events. Of
 // this workspace's terminals and windows (the workspace recorded when it was sent), or
 // every workspace's; those about nothing in particular show in every workspace. A click
