@@ -466,7 +466,7 @@ kbd {
 
 /* Unfocused windows are dimmed by an overlay (not a filter, which would soften text).
    It stops inside the outline, so outlines match across the board and the
-   sidebars, and below the chrome (title bar, and the toolbar of a View), which
+   sidebars, and below the chrome (title bar, and a toolbar at the top of the content), which
    keeps its colour: only the content recedes. Sidebars are always dimmed, selected or not, so they look like an
    unselected window. Amount: ui.unfocusedDim (--window-dim-amount, set in App) times
    the theme's --window-dim. A window that needs you isn't dimmed. */
@@ -482,7 +482,7 @@ kbd {
   transition: opacity var(--dur) var(--ease);
 }
 :is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title) { --chrome-h: var(--window-bar-h); --dim-top-r: 0px; }
-:is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title):has(.ui-view > .ui-tb:first-child) { --chrome-h: calc(var(--window-bar-h) + var(--toolbar-h)); }
+:is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title + * > .ui-tb:first-child) { --chrome-h: calc(var(--window-bar-h) + var(--toolbar-h)); }
 .windows-track > .tile.sel > .tile-frame::after,
 .windows-track > .tile.lifted > .tile-frame::after,
 :is(.windows-track, .dock) > .tile.needs > .tile-frame::after,
