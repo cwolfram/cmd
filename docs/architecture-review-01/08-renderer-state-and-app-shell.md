@@ -49,7 +49,7 @@ The renderer is React 19.3 (`apps/desktop/package.json`) on four HTML pages buil
 
 ### AR1-08-02 · Split App.tsx into a shell, controllers and feature modules
 
-- **Status:** open
+- **Status:** done (47ea3e47)
 - **Severity:** high
 - **Effort:** L (> 2 days)
 - **Where:** `apps/desktop/src/renderer/src/App.tsx:98-960`
@@ -66,10 +66,13 @@ The renderer is React 19.3 (`apps/desktop/package.json`) on four HTML pages buil
 - `notifications/presenter.ts` (see AR1-08-04), `palette/search.ts` (pure item builders, testable), `menus/rows.ts` (context menus).
 
 **Success criteria.**
-- [ ] `wc -l apps/desktop/src/renderer/src/App.tsx` ≤ 250 and `grep -c "useEffect(" App.tsx` ≤ 5.
-- [ ] Adding a command touches `shared/commands.ts` and one feature file, not `App.tsx` (shown by the diff of one new command in the PR).
-- [ ] `bindSelection` is gone from `actions.ts`; selection has unit tests for focus-after-close and history without a DOM.
-- [ ] Palette item builders have a vitest file; `pnpm e2e` and `pnpm e2e:motion` pass unchanged.
+- [x] `wc -l apps/desktop/src/renderer/src/App.tsx` ≤ 250 and `grep -c "useEffect(" App.tsx` ≤ 5.
+- [x] Adding a command touches `shared/commands.ts` and one feature file, not `App.tsx` (shown by the diff of one new command in the PR).
+- [x] `bindSelection` is gone from `actions.ts`; selection has unit tests for focus-after-close and history without a DOM.
+- [x] Palette item builders have a vitest file; `pnpm e2e` and `pnpm e2e:motion` pass unchanged.
+
+**Done (2026-10-10)** with AR1-15-02/03. `shell/App.tsx` is 221 lines with 2 `useEffect`s: the layout and its hooks. Moved out: the selection (`lib/selection.ts`, a module over the workspace view; `bindSelection` is gone), the sheets (`shell/sheets.ts`, one at a time, ⌘W closes the top), the board's rows and order (`shell/board/board.ts`, pure, once per state, shared by App and every command), notifications and the Dock (`shell/notifications.ts`), the menus (`shell/menus.ts`), the palette's builders and search (`shell/palette.ts`), sidebars sliding and the first Navigator (`shell/board/sidebars.ts`), closed windows' places (`shell/closed.ts`), the view's setters (`shell/board/view.ts`) and what an app window wires once (`shell/launch.ts`). Selection's focus-after-close and history are the pure `nextAfterClose`/`pushHistory`, tested in `grid.test.ts`. `pnpm e2e` passes; `pnpm e2e:motion` reports what master does (instant 0 vs 1, snap 2, wobble 4, drift 1 on both).
+
 
 ### AR1-08-03 · Replace whole-store subscriptions with memoised selectors
 

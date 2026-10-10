@@ -58,7 +58,7 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 
 ### AR1-15-02 · Give commands a `when` and derive menu, palette and context-menu state from it
 
-- **Status:** open
+- **Status:** done (47ea3e47)
 - **Severity:** medium
 - **Effort:** M (1–2 days)
 - **Where:** `apps/desktop/src/renderer/src/App.tsx:572-623`, `apps/desktop/src/renderer/src/App.tsx:831-838`, `apps/desktop/src/renderer/src/App.tsx:627-760`, `apps/desktop/src/shared/commands.ts:5-17`, `apps/desktop/src/shared/commands.ts:141-143`
@@ -70,14 +70,17 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 **Proposal.** Use VS Code's context-key idea, but typed and without a string expression language. The renderer keeps one small `CommandContext` (selection kind, has agent, has session, ai ready, workspace count, dock side…), computed once per render in a hook. Each command gets `when?: (c: CommandContext) => boolean`. Menu state is then `COMMANDS.map(c => [c.id, c.when?.(ctx) ?? true])`, sent when it changes. The palette drops commands whose `when` is false. Context-menu entries can name a command, `{ command: "session.copyId", args }`, and inherit its label, accelerator (add `accelerator` to `ContextItem`) and enablement. Ad hoc entries remain only for one-off actions. `when` lives with the handler (AR1-15-03), not in `shared/commands.ts`, so main stays free of renderer state. Doc 09 (AR1-09-09) covers menu roles and bindable-but-not-in-menu commands. Doc 08 (AR1-08-11) covers terminal-owned ⌘-keys.
 
 **Success criteria.**
-- [ ] `grep -n "setMenuState" apps/desktop/src/renderer/src/App.tsx` shows a generic call with no per-command literal map.
-- [ ] A unit test builds the palette items for a context with no agent and checks that `session.copyId`, `session.summarize` and `session.rename` are absent.
-- [ ] Context menus for a sidebar row and a terminal reference command ids for the 13 duplicated entries, and the script above reports 0 labels equal to a command label.
-- [ ] Native context menus show the shortcut for entries backed by a command (checked in `pnpm e2e` or by a unit test on the built `ContextItem`s).
+- [x] `grep -n "setMenuState" apps/desktop/src/renderer/src/App.tsx` shows a generic call with no per-command literal map.
+- [x] A unit test builds the palette items for a context with no agent and checks that `session.copyId`, `session.summarize` and `session.rename` are absent.
+- [x] Context menus for a sidebar row and a terminal reference command ids for the 13 duplicated entries, and the script above reports 0 labels equal to a command label.
+- [x] Native context menus show the shortcut for entries backed by a command (checked in `pnpm e2e` or by a unit test on the built `ContextItem`s).
+
+**Done (2026-10-10).** `renderer/src/shell/commands/registry.ts`: each command's `when` and `checked` over one `CommandContext` (computed for the selection, or for the window, agent or workspace a context menu is on). `useMenuState` derives every command's enabled/checked state and sends it when it changes; App.tsx has no `setMenuState`. The palette (`shell/palette.ts` `commandItems`) leaves out what doesn't apply (`apps/desktop/test/command-registry.test.ts`). Context menus name commands with `commandItem(id, target, { label })`, which carries the label, the shortcut (`ContextItem.accelerator`, shown with `registerAccelerator: false`, `menu-template.test.ts`) and enablement; the row, terminal and workspace menus (`shell/menus.ts`) use it for all 13 duplicated entries. The label scan is a test: 0 repeats, apart from three entries that do something else under the same words (the Widget Library's Duplicate, a file browser's empty-space New Folder, the image viewer's Actual Size), named in the test. Copy keeps no `when`: a terminal's text selection never reaches the store, so the menu bar couldn't follow it (the terminal menu passes `enabled` itself).
+
 
 ### AR1-15-03 · Let features and window types contribute their commands and handlers
 
-- **Status:** open
+- **Status:** done (47ea3e47)
 - **Severity:** medium
 - **Effort:** L (> 2 days)
 - **Where:** `apps/desktop/src/renderer/src/App.tsx:410-556`, `apps/desktop/src/shared/commands.ts:21-129`, `apps/desktop/src/renderer/src/components/FilesView.tsx:500-512`, `apps/desktop/src/main/menu.ts:36-201`
@@ -90,10 +93,13 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 **Proposal.** Keep a static manifest of ids, labels, default keys and menu placement (`shared/commands.ts`, extended with `menu: "File/2"`) so main can build the menu before any renderer runs and keybindings.json ids stay stable. Move behaviour into contributions: `registerCommands(feature, { "files.newFolder": { when: c => c.selectionKind === "files", run } })`, called from each feature's or window type's module (00-research §10: VS Code's `.contribution.ts` pattern). `App.tsx` keeps only the app-shell commands. The menu template is generated from `menu` placement and checked by a test. Window-type commands (`files.newFolder`, `files.duplicate`, `files.trash`, `text.save`) become real menu items under their window's name. With `when` (AR1-15-02), the same key can mean different things in different windows, which lets ⇧⌘N stay New Window while a files-only binding takes over in the file browser.
 
 **Success criteria.**
-- [ ] `handlers` in `App.tsx` has at most 30 entries; the rest are registered from feature or window-type modules.
-- [ ] `grep -nE "e\.metaKey && " apps/desktop/src/renderer/src/components/FilesView.tsx` returns nothing; its shortcuts are commands listed under Settings → Keyboard Shortcuts.
-- [ ] A test asserts that every command id appears in the generated menu template exactly once (shown or hidden).
-- [ ] Adding a command to a window type touches only that window type's files and `shared/commands.ts` (demonstrated by the first migrated window type's diff).
+- [x] `handlers` in `App.tsx` has at most 30 entries; the rest are registered from feature or window-type modules.
+- [x] `grep -nE "e\.metaKey && " apps/desktop/src/renderer/src/components/FilesView.tsx` returns nothing; its shortcuts are commands listed under Settings → Keyboard Shortcuts.
+- [x] A test asserts that every command id appears in the generated menu template exactly once (shown or hidden).
+- [x] Adding a command to a window type touches only that window type's files and `shared/commands.ts` (demonstrated by the first migrated window type's diff).
+
+**Done (2026-10-10).** `CommandSpec.menu` is a slot ("File/new"); `main/menu-template.ts` places slots and roles, and `menu-template.test.ts` checks every command is in it exactly once (Disconnect Remote Devices and Rename Agent… weren't). Behaviour is registered by its module: `shell/commands/{app,file,edit,view,session,workspace}.ts`, and window types beside their views (`windows/files/commands.ts`, `windows/magic/commands.ts`, `windows/actions/commands.ts`); App.tsx has none. The file browser's ⌘D, ⌘⌫, ⌘↑, ⌘↓ (and New Folder, which has no key now: ⇧⌘N stays New Window) are commands in the File menu with `scope: "window"`: the menu shows them without registering the key, and the renderer runs them while a file browser is selected, so text windows and terminals keep those keys. The files commands are the diff that shows a window type's command touches only its folder and `shared/commands.ts`.
+
 
 ### AR1-15-04 · Lock the shipped setting keys so a removal can't skip its migration
 
