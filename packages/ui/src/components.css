@@ -1386,7 +1386,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
      Declared here, not on :root: a variable built from another resolves where it's
      declared, and an app may set the radius per mode. */
   --window-radius-inner: max(0px, calc(var(--window-radius) - var(--window-outline)));
-  --window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--window-bar-bg));
+  --window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix, 10%), var(--window-bar-bg));
   /* The outline colour where it's emphasised: selected, or needing attention. */
   --ring-color: var(--window-highlight);
 }

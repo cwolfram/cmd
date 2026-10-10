@@ -704,7 +704,7 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--window-edge",
-    "value": "color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--window-bar-bg))",
+    "value": "color-mix(in srgb, var(--ink) var(--window-edge-mix, 10%), var(--window-bar-bg))",
     "description": "The outline, the line under the title bar and the toolbar's: one opaque colour mixed over the chrome (the title bar's colour), so they look the same over any background."
   },
   {
@@ -762,7 +762,7 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--toolbar-field-bg",
-    "value": "color-mix(in oklab, var(--scrim) 6%, var(--toolbar-bg))",
+    "value": "color-mix(in oklab, var(--scrim) 14%, var(--toolbar-bg))",
     "description": "Text fields in the toolbar: recessed into it (its colour toward --scrim), outlined in --window-edge."
   },
   {

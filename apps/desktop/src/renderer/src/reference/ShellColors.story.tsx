@@ -38,7 +38,7 @@ const BEFORE: Recipe = {
   backdrop: { base: "bg", shift: 0 },
   bar: { base: "bg-sidebar", shift: 0 },
   toolbar: { base: "bg", shift: 0 },
-  edgeMix: 9,
+  edgeMix: 20,
   dim: 20,
   dimScope: "window",
   tint: "subtle",
@@ -49,7 +49,7 @@ const BEFORE: Recipe = {
   fieldDim: 6,
 };
 /** Backdrop → chrome → content, one step each way: chrome between --bg and --well, one tone for bar and toolbar. */
-const ORDERED: Recipe = { ...BEFORE, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, field: "recessed", tint: "off", dimScope: "content" };
+const ORDERED: Recipe = { ...BEFORE, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, field: "recessed", fieldDim: 14, edgeMix: 10, dim: 23, tint: "off", dimScope: "content" };
 const PRESETS: Record<string, Recipe> = {
   Ordered: ORDERED,
   Before: BEFORE,
