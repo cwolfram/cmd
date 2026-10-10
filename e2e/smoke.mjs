@@ -388,15 +388,17 @@ const still = async (min = 300) => {
 // State the app changes after a command (a write, a save, a re-render) settles later on a slow
 // runner (CI): read it every 25 ms until `ok` holds or `ms` pass, and return the last value
 // read, so the check after it fails on (and prints) what it saw. Never a fixed wait before a read.
-const until = async (read, ok = Boolean, ms = 10_000) => {
+const until = async (read, ok = Boolean, ms = 10_000, attempt = false) => {
   const t0 = Date.now();
   for (;;) {
     const v = await read();
     if (await ok(v)) return v;
-    if (Date.now() - t0 > ms) return void waitedOut(`until(${String(ok).slice(0, 80)})`, t0), v;
+    if (Date.now() - t0 > ms) return attempt || waitedOut(`until(${String(ok).slice(0, 80)})`, t0), v;
     await win.waitForTimeout(25); // between two reads (a poll)
   }
 };
+// One try of a retry loop (`for (let attempt …)`): running out only means trying again.
+const tryUntil = (read, ok, ms) => until(read, ok, ms, true);
 const countOf = (sel) => win.locator(sel).count();
 // Focus is never assumed (it moves asynchronously in Electron): before typing or pressing a
 // key, wait until the element that should take it has it. focusIn: inside a window.
@@ -707,11 +709,11 @@ await scenario("browser", async () => {
     let copied = "";
     for (let attempt = 0; attempt < 5 && !copied.includes("Hello from a cmd browser window"); attempt++) {
       await win.locator(".tile.kind-browser webview").click();
-      await until(pageFocused, Boolean, 3000);
+      await tryUntil(pageFocused, Boolean, 3000);
       await menu("edit.selectAll");
       await win.waitForTimeout(200); // for the selection to land in the page before Copy (not a read)
       await menu("edit.copy");
-      copied = await until(() => app.evaluate(({ clipboard }) => clipboard.readText()), Boolean, 1000);
+      copied = await tryUntil(() => app.evaluate(({ clipboard }) => clipboard.readText()), Boolean, 1000);
     }
     await app.evaluate(({ clipboard }, t) => clipboard.writeText(t), saved);
     check(copied.includes("Hello from a cmd browser window"), `Select All and Copy work in a browser page (${JSON.stringify(copied)})`);
@@ -883,7 +885,7 @@ await scenario("osc8", async () => {
     let asked = [];
     for (let attempt = 0; attempt < 3 && !asked.length; attempt++) {
       await cmdClickRow0(rows);
-      asked = await until(() => app.evaluate(() => globalThis.__asked), (a) => a.length > 0, 3000);
+      asked = await tryUntil(() => app.evaluate(() => globalThis.__asked), (a) => a.length > 0, 3000);
     }
     await shot(win, "open-policy-osc8.png");
     const opened = await app.evaluate(() => globalThis.__opened);
@@ -892,7 +894,7 @@ await scenario("osc8", async () => {
     rows = await printLink(`http://localhost:${port}/osc8`, "link ");
     for (let attempt = 0; attempt < 3 && !linked; attempt++) {
       await cmdClickRow0(rows);
-      linked = await until(() => win.evaluate(() => window.cmd.call("window.list", {})).then((l) => l.find((w) => w.kind === "browser" && w.state.url?.endsWith("/osc8"))), Boolean, 4000);
+      linked = await tryUntil(() => win.evaluate(() => window.cmd.call("window.list", {})).then((l) => l.find((w) => w.kind === "browser" && w.state.url?.endsWith("/osc8"))), Boolean, 4000);
     }
     const after = await app.evaluate(() => globalThis.__asked.length);
     check(!!linked && after === 1, `an OSC 8 http link opens in a browser window, without asking (${linked?.state.url}, asked ${after}×)`);

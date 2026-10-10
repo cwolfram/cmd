@@ -410,7 +410,7 @@ outside `shot()` or a failure, an app launched without `CMD_BACKGROUND`, a UI st
 smoke test reads that no app source writes (the `sidebar.collapsed` case), and an `e2e*`
 package script that rebuilds every time. At run time, a wait that runs out its deadline
 (`until()`, or `expired()` on a locator) prints `[waited out]` and fails the run even when the
-check after it passes: its condition can never hold, so every run pays the deadline.
+check after it passes: its condition can never hold, so every run pays the deadline. One try of a retry loop (`for (let attempt …)`) waits with `tryUntil()`, which may run out: that only means trying again (CI's first Copy came back empty once).
 
 ## Open
 

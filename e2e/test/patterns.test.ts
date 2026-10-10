@@ -46,6 +46,15 @@ describe("e2e scripts", () => {
     expect(swallowed).toEqual([]);
   });
 
+  it("let a wait run out quietly only inside a retry loop", () => {
+    // tryUntil() is one try of `for (let attempt …)`: running out means trying again. Anywhere
+    // else it would hide a wait that can never end, which until() reports and fails.
+    const loose = linesWith(smoke.lines, /\btryUntil\(/)
+      .filter(({ text }) => !/const tryUntil =/.test(text))
+      .filter(({ line }) => !smoke.lines.slice(Math.max(0, line - 9), line - 1).some((l) => /for \(let attempt\b/.test(l)));
+    expect(loose).toEqual([]);
+  });
+
   it("take screenshots in the smoke test only through shot() or on a failure", () => {
     // Each one costs about 200 ms: 7 s of a run, for pictures nobody looked at (E2E_SHOTS=1 takes them).
     const direct = linesWith(smoke.lines, /\.screenshot\(/).filter(({ text }) => !/const shot = |failed|hung/.test(text));
