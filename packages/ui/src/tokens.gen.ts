@@ -370,7 +370,7 @@ export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--bar-inset",
     "value": "var(--space-lg)",
-    "description": "A bar's inset, tighter than the content's: a window's title bar, a view's title band and footer, Magic's toolbars."
+    "description": "A bar's inset, tighter than the content's: a window's title bar, a view's footer, Magic's toolbars (a title band's heading is content, on the inset)."
   },
   {
     "name": "--inset",

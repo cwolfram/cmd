@@ -213,7 +213,7 @@ interface TabBar {
 function Overview({ schema, onBar }: { schema: SqliteSchema; onBar: (b: TabBar) => void }) {
   useEffect(() => onBar({}), [onBar]);
   return (
-    <Stack pad="lg" gap="xl">
+    <Stack pad="inset" gap="xl">
       <Panes>
         <Pane title="Database">
           <KeyValue
@@ -344,7 +344,7 @@ function StructureTab({ schema, table, onBar }: { schema: SqliteSchema; table: S
         rows={rows}
       />
       {(indexes.length > 0 || triggers.length > 0 || table.sql) && (
-        <Stack pad="lg" gap="xl">
+        <Stack pad="inset" gap="xl">
           {indexes.length > 0 && (
             <Pane title="Indexes">
               <KeyValue mono items={indexes.map((i) => [i.name, `${i.unique ? "unique · " : ""}${i.columns.join(", ")}`])} />

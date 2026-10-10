@@ -1,7 +1,7 @@
 // Laying out a window's content (docs/40-window-design.md, the window-design skill). Spacing
 // belongs to these and nothing else: Stack, Inline and Tiles space their
 // children, View pads a window's body, and kit components have no outer
-// margins. Gaps and paddings take only the names of the --space-* scale.
+// margins. Gaps and paddings take only the names of the --space-* scale (pad also `inset`).
 //
 // View is a window's content frame: toolbar, body, footer, and the state that
 // replaces the body (loading, empty, no results, error). Split puts a sidebar or
@@ -16,14 +16,15 @@ import type { SpaceName, TextSize } from "./tokens.gen.ts";
 
 const cls = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** The spacing scale (--space-*, tokens/space.tokens.json), or none. */
+/** The spacing scale (--space-*, tokens/space.tokens.json), or none; a Stack's `pad` also takes the window inset. */
 export type Space = "none" | SpaceName;
-const sp = (s: Space | undefined) => (s === undefined ? undefined : s === "none" ? "0" : `var(--space-${s})`);
+type Pad = Space | "inset";
+const sp = (s: Pad | undefined) => (s === undefined ? undefined : s === "none" ? "0" : s === "inset" ? "var(--inset)" : `var(--space-${s})`);
 
 type Align = "start" | "center" | "end" | "stretch" | "baseline";
 
 /** Children in a column, `gap` apart. */
-export function Stack({ gap = "md", pad, align, grow, children }: { gap?: Space; pad?: Space; align?: Align; grow?: boolean; children: ReactNode }) {
+export function Stack({ gap = "md", pad, align, grow, children }: { gap?: Space; pad?: Pad; align?: Align; grow?: boolean; children: ReactNode }) {
   return (
     <div className="ui-stack" data-align={align} data-grow={grow || undefined} data-pad={pad && pad !== "none" ? pad : undefined} style={{ gap: sp(gap), padding: sp(pad) }}>
       {children}

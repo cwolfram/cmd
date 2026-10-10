@@ -42,7 +42,7 @@ function Viewer({ size = "wide", empty }: { size?: SizeName; empty?: boolean }) 
           open={info}
           width={{ min: 200, ideal: 230, max: 320 }}
           pane={
-            <Stack gap="xl" pad="lg">
+            <Stack gap="xl" pad="inset">
               <Stack gap="2xs">
                 <Text strong truncate>
                   {pic.label}

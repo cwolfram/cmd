@@ -221,7 +221,7 @@ export function SettingsWindow() {
         pane={
           <Stack gap="none" grow>
             <TitleBand />
-            <Stack pad="lg">
+            <Stack pad="inset">
               <SearchField ref={input} size="lg" value={query} placeholder="Search settings" onChange={(v) => (setQuery(v), setScrolled(false))} />
             </Stack>
             <Stack gap="none" grow>
@@ -231,7 +231,7 @@ export function SettingsWindow() {
                 ))}
               </List>
             </Stack>
-            <Stack pad="lg" align="start">
+            <Stack pad="inset" align="start">
               <Button variant="ghost" icon="curlybraces" onClick={() => cmd.openSettingsFile(snap.path)} disabled={!snap.path} data-tip={snap.path}>
                 Open settings.json
               </Button>
