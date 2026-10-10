@@ -23,6 +23,9 @@ type Recipe = {
   toolbarIsBar?: boolean;
   /** The outline premixed over the title bar's colour instead of --bg-sidebar. */
   edgeOverChrome?: boolean;
+  /** Toolbar fields: in the well with --input-edge (today), or recessed into the toolbar (its colour toward --scrim by `fieldDim` %) with the window's outline colour. */
+  field?: "well" | "recessed";
+  fieldDim?: number;
   edgeMix: number;
   /** ui.unfocusedDim, %: times the theme's --window-dim. */
   dim: number;
@@ -42,9 +45,11 @@ const TODAY: Recipe = {
   barLine: true,
   toolbarIsBar: false,
   edgeOverChrome: false,
+  field: "well",
+  fieldDim: 6,
 };
 /** Backdrop → chrome → content, one step each way: chrome between --bg and --well, one tone for bar and toolbar. */
-const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, tint: "off", dimScope: "content" };
+const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, field: "recessed", tint: "off", dimScope: "content" };
 const PRESETS: Record<string, Recipe> = {
   Today: TODAY,
   Ordered: ORDERED,
@@ -100,7 +105,7 @@ function Shell({ r, name, icon, selected, toolbar = true, width, height }: { r: 
   const dimTop = r.dimScope === "content" ? `calc(var(--window-bar-h) + ${toolbar ? "var(--toolbar-h)" : "0px"})` : "0px";
   const tint = selected && TINT[r.tint] ? { background: `color-mix(in srgb, var(--ring-color) ${TINT[r.tint]}%, var(--window-bar-bg))` } : undefined;
   return (
-    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative", ...(r.edgeOverChrome && { "--window-edge": "color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg))" }) } as CSSProperties}>
+    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative", ...(r.edgeOverChrome && { "--window-edge": "color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg))" }), ...(r.field === "recessed" && { "--field-bg": `color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg))`, "--input-edge": "var(--window-edge)" }) } as CSSProperties}>
       <WindowBody style={{ height: "100%" }}>
         <WindowBar icon={icon} name={name} style={{ ...tint, ...(r.barLine || !toolbar ? null : { boxShadow: "none" }) }} />
         {toolbar && (
@@ -192,6 +197,7 @@ function css(r: Recipe): string {
     `--toolbar-bg: ${v["--toolbar-bg"]};`,
     ...(r.edgeOverChrome ? ["--window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg));"] : []),
     `--window-edge-mix: ${v["--window-edge-mix"]};`,
+    ...(r.field === "recessed" ? [`/* toolbar fields */ --field-bg: color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg)); --input-edge: var(--window-edge);`] : []),
     `/* ui.unfocusedDim ${r.dim}, dim ${r.dimScope}, title tint ${r.tint}, bar line ${r.barLine ? "on" : "off"} */`,
   ].join("\n");
 }
@@ -219,6 +225,14 @@ function Panel({ r, set }: { r: Recipe; set: (r: Recipe) => void }) {
       <Row title="Outline">
         <Range value={r.edgeMix} min={0} max={30} unit="%" onChange={(edgeMix) => set({ ...r, edgeMix })} />
       </Row>
+      <Row title="Fields">
+        <Segmented size="sm" value={r.field ?? "well"} options={["well", "recessed"]} labels={{ well: "Well", recessed: "Recessed" }} onChange={(field) => set({ ...r, field })} />
+      </Row>
+      {r.field === "recessed" && (
+        <Row title="  dimmed">
+          <Range value={r.fieldDim ?? 6} min={0} max={30} unit="%" onChange={(fieldDim) => set({ ...r, fieldDim })} />
+        </Row>
+      )}
       <Row title="Dim others">
         <Range value={r.dim} min={0} max={60} unit="%" onChange={(dim) => set({ ...r, dim })} />
       </Row>
