@@ -36,20 +36,13 @@ import { getState, onFsChanged, usePersisted, useStoreValue } from "../../lib/st
 import { registerDropTarget } from "../../lib/drops.ts";
 import { dragFiles } from "../../lib/drags.ts";
 import { ICON, Symbol } from "../../components/Symbol.tsx";
-import { PlacementContext } from "../registry.ts";
+import { fileIcon, PlacementContext } from "../registry.ts";
 import { registerWindowActions, type WindowActions } from "../../lib/windowActions.ts";
 import { commandItem } from "../../shell/commands/registry.ts";
 import { useFind } from "../../lib/find.tsx";
 import { domFindable } from "../../lib/find-dom.ts";
 
-const iconFor = (e: FileEntry) =>
-  e.kind === "dir"
-    ? "folder.fill"
-    : /\.(png|jpe?g|gif|svg|webp|heic)$/i.test(e.name)
-      ? "photo"
-      : /\.(md|txt|json|ya?ml|toml|ts|tsx|js|swift|zig|rs|go|py|sh|css|html|c|h)$/i.test(e.name)
-        ? "doc.text"
-        : "doc";
+const iconFor = (e: FileEntry) => (e.kind === "dir" ? "folder.fill" : fileIcon(e.name));
 
 // Formatters are built once: toLocale*String with options builds one per call,
 // which costs more than the rest of rendering a row.

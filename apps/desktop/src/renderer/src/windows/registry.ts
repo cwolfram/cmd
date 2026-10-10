@@ -82,6 +82,32 @@ export function typeFor(kind: string): WindowTypeInfo | undefined {
   return typeInfo.get(kind);
 }
 
+/** Files no window type opens, by what they hold. */
+const FILE_ICONS: [RegExp, string][] = [
+  [/\.(mp3|m4a|wav|aiff?|flac|ogg|opus|aac|caf|mid|midi)$/i, "waveform"],
+  [/\.(mkv|avi|wmv|flv|mpe?g|3gp)$/i, "film"],
+  [/\.(heic|heif|tiff?|raw|dng|cr2|nef|psd)$/i, "photo"],
+  [/\.(zip|tar|gz|tgz|bz2|xz|zst|7z|rar)$/i, "doc.zipper"],
+  [/\.(ttf|otf|woff2?)$/i, "textformat"],
+  [/\.(txt|log|ya?ml|toml|ini|env|csv|tsv|xml|html?|css|scss|[cm]?[jt]sx?|swift|zig|rs|go|py|rb|php|java|kt|c|cc|cpp|h|hpp|m|sh|zsh|fish|sql|lua|vue|svelte)$/i, "doc.text"],
+];
+
+/**
+ * A file's icon in a list (the Files window): its viewer's, the window type that
+ * opens it (a video's film, a database's cylinder), so a new viewer brings its files'
+ * icon along; else what it holds (audio, an archive), else a plain document. Only
+ * dedicated viewers count (a priority), not the browser's claim on HTML.
+ */
+export function fileIcon(name: string): string {
+  const ext = name.includes(".") ? name.split(".").pop()!.toLowerCase() : "";
+  let best: WindowTypeInfo | undefined;
+  for (const t of typeInfo.values()) {
+    const p = t.opens.priority ?? 0;
+    if (p > 0 && t.opens.extensions?.includes(ext) && p > (best?.opens.priority ?? 0)) best = t;
+  }
+  return best?.icon ?? FILE_ICONS.find(([re]) => re.test(name))?.[1] ?? "doc";
+}
+
 /** Typed access to a window's state. */
 export const stateStr = (win: AppWindow, key: string): string | undefined =>
   typeof win.state[key] === "string" ? (win.state[key] as string) : undefined;
