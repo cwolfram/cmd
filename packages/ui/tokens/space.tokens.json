@@ -33,7 +33,7 @@
       }
     },
     "lg": {
-      "$description": "12px: the window inset (--inset); between groups of a toolbar or status line.",
+      "$description": "12px: between groups of a toolbar or status line.",
       "$type": "dimension",
       "$value": {
         "value": 12,
@@ -67,7 +67,7 @@
   },
   "inset": {
     "$description": "A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window.",
-    "$value": "{space.lg}"
+    "$value": "{space.xl}"
   },
   "measure": {
     "$description": "Reading width for prose: a document's column (Measure).",

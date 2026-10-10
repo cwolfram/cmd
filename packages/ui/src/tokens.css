@@ -36,7 +36,7 @@
   --space-sm: 6px;
   /* 8px: an icon and a row's text; controls side by side; the default Stack gap. */
   --space-md: 8px;
-  /* 12px: the window inset (--inset); between groups of a toolbar or status line. */
+  /* 12px: between groups of a toolbar or status line. */
   --space-lg: 12px;
   /* 16px: between sections of a list or inspector; between columns of a table (2 × 8). */
   --space-xl: 16px;
@@ -45,7 +45,7 @@
   /* 32px: below a document's column. Rarely anything else. */
   --space-3xl: 32px;
   /* A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window. */
-  --inset: var(--space-lg);
+  --inset: var(--space-xl);
   /* Reading width for prose: a document's column (Measure). */
   --measure: 68ch;
   /* How wide a page of settings rows grows (the Settings window): rows keep their label and control within reach in a wide window; the page centres past it. */

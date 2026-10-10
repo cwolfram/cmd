@@ -347,7 +347,7 @@ export const TOKENS: readonly TokenInfo[] = [
     "name": "--space-lg",
     "type": "dimension",
     "value": "12px",
-    "description": "12px: the window inset (--inset); between groups of a toolbar or status line."
+    "description": "12px: between groups of a toolbar or status line."
   },
   {
     "name": "--space-xl",
@@ -369,7 +369,7 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--inset",
-    "value": "var(--space-lg)",
+    "value": "var(--space-xl)",
     "description": "A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window."
   },
   {
