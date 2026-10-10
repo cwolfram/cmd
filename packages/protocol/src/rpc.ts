@@ -1,7 +1,7 @@
 // Core API. Transport: newline-delimited JSON-RPC 2.0 over a Unix socket.
 // Every method is reachable from the UI, the `cmd` CLI and (later) MCP.
 
-import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteStatus, RemoteTheme, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
+import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, ClosedWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteStatus, RemoteTheme, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
 import type { DataClassInfo, DataEvent, DataQuery, DataStats, NewDataEvent, SessionInfo, TurnRow, ViewQuery } from "./events.ts";
 import type { SettingKey, Settings } from "./settings.ts";
 import type { AiModel, AiStatus } from "./ai.ts";
@@ -263,6 +263,10 @@ export interface Methods {
   /** Registered window types (built-in and plugins). */
   "window.types": { params: {}; result: WindowTypeInfo[] };
   "window.close": { params: { id: WindowId }; result: null };
+  /** Closed windows, newest first (workspaceId: only that workspace's). */
+  "window.closed": { params: { workspaceId?: WorkspaceId }; result: ClosedWindow[] };
+  /** Reopen a closed window where it was (id: that one, else the workspace's newest); null: nothing to reopen. */
+  "window.reopen": { params: { id?: WindowId; workspaceId?: WorkspaceId }; result: AppWindow | null };
   /**
    * Open a path or URL in the window type that handles it (registry rules +
    * the open.handlers setting). null = no type handles it (use the default app).
@@ -523,6 +527,8 @@ export type CoreEvent =
   | { type: "core.startup"; status: StartupStatus }
   | { type: "window.updated"; window: AppWindow }
   | { type: "window.removed"; id: WindowId }
+  /** The closed windows changed (a window closed, was reopened or fell off the list): window.closed again. */
+  | { type: "window.closedChanged" }
   | { type: "workspace.updated"; workspace: Workspace }
   | { type: "workspace.removed"; id: WorkspaceId }
   /** Show this workspace (cmd ., ⌘O from elsewhere); the app picks or creates the app window. */

@@ -2,3 +2,4 @@ export { WindowManager, terminalWindow, listDir, readText, resolvePaths, writeTe
 export { WindowTypes, parseOverrides, type WindowType, type OpenRule, type OpenTarget } from "./types.ts";
 export { registerBuiltins, browserType, filesType, textType, terminalType, IMAGE_EXTENSIONS, imageType, parseYouTube, sqliteType, youtubeType } from "./builtin.ts";
 export { targetFor, shellOpenEnv, looksLikeText, TEXT_MAX_BYTES } from "./routing.ts";
+export { ClosedWindows, CLOSED_PER_WORKSPACE, type ClosedRecord } from "./closed.ts";

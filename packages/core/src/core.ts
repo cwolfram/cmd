@@ -38,14 +38,14 @@ import { NotificationCenter } from "./notifications.ts";
 import { CommandLog, indexCommandOutput } from "./commands.ts";
 import { TimerAlarms } from "./timers.ts";
 import { PaneManager, type Inspector, type PtyFactory } from "./panes.ts";
-import { restoreSession } from "./restore.ts";
+import { isDir, restoredText, restoreSession } from "./restore.ts";
 import type { TermBackend } from "./terminals/types.ts";
 import { ProcessSampler, ResourceMonitor, type ProcSampler, type TreeSampler } from "./resources.ts";
 import { registerBuiltinSources } from "./search/builtin.ts";
 import { FileSearch } from "./search/files.ts";
 import { checkoutOf } from "./checkout.ts";
 import { locateContext, TranscriptSources, type LocateContext, type TranscriptRoot } from "./search/sources.ts";
-import { listDir, parseOverrides, readText, resolvePaths, registerBuiltins, shellOpenEnv, terminalWindow, WindowManager, WindowTypes, writeText } from "./windows/index.ts";
+import { listDir, parseOverrides, readText, resolvePaths, registerBuiltins, shellOpenEnv, terminalWindow, WindowManager, WindowTypes, writeText, ClosedWindows } from "./windows/index.ts";
 import { WatchService } from "./watch.ts";
 import { gitDiff, gitStatus } from "./git.ts";
 import { SqliteService } from "./sqlite/service.ts";
@@ -186,6 +186,7 @@ export class Core {
   readonly resources: ResourceMonitor | null;
   readonly processes: ProcessSampler | null;
   readonly windows: WindowManager;
+  readonly closed: ClosedWindows;
   readonly windowTypes: WindowTypes;
   /** Where each agent keeps transcripts and how to resume them. */
   readonly transcripts: TranscriptSources;
@@ -367,8 +368,19 @@ export class Core {
     }
     this.windows.on("updated", (window) => this.#broadcast({ type: "window.updated", window }));
     this.timers = new TimerAlarms(this.windows, (w, title, body) => this.notifications.window(w.id, "timer", title, body));
-    this.windows.on("removed", (id) => {
-      this.store.deleteUiStateOf(id);
+    this.closed = new ClosedWindows(this.store);
+    this.closed.on("changed", () => this.#broadcast({ type: "window.closedChanged" }));
+    // What a closed window kept, once it can't be reopened any more.
+    this.closed.on("forgotten", (r) => {
+      this.store.deleteUiStateOf(r.id);
+      if (r.terminal) this.panes.forgetHistory(r.id);
+    });
+    this.windows.on("removed", (id, w) => {
+      if (this.#keepsClosed(w.workspaceId)) {
+        this.closed.add({ id, workspaceId: w.workspaceId, kind: w.kind, title: w.title, closedAt: Date.now(), window: w, terminal: null });
+        // A Magic draft that never built is deleted with its window (magic/service.ts): nothing to reopen.
+        if (w.kind === "magic") queueMicrotask(() => !this.#widgetKept(w) && this.closed.forget(id));
+      } else this.store.deleteUiStateOf(id);
       this.#broadcast({ type: "window.removed", id });
       this.#libraryChanged();
     });
@@ -497,8 +509,14 @@ export class Core {
       describePane(this.data, pane);
       if (!pane.usage && pane.pid > 0 && pane.exitCode === null) this.resources?.soon(); // a new terminal's memory shows at once
     });
-    this.panes.on("removed", (paneId) => {
-      this.store.deleteUiStateOf(paneId);
+    this.panes.on("removed", (paneId, { pane, record, screen }) => {
+      if (this.#keepsClosed(pane.workspaceId)) {
+        const terminal = { cwd: pane.cwd, cols: record.cols, rows: record.rows, createdAt: pane.createdAt, muted: pane.muted, command: record.command, screen };
+        this.closed.add({ id: paneId, workspaceId: pane.workspaceId, kind: "terminal", title: pane.title, closedAt: Date.now(), window: null, terminal });
+      } else {
+        this.store.deleteUiStateOf(paneId);
+        this.panes.forgetHistory(paneId);
+      }
       this.#broadcast({ type: "pane.removed", paneId });
     });
     this.usage = new UsageStats({
@@ -659,7 +677,7 @@ export class Core {
     // Connection-aware (the override belongs to the caller); handled in serve. In-process: owned by the core.
     "pane.fitOverride": (p) => (this.#fitOverride(this, "this Mac", p), null),
     "pane.reclaim": (p) => (this.panes.release(p.paneId), null),
-    "pane.kill": (p) => (this.panes.kill(p.paneId), null),
+    "pane.kill": async (p) => (await this.#closeTerminal(p.paneId), null),
     "pane.setMuted": (p) => (this.notifications.setMuted(p.paneId, p.muted), null),
     "pane.clearAttention": (p) => (this.notifications.clearAttention(p.paneId), null),
     "notify.send": (p) => (this.notifications.send(p.paneId ?? null, p.title, p.body), null),
@@ -775,7 +793,9 @@ export class Core {
     "window.open": (p) => this.#openWindow(p),
     "window.update": (p) => this.windows.update(p.id, p),
     "window.types": () => this.windowTypes.info(),
-    "window.close": (p) => (this.windows.close(p.id), null),
+    "window.close": async (p) => (this.panes.get(p.id) ? await this.#closeTerminal(p.id) : this.windows.close(p.id), null),
+    "window.closed": (p) => this.closed.list(p.workspaceId),
+    "window.reopen": (p) => this.#reopen(p),
     "window.clearAttention": (p) => {
       const w = this.windows.others().find((x) => x.id === p.id);
       if (w?.state.attention) this.windows.update(p.id, { state: { attention: null } });
@@ -1082,10 +1102,82 @@ export class Core {
   #closeWorkspace(id: WorkspaceId): void {
     const workspace = this.workspaces.mustOpen(id);
     if (workspace.home) throw new Error("Home can't be closed");
+    // Its windows go with it, not one by one: none of them is a closed window to reopen.
+    this.#closingWorkspaces.add(id);
     for (const p of this.panes.list()) if (p.workspaceId === id) this.panes.kill(p.id);
     for (const a of this.agents.list()) if (a.workspaceId === id && !a.paneId) this.agents.kill(a.id);
     for (const w of this.windows.inWorkspace(id)) this.windows.close(w.id);
     this.workspaces.markClosed(id);
+    this.#closingWorkspaces.delete(id);
+  }
+
+  #closingWorkspaces = new Set<WorkspaceId>();
+
+  /** A Magic window's widget is still in the library. */
+  #widgetKept(w: AppWindow): boolean {
+    const id = w.state.widgetId;
+    return typeof id === "string" && this.magic.library().some((e) => e.id === id);
+  }
+
+  /** A window closed in this workspace can be reopened: not one closed with its workspace (its terminals end after it is marked closed). */
+  #keepsClosed(workspaceId: WorkspaceId): boolean {
+    return !this.#closingWorkspaces.has(workspaceId) && this.workspaces.get(workspaceId)?.closedAt === null;
+  }
+
+  /** End a terminal, its screen saved first so it reopens as it looked. */
+  async #closeTerminal(id: WindowId): Promise<void> {
+    await this.panes.saveScreen(id).catch(() => {});
+    this.panes.kill(id);
+  }
+
+  /**
+   * Reopen a closed window under its old id, in its workspace (else the caller's,
+   * else Home). A terminal is a new shell in its folder with its last screen; it
+   * runs nothing, not even what was running when it closed.
+   */
+  #reopen(p: Params<"window.reopen">): AppWindow | null {
+    const rec = p.id ? this.closed.get(p.id) : this.closed.latest(p.workspaceId ?? this.workspaces.home().id);
+    if (!rec) return null;
+    if (this.panes.get(rec.id) || this.windows.others().some((w) => w.id === rec.id)) {
+      this.closed.take(rec.id);
+      return null;
+    }
+    const kept = this.workspaces.get(rec.workspaceId);
+    const workspace = kept && kept.closedAt === null ? kept : this.#place({ workspaceId: p.workspaceId });
+    let w: AppWindow;
+    if (rec.terminal) {
+      const t = rec.terminal;
+      const cwd = isDir(t.cwd) ? t.cwd : isDir(workspace.root) ? workspace.root : os.homedir();
+      const pane = this.panes.create({
+        id: rec.id,
+        workspaceId: workspace.id,
+        cwd,
+        cols: t.cols,
+        rows: t.rows,
+        replay: restoredText(t.screen, t.command, cwd === t.cwd ? null : { was: t.cwd, now: cwd }, "Reopened"),
+        restored: { title: rec.title, createdAt: t.createdAt, muted: t.muted, attention: null },
+      });
+      w = terminalWindow(pane);
+    } else if (rec.window) {
+      if (rec.kind === "magic") {
+        // It shows a widget from the library, which may have been deleted since.
+        if (!this.#widgetKept(rec.window)) {
+          this.closed.forget(rec.id);
+          throw new Error("That widget was deleted.");
+        }
+        w = this.windows.open("magic", { widgetId: rec.window.state.widgetId }, workspace, rec.id);
+        this.magic.opened(w.id);
+      } else {
+        w = this.windows.restore({ ...rec.window, workspaceId: workspace.id });
+      }
+    } else {
+      this.closed.forget(rec.id);
+      return null;
+    }
+    this.closed.take(rec.id);
+    this.#opened(w);
+    this.#broadcast({ type: "window.focus", id: w.id });
+    return this.windows.list().find((x) => x.id === w.id) ?? w;
   }
 
   /** Count a window someone opened (not restored ones) for usage stats. */

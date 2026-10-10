@@ -10,6 +10,7 @@ import { logger } from "@cmd/protocol/node";
 import type { PaneRecord } from "./panes.ts";
 import type { TranscriptRoot } from "./search/sources.ts";
 import type { RemoteDeviceRecord } from "./store.ts";
+import type { ClosedRecord } from "./windows/closed.ts";
 
 const log = logger("stored");
 
@@ -177,6 +178,8 @@ export const decodeWorkspace = decoder<Workspace>(
 );
 
 export const decodeWindow = decoder<AppWindow>({ id: "", workspaceId: "", kind: "", title: "", createdAt: 0, updatedAt: 0, state: {} }, ["id", "kind"]);
+
+export const decodeClosed = decoder<ClosedRecord>({ id: "", workspaceId: "", kind: "", title: "", closedAt: 0, window: null, terminal: null }, ["id", "kind"]);
 
 export const decodeHome = decoder<AgentHome>({ agent: "claude", dir: "", via: [], env: null, firstSeen: 0, lastSeen: 0 }, ["agent", "dir"]);
 

@@ -281,6 +281,21 @@ export interface AppWindow {
   state: Record<string, unknown>;
 }
 
+/**
+ * A window that was closed, to reopen where it was (⇧⌘T, the Navigator's Recent).
+ * Reopening keeps its id, so layouts still fit; a terminal comes back as a new shell
+ * in `cwd` with its last screen and shell history, without running anything again.
+ */
+export interface ClosedWindow {
+  id: WindowId;
+  workspaceId: WorkspaceId;
+  kind: WindowKind;
+  title: string;
+  closedAt: number;
+  /** Terminals: the folder it was in. */
+  cwd?: string;
+}
+
 /** What a window type can open (see the core's window type registry). */
 export interface OpenRuleInfo {
   folders?: boolean;

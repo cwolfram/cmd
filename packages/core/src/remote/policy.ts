@@ -94,6 +94,8 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "window.update": "control",
   "window.types": "view",
   "window.close": "control",
+  "window.closed": "never",
+  "window.reopen": "never",
   "window.openTarget": "never",
   "window.move": "never",
   "window.list": "view",
@@ -414,6 +416,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "remote.pairEnded":
     case "remote.input":
     case "widget.library":
+    case "window.closedChanged": // window.closed and window.reopen aren't remote
     case "actions.changed":
     case "data.changed": // to its subscriber only, and data.* is never remote
     case "view.changed":

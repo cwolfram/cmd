@@ -35,7 +35,7 @@ const RENAMED_KINDS: Readonly<Record<string, string>> = { livecode: "jam" };
  * (window id = pane id); other windows are created by their WindowType and
  * persisted, so they survive core restarts. State is opaque per type.
  */
-export class WindowManager extends EventEmitter<{ updated: [AppWindow]; removed: [WindowId] }> {
+export class WindowManager extends EventEmitter<{ updated: [AppWindow]; removed: [WindowId, AppWindow] }> {
   #windows = new Map<WindowId, AppWindow>();
   #panes: PaneManager;
   #store: Store | null;
@@ -65,19 +65,19 @@ export class WindowManager extends EventEmitter<{ updated: [AppWindow]; removed:
     return [...this.#panes.list().map(terminalWindow), ...this.others()];
   }
 
-  /** Open in `workspace`; a type without an explicit cwd (terminal, files) starts at the workspace's root. */
-  open(kind: string, input: Record<string, unknown>, workspace: Workspace): AppWindow {
+  /** Open in `workspace`; a type without an explicit cwd (terminal, files) starts at the workspace's root. id: reopening one under its old id. */
+  open(kind: string, input: Record<string, unknown>, workspace: Workspace, id?: WindowId): AppWindow {
     if (typeof input.cwd !== "string") input = { ...input, cwd: workspace.root };
     if (kind === "terminal") {
       const cwd = typeof input.cwd === "string" ? expandHome(input.cwd) : undefined;
       const command = typeof input.command === "string" ? input.command : undefined;
-      return terminalWindow(this.#panes.create({ cwd, command, workspaceId: workspace.id }));
+      return terminalWindow(this.#panes.create({ id, cwd, command, workspaceId: workspace.id }));
     }
     const type = this.types.get(kind);
     if (!type) throw new Error(`unknown window type: ${kind}`);
     const { state, title } = type.create(input);
     const now = Date.now();
-    const w: AppWindow = { id: randomUUID(), workspaceId: workspace.id, kind, title, createdAt: now, updatedAt: now, state };
+    const w: AppWindow = { id: id ?? randomUUID(), workspaceId: workspace.id, kind, title, createdAt: now, updatedAt: now, state };
     this.#save(w);
     return { ...w };
   }
@@ -135,9 +135,18 @@ export class WindowManager extends EventEmitter<{ updated: [AppWindow]; removed:
 
   close(id: WindowId): void {
     if (this.#panes.get(id)) return this.#panes.kill(id);
-    if (!this.#windows.delete(id)) return;
+    const w = this.#windows.get(id);
+    if (!w) return;
+    this.#windows.delete(id);
     this.#store?.deleteWindow(id);
-    this.emit("removed", id);
+    this.emit("removed", id, { ...w });
+  }
+
+  /** A closed window back as it was (windows/closed.ts). */
+  restore(w: AppWindow): AppWindow {
+    if (this.#windows.has(w.id) || this.#panes.get(w.id)) throw new Error(`window is open: ${w.id}`);
+    this.#save({ ...w, updatedAt: Date.now() });
+    return { ...this.#windows.get(w.id)! };
   }
 
   #save(w: AppWindow): void {

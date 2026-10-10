@@ -132,7 +132,8 @@ export interface PaneEvents {
   /** `seq`: the pane's output count after `data` (see snapshot). */
   output: [paneId: PaneId, data: string, seq: number];
   updated: [pane: Pane];
-  removed: [paneId: PaneId];
+  /** `last`: what it was when it ended, to reopen it (windows/closed.ts); its shell history is kept until forgetHistory. */
+  removed: [paneId: PaneId, last: { pane: Pane; record: PaneRecord; screen: { data: string; savedAt: number } | null }];
   osc: [paneId: PaneId, ev: OscEvent];
   foreground: [paneId: PaneId, fg: Foreground];
   /** A verified request from the pane's shell integration (e.g. `open .`). */
@@ -670,10 +671,11 @@ export class PaneManager extends EventEmitter<PaneEvents> {
     pane.exitCode = exitCode;
     log.info(`pane ${pane.id.slice(0, 8)} exited`, { exitCode, agent: pane.agentId ? pane.agentId.slice(0, 8) : null, aliveMs: Date.now() - pane.createdAt });
     this.emit("updated", { ...pane });
+    const last = { pane: { ...pane }, record: this.#record(live), screen: this.#store?.screen(pane.id) ?? null };
     this.#panes.delete(pane.id);
-    this.discard(pane.id);
+    this.discard(pane.id, { keepHistory: true });
     this.#overrides.delete(pane.id);
-    this.emit("removed", pane.id);
+    this.emit("removed", pane.id, last);
   }
 
   /** The pane's own shell history (see shell/zsh, shell/bash), in that shell's format. */
@@ -681,9 +683,14 @@ export class PaneManager extends EventEmitter<PaneEvents> {
     return path.join(this.#historyDir!, `${id}.${shell}_history`);
   }
 
-  /** Forget a pane for good: its record, screen and shell history. */
-  discard(id: PaneId): void {
+  /** Forget a pane for good: its record, screen and (unless kept to reopen it) shell history. */
+  discard(id: PaneId, o: { keepHistory?: boolean } = {}): void {
     this.#store?.deletePane(id);
+    if (!o.keepHistory) this.forgetHistory(id);
+  }
+
+  /** A pane's own shell history (kept after it ended while it can be reopened). */
+  forgetHistory(id: PaneId): void {
     if (this.#historyDir) for (const sh of ["zsh", "bash"] as const) fs.rmSync(this.#historyFile(id, sh), { force: true });
   }
 
@@ -704,11 +711,21 @@ export class PaneManager extends EventEmitter<PaneEvents> {
 
   /** Save the screens that changed since last time, for restoring after a restart. */
   async saveScreens(): Promise<void> {
+    await this.#saveScreensOf([...this.#panes.values()]);
+  }
+
+  /** Save one screen now: a terminal about to close, to reopen it as it looked. */
+  async saveScreen(id: PaneId): Promise<void> {
+    const l = this.#panes.get(id);
+    if (l) await this.#saveScreensOf([l]);
+  }
+
+  async #saveScreensOf(live: Live[]): Promise<void> {
     const store = this.#store;
     const lines = this.#settings()["restore.scrollback"];
     if (!store || lines <= 0) return;
     let bytes = 0;
-    const dirty = [...this.#panes.values()].filter((l) => l.dirty);
+    const dirty = live.filter((l) => l.dirty);
     const changed: { l: Live; data: string; hash: string }[] = [];
     await Promise.all(
       dirty

@@ -163,18 +163,18 @@ export function restoreSession({ panes, agents, workspaces, store, settings }: R
   if (Object.keys(tally).length > 1 || alive.size) log.info("restored the last session", { backend: backend.info ? `PTY host ${backend.info().pid}` : "in the core", ...tally });
 }
 
-/** The old screen, then a dim line saying it was restored (and what ran). */
-function restoredText(screen: { data: string; savedAt: number } | null, command: string | null, moved: { was: string; now: string } | null = null): string {
+/** The old screen, then a dim line saying it was restored or reopened (and what ran). */
+export function restoredText(screen: { data: string; savedAt: number } | null, command: string | null, moved: { was: string; now: string } | null = null, label = "Restored"): string {
   const when = screen ? ` · ${new Date(screen.savedAt).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}` : "";
   const ran = command ? ` · was running: ${command.split("\n")[0]!.slice(0, 200)}` : "";
   const gone = moved ? ` · ${tilde(moved.was)} is gone, started in ${tilde(moved.now)}` : "";
-  const line = `\x1b[0m\x1b[2m── Restored${when}${ran}${gone} ──\x1b[0m\r\n`;
+  const line = `\x1b[0m\x1b[2m── ${label}${when}${ran}${gone} ──\x1b[0m\r\n`;
   return screen ? `${screen.data}\x1b[0m\r\n${line}` : line;
 }
 
 const tilde = (p: string) => (p === os.homedir() ? "~" : p.startsWith(os.homedir() + "/") ? "~" + p.slice(os.homedir().length) : p);
 
-function isDir(p: string): boolean {
+export function isDir(p: string): boolean {
   try {
     return fs.statSync(p).isDirectory();
   } catch {

@@ -8,8 +8,9 @@ import fs from "node:fs";
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import type { Agent, AgentId, AppWindow, PaneId, RemoteScope, Workspace } from "@cmd/protocol";
 import type { PaneRecord } from "./panes.ts";
+import type { ClosedRecord } from "./windows/closed.ts";
 import { peek } from "./data/peek.ts";
-import { decodeAgent, decodeDoc, decodePane, decodeRemoteDevice, decodeRows, decodeWorkspace, decodeWindow } from "./stored.ts";
+import { decodeAgent, decodeClosed, decodeDoc, decodePane, decodeRemoteDevice, decodeRows, decodeWorkspace, decodeWindow } from "./stored.ts";
 
 export interface RemoteDeviceRecord {
   id: string;
@@ -104,6 +105,11 @@ export class Store {
         data TEXT NOT NULL,
         saved_at INTEGER NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS closed_windows (
+        id TEXT PRIMARY KEY,
+        closed_at INTEGER NOT NULL,
+        doc TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS ui_state (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
@@ -188,6 +194,20 @@ export class Store {
 
   deleteWindow(id: string): void {
     this.#stmt(`DELETE FROM windows WHERE id = ?`).run(id);
+  }
+
+  /** Windows that were closed, to reopen (windows/closed.ts); oldest first. */
+  closedWindows(): ClosedRecord[] {
+    const rows = this.#stmt(`SELECT doc FROM closed_windows ORDER BY closed_at`).all() as { doc: string }[];
+    return decodeRows("closed window", rows.map((r) => r.doc), decodeClosed);
+  }
+
+  saveClosedWindow(r: ClosedRecord): void {
+    this.#stmt(`INSERT OR REPLACE INTO closed_windows (id, closed_at, doc) VALUES (?, ?, ?)`).run(r.id, r.closedAt, JSON.stringify(r));
+  }
+
+  deleteClosedWindow(id: string): void {
+    this.#stmt(`DELETE FROM closed_windows WHERE id = ?`).run(id);
   }
 
   workspaces(): Workspace[] {
