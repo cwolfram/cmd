@@ -33,7 +33,7 @@ afterAll(async () => {
   rmTemp(dir);
 });
 
-/** Print numbered lines in small bursts, one burst a task, until stopped; `count` is the last line printed. */
+/** Print numbered lines in small bursts, one burst a timer tick (a setImmediate loop printed tens of thousands while a check waited for 300), until stopped; `count` is the last line printed. */
 function printer(pty: FakePty) {
   let n = 0;
   let on = true;
@@ -42,9 +42,9 @@ function printer(pty: FakePty) {
     let s = "";
     for (let i = 0; i < 3; i++) s += `L${++n}\r\n`;
     pty.output(s);
-    setImmediate(tick);
+    setTimeout(tick, 0);
   };
-  setImmediate(tick);
+  setTimeout(tick, 0);
   return { stop: () => void (on = false), get count() { return n; } };
 }
 
@@ -91,10 +91,12 @@ function gated(legacy: "keep" | "drop") {
 
 /** Every line from the first shown to the last printed, once each. */
 function expectExact(lines: number[], last: number): void {
-  const dupes = lines.filter((n, i) => lines.indexOf(n) !== i);
+  // Sets, not indexOf/includes: a fast printer gets tens of thousands of lines out.
+  const once = new Set<number>();
+  const dupes = lines.filter((n) => once.has(n) || !once.add(n));
   const first = lines[0] ?? 1;
   const missing: number[] = [];
-  for (let n = first; n <= last; n++) if (!lines.includes(n)) missing.push(n);
+  for (let n = first; n <= last; n++) if (!once.has(n)) missing.push(n);
   expect({ dupes: dupes.slice(0, 10), missing: missing.slice(0, 10) }).toEqual({ dupes: [], missing: [] });
   expect(lines.at(-1)).toBe(last);
 }
