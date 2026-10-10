@@ -3,7 +3,7 @@
 // sound guide, a genre cookbook and Strudel's function reference (reference.md,
 // scripts/jam-reference.mjs), the same on every call so providers cache it;
 // the request carries the code, the sounds the window has loaded, and the last attempt's error when the
-// window's frame refused it (renderer components/JamView.tsx retries).
+// window's frame refused it (renderer windows/jam/JamView.tsx retries).
 
 import fs from "node:fs";
 import path from "node:path";

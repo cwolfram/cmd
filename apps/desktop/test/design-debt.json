@@ -1,5 +1,5 @@
 {
-  "apps/desktop/src/renderer/src/components/jam.css": {
+  "apps/desktop/src/renderer/src/windows/jam/jam.css": {
     "radius": 1,
     "spacing": 1
   },

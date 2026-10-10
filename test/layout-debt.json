@@ -1,7 +1,7 @@
 {
   "flat files in packages/core/src": 2,
   "flat files in apps/desktop/src/renderer/src": 1,
-  "entries in apps/desktop/src/renderer/src/components": 13,
+  "entries in apps/desktop/src/renderer/src/components": 11,
   "files over 600 lines in packages/cli": 1,
   "files over 600 lines in packages/core": 7,
   "files over 600 lines in packages/protocol": 1,

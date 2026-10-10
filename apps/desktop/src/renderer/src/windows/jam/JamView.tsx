@@ -25,15 +25,15 @@ import { EditorView, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
 import { syntaxHighlighting } from "@codemirror/language";
-import { publishLevels, type Levels } from "../lib/audio.ts";
-import { cmd } from "../lib/bridge.ts";
-import { appTheme, minimalChange } from "../editor/theme.ts";
-import { applyAndFlash, flashChanges } from "../editor/flash.ts";
-import { syntax } from "../editor/syntax.ts";
-import { useStoreValue } from "../lib/store.ts";
-import { registerWindowActions, setWindowStatus } from "../lib/windowActions.ts";
-import type { WindowViewProps } from "../windows/registry.ts";
-import { jamControls as controls } from "../windows/jam.tsx";
+import { publishLevels, type Levels } from "../../lib/audio.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { appTheme, minimalChange } from "../../editor/theme.ts";
+import { applyAndFlash, flashChanges } from "../../editor/flash.ts";
+import { syntax } from "../../editor/syntax.ts";
+import { useStoreValue } from "../../lib/store.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
+import type { WindowViewProps } from "../registry.ts";
+import { jamControls as controls } from "./register.tsx";
 import "./jam.css";
 
 /** "undo", "undo that", "undo the last 2 changes", "go back": restored at once, without the AI. */

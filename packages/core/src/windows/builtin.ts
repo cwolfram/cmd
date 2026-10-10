@@ -474,7 +474,7 @@ const versionsOf = (v: unknown): JamVersion[] =>
     .map(({ code, request, summary }) => ({ code, request, summary }));
 
 /**
- * Jam: music as code, a Strudel pattern (renderer components/JamView.tsx)
+ * Jam: music as code, a Strudel pattern (renderer windows/jam/JamView.tsx)
  * that plays as it changes. Untitled, its code is `code`; opened from a .strudel
  * file, `path` (the view reads and saves the file, ⌘S). `versions`: the code before
  * each AI change, newest first, which the AI sees, so "undo that" and "go back to

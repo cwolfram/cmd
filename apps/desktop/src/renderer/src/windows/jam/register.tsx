@@ -1,11 +1,11 @@
-// The "jam" view, Jam: music as code (components/JamView.tsx, loaded on first
+// The "jam" view, Jam: music as code (windows/jam/JamView.tsx, loaded on first
 // use). Its menu plays, stops, asks the AI for a change, renders to audio and opens a Visualizer
 // that listens to it; the view registers what those do for its window here.
 
 import type { AppWindow } from "@cmd/protocol";
-import { cmd } from "../lib/bridge.ts";
-import type { MenuEntry } from "../lib/context.ts";
-import { lazyView, registerWindowView } from "./registry.ts";
+import { cmd } from "../../lib/bridge.ts";
+import type { MenuEntry } from "../../lib/context.ts";
+import { lazyView, registerWindowView } from "../registry.ts";
 
 export const jamControls = new Map<string, { play(): void; stop(): void; ask(): void; save(): void; render(): void }>();
 
@@ -24,7 +24,7 @@ function menu(w: AppWindow): MenuEntry[] {
 
 registerWindowView({
   kind: "jam",
-  View: lazyView(() => import("../components/JamView.tsx").then((m) => m.JamView)),
+  View: lazyView(() => import("./JamView.tsx").then((m) => m.JamView)),
   describe: () => ({ kind: null }),
   menu,
 });
