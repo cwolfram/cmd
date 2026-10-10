@@ -1450,7 +1450,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   align-items: center;
   gap: var(--space-sm);
   height: var(--window-bar-h);
-  padding: 0 var(--inset); /* its icon on the window's inset, over the body's letters */
+  padding: 0 var(--bar-inset); /* its icon on the bars' inset */
   font-size: var(--text-sm);
   color: var(--text-dim);
   background: var(--window-bar-bg);

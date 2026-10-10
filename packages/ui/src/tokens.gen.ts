@@ -368,6 +368,11 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "32px: below a document's column. Rarely anything else."
   },
   {
+    "name": "--bar-inset",
+    "value": "var(--space-lg)",
+    "description": "A bar's inset, tighter than the content's: a window's title bar, a view's title band and footer, Magic's toolbars."
+  },
+  {
     "name": "--inset",
     "value": "var(--space-xl)",
     "description": "A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window."

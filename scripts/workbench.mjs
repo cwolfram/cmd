@@ -188,11 +188,12 @@ async function shoot(page, cdp, file, whole) {
  * Measured in the page, per window (.ui-window) of the story: how far its content sits from
  * the edges, to the nearest visible text (its glyph box, not the element), icon or drawing.
  * The body: top, left, right; the toolbar and footer: left, right. Problems: a body whose
- * left and right differ, a footer not at --inset (window-design skill, Rules). Toolbars are
+ * left and right differ, a footer not at --bar-inset (window-design skill, Rules). Toolbars are
  * reported only: their items sit tighter than the content, for now.
  */
 function AUDIT() {
-  const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--inset")) || 12;
+  const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--inset")) || 16;
+  const barInset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar-inset")) || 12;
   const visible = (r) => r.width >= 1 && r.height >= 1;
   /** The boxes of what shows inside el: text runs, icons, images, drawings. */
   const ink = (el) => {
@@ -265,8 +266,8 @@ function AUDIT() {
         const problems = [];
         if (part === "body" && Math.abs(m.left - m.right) > 1 && el.querySelector(".ui-grid, .ui-list, .ui-measure, .ui-page, .ui-media, .ui-split") === null) problems.push(`left ${m.left} ≠ right ${m.right}`);
         // Toolbars are reported, not checked: their items sit tighter than the content (6–8px), an open decision (window-design skill).
-        if (part === "footer" && Math.abs(m.left - inset) > 1) problems.push(`left ${m.left}, not --inset (${inset})`);
-        if (part === "footer" && el.querySelector(".ui-status-line-end") && Math.abs(m.right - inset) > 1) problems.push(`right ${m.right}, not --inset (${inset})`);
+        if (part === "footer" && Math.abs(m.left - barInset) > 1) problems.push(`left ${m.left}, not --bar-inset (${barInset})`);
+        if (part === "footer" && el.querySelector(".ui-status-line-end") && Math.abs(m.right - barInset) > 1) problems.push(`right ${m.right}, not --bar-inset (${barInset})`);
         out.push({ window: `${name} (${w}px)`, part, ...m, problems });
       }
     }
@@ -285,7 +286,7 @@ async function audit(story, variant) {
   }
   const pad = (v, n) => String(v).padEnd(n);
   const wn = Math.max(...rows.map((r) => r.window.length));
-  console.log(`--inset ${inset}px. Distances to the nearest text, icon or drawing:`);
+  console.log(`--inset ${inset}px, --bar-inset ${barInset}px. Distances to the nearest text, icon or drawing:`);
   for (const r of rows) console.log(`${pad(r.window, wn)}  ${pad(r.part, 8)} ${r.part === "body" ? `top ${pad(r.top, 4)}` : "        "} left ${pad(r.left, 4)} right ${pad(r.right, 4)} ${r.problems.length ? "✗ " + r.problems.join("; ") : ""}`);
   const bad = rows.filter((r) => r.problems.length).length;
   if (bad) {

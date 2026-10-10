@@ -49,7 +49,7 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
 
 Each was settled by measuring in the Workbench; keep them unless the user changes one, and then change it here too.
 
-- **One inset, on every side, to the letters.** Content sits `--inset` (16px) from the window's edges: padded bodies, a table's first and last column, list rows' content, the footer's text. Top as well as sides: a body that opens with a line of text trims its leading (`text-box: trim-start`, done by `View` and padded `Stack`s), so the letters, not the line box, sit at the inset.
+- **One inset, on every side, to the letters.** Content sits `--inset` (16px) from the window's edges: padded bodies, a table's first and last column, list rows' content. Bars sit tighter, at `--bar-inset` (12px): the window's title bar, the title band, the footer's text, Magic's toolbars. Top as well as sides: a body that opens with a line of text trims its leading (`text-box: trim-start`, done by `View` and padded `Stack`s), so the letters, not the line box, sit at the inset.
 - **A row that holds controls is a toolbar.** Filters, ranges, view switches and actions go in the `WindowToolbar`, not in a line inside the content. The body opens with content.
 - **Players put their controls under the media.** A video's (or a sound's) transport is a `WindowToolbar bottom` with an inline `Scrubber` between its times, where people look for it in every player; its other controls (speed, loop, trim) share that bar, and there is no toolbar on top (Jan, 2026-10-10).
 - **Footers are quiet.** One line in `--text-faint`, the same top line as the toolbar (`--window-edge`), centred between that line and the window's outline.
@@ -71,7 +71,7 @@ Each was settled by measuring in the Workbench; keep them unless the user change
 
 ## Measuring
 
-Shots catch what is wrong; numbers say by how much. `pnpm workbench audit <story> [variant] [--theme id]` measures every window in a story: the body's top, left and right to the nearest visible text, icon or drawing (clipped to what shows), and the toolbar's and footer's items to what's visible (a field's box, a borderless button's icon). It flags a body whose left and right differ (unless it holds a table, list, reading column, media or split, which have their own insets) and a footer whose text isn't at `--inset`, and exits 1 then. Toolbars are reported only (see Rules). Run it after every layout change, at every size (the `Sizes` variant).
+Shots catch what is wrong; numbers say by how much. `pnpm workbench audit <story> [variant] [--theme id]` measures every window in a story: the body's top, left and right to the nearest visible text, icon or drawing (clipped to what shows), and the toolbar's and footer's items to what's visible (a field's box, a borderless button's icon). It flags a body whose left and right differ (unless it holds a table, list, reading column, media or split, which have their own insets) and a footer whose text isn't at `--bar-inset`, and exits 1 then. Toolbars are reported only (see Rules). Run it after every layout change, at every size (the `Sizes` variant).
 
 For anything it doesn't cover, run JS in the Workbench (`pnpm workbench eval`; code with `;` needs an explicit `return`):
 
