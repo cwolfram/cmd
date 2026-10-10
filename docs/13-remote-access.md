@@ -489,17 +489,32 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 
 ### Push notifications
 
-- **Subscription:** the PWA subscribes via `PushManager` and sends the subscription (endpoint, `p256dh`, `auth`) to the core over the encrypted channel. The core stores it per device.
-- **Sending:** the core sends Web Push itself, with VAPID keys kept next to the host key. Payloads are encrypted to the device per RFC 8291, so Apple and Google see only that a push happened.
-  - There is no push server of our own, and no relay involvement.
-  - Use the `web-push` package or ~150 lines over `node:crypto`.
-- **Sources:**
-  - `NotificationCenter`'s `agent-input` and `agent-done`, filtered by the existing `notifications.needsInput` and `notifications.done` settings.
-  - A new **"Mac is idle or locked" rule**: push only when the desktop app isn't focused or hasn't seen input for N minutes. Today the UI decides focus (`App.tsx:224-232`), so main reports focus to the core with a new `ui.presence` call.
-- **Lock screen:** `remote.pushDetails` (default off) decides whether the agent's question appears there or just "Claude needs input in <workspace>".
-- **iOS:** push only works after "Add to Home Screen". The client detects this and explains it.
+> Plan (2026-10-10), being built on branch `push`. Approving from the notification (below) is left for later.
 
-**Approving from the notification (Phase 2, optional).** Both agents have an official, JSON-based way to answer permission requests, so this needs no screen reading:
+**Behaviour:**
+- **When:** one global setting on the Mac, `remote.push.when`: Always · When I'm away (default) · Never. Away is the app closed, the screen locked, or no input on the Mac for `remote.push.awayMinutes` (default 5). Main reports these to the core with `ui.presence` (window focus, `powerMonitor` lock and idle time). Whatever the setting, a device whose client is open in front gets no push: it shows the `notification` event as an in-app banner instead.
+- **What:** every `AppNotification` the core emits with `alert` set, so kinds added later are pushed too. The `notifications.*` settings and a terminal's mute already decide `alert`; push adds no filter of its own.
+- **Lock screen:** the full title and body by default; `remote.pushDetails` off sends only the generic line ("Claude needs input in api").
+- **Tapping** opens the client on the Mac that sent it and the notification's pane.
+
+**Delivery:**
+- **Keys:** a VAPID key pair (P-256) in `host.json` next to the host key. Its public key reaches the client in `remote.bootstrap`.
+- **Subscription:** the client's service worker subscribes through `PushManager` and sends the subscription (endpoint, `p256dh`, `auth`) to the core with `push.subscribe` over the encrypted channel (view scope; `push.unsubscribe` removes it). The core keeps it on the device's record; revoking or expiring the device drops it.
+- **Sending:** `remote/push.ts` sends Web Push itself over `node:https`, with an RFC 8292 VAPID JWT and an RFC 8291 (`aes128gcm`) payload encrypted to the subscription, so Apple and Google see only that a push happened. No push server of our own, no relay. A 404 or 410 drops the subscription; other failures are logged and the notification is not retried.
+- **Several Macs:** the hosted client is one origin with one subscription, shared by every Mac it's paired with. Each payload carries the sending Mac's host key, so a tap opens that pairing. In direct modes each Mac is its own origin.
+- **Payload:** `{ host, id, title, body, paneId, windowId, workspaceId, urgent }`, under the 4 KB limit (bodies are truncated).
+
+**Client:**
+- `sw.js` (`apps/web/public`, scope `/`) handles `push` and `notificationclick` only. No `fetch` handler: loading and caching stay as they are until the pinned app shell (below).
+- Both CSPs (`.htaccess`, `direct.ts`) allow `worker-src 'self'`.
+- A Notifications row in the client's settings, and a one-time prompt after pairing in the installed app. Permission needs a tap. On iOS push only works from the Home Screen (16.4+), so a Safari tab shows the Add to Home Screen steps instead.
+- Each start checks the subscription and subscribes again when it's gone (iOS drops them now and then) or when the Mac's VAPID key changed.
+
+**On the Mac:** `remote.push.when`, `remote.push.awayMinutes` and `remote.pushDetails` in Settings → Remote Access; the device list says which devices get notifications.
+
+**Tests:** core tests against a fake push service (payload decrypts with the subscription's keys, VAPID JWT verifies, 410 drops the subscription, the when/away rule, presence from the client); a Chromium e2e that subscribes and receives a push; a real iPhone over Tailscale by hand.
+
+**Approving from the notification (later).** Both agents have an official, JSON-based way to answer permission requests, so this needs no screen reading:
 - **Claude Code:** a `PermissionRequest` hook gets `tool_name`, `tool_input` and `permission_mode`, and can return `hookSpecificOutput.decision.behavior` = `allow` / `deny`. The dialog appears only if the hook returns no decision. `ExitPlanMode` goes through the same hook. `AskUserQuestion` can't be answered this way; it stays in the terminal.
 - **Codex:** the same `PermissionRequest` event and decision shape (`~/.codex/hooks.json`). Hooks are synchronous with a 600 s default timeout; with no decision the TUI prompt appears.
 - **How it works in cmd:**
@@ -515,9 +530,9 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 
 | Where | Change |
 |---|---|
-| `packages/protocol/src/rpc.ts` | New methods: `remote.status`, `remote.enable`, `remote.disable`, `remote.pair` (→ `{url, expiresAt}`), `remote.approve`, `remote.devices`, `remote.revoke`, `remote.setScope`, `remote.bootstrap`, `window.follow` (terminals and Magic widgets), `pane.fitOverride`, `pane.reclaim`, `fs.readBinary`, `ui.presence`, `push.subscribe`, `agent.decide`. Events: `remote.updated`, `remote.pairRequest`, `pane.resync` |
+| `packages/protocol/src/rpc.ts` | New methods: `remote.status`, `remote.enable`, `remote.disable`, `remote.pair` (→ `{url, expiresAt}`), `remote.approve`, `remote.devices`, `remote.revoke`, `remote.setScope`, `remote.bootstrap`, `window.follow` (terminals and Magic widgets), `pane.fitOverride`, `pane.reclaim`, `fs.readBinary`, `ui.presence`, `push.subscribe`, `push.unsubscribe`, `agent.decide`. Events: `remote.updated`, `remote.pairRequest`, `pane.resync` |
 | `packages/protocol/src/model.ts` | `RemoteDevice {id, name, scope, pairedAt, lastSeenAt, expiresAt, connected}`, `RemoteStatus`; `Pane.sizedBy` (which device holds the size, for the desktop's letterbox bar) |
-| `packages/protocol/src/settings.ts` | `remote.enabled` (false), `remote.relay` (URL), `remote.client` (URL), `remote.deviceExpiryDays` (30), `remote.keepAwake` (false), `remote.push` (true), `remote.pushDetails` (false), `remote.approvalWaitSeconds` (60) |
+| `packages/protocol/src/settings.ts` | `remote.enabled` (false), `remote.relay` (URL), `remote.client` (URL), `remote.deviceExpiryDays` (30), `remote.keepAwake` (false), `remote.push.when` (away), `remote.push.awayMinutes` (5), `remote.pushDetails` (true), `remote.approvalWaitSeconds` (60) |
 | `packages/protocol/src/client.ts` | Unchanged; reused by the web client over the Noise channel |
 | new `packages/remote-crypto` | Noise IK/IKpsk1 over WebCrypto, framing, fingerprint words. Shared by core and web client, browser-safe (no `node:` imports). Tested against the cacophony/snow Noise test vectors |
 | `packages/core/src/core.ts` | Connection abstraction (`#serve`, `#subscribers`, `#connWatches`, `#broadcast`); policy check in `call`; handlers for the new methods; constructs `RemoteService`; `close()` shuts it down |
