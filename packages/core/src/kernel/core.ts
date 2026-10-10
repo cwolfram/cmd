@@ -119,6 +119,8 @@ export interface CoreOptions {
   usageKey?: string | null;
   /** Tests: who renders widget previews (default: the app's previewer connection, else Playwright). */
   magicPreviewer?: Previewer | null;
+  /** Tests: a fake push service for remote devices' notifications (default: fetch). */
+  pushFetch?: typeof fetch;
   /**
    * Install cmd's hook into agent configs that lack one (agents.hooks.auto). Only
    * the installed app does (main.ts): a development build's script lives in a checkout.
@@ -251,7 +253,7 @@ export class Core {
     this.windowOps.watchTerminals();
     watchAgents(ctx, Date.now());
     recordNames(this.data, this.agents, this.sessions);
-    this.remote = createRemote(ctx, state);
+    this.remote = createRemote(ctx, state, { pushFetch: opts.pushFetch });
   }
 
   readonly handlers: Handlers = {

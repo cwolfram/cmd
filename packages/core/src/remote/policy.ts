@@ -17,6 +17,7 @@ import type { AgentTracker } from "../agents/tracker.ts";
 import type { PaneManager } from "../terminals/panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WindowManager } from "../windows/index.ts";
+import { validEndpoint } from "./webpush.ts";
 
 /** view: any paired device; control: control-scope devices; never: only the Mac. */
 export type Access = "view" | "control" | "never";
@@ -174,6 +175,8 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "remote.revoke": "never",
   "remote.setScope": "never",
   "remote.bootstrap": "view",
+  "push.subscribe": "view", // notifications are about what view scope already shows
+  "push.unsubscribe": "view",
 };
 
 export class RemoteDenied extends Error {}
@@ -193,6 +196,11 @@ export const MAX_WRITE = 64 * 1024;
 
 type Check<M extends Method> = (p: Params<M>, ctx: PolicyContext) => void;
 const ARGS: { [M in Method]?: Check<M> } = {
+  "push.subscribe": (p) => {
+    if (typeof p.endpoint !== "string" || !validEndpoint(p.endpoint)) throw new RemoteDenied("not a push service this Mac sends to");
+    const k = p.keys as { p256dh?: unknown; auth?: unknown } | undefined;
+    if (typeof k?.p256dh !== "string" || typeof k.auth !== "string" || k.p256dh.length > 100 || k.auth.length > 40) throw new RemoteDenied("bad subscription keys");
+  },
   "pane.create": (p, ctx) => {
     if (p.workspaceId) openWorkspace(ctx, p.workspaceId);
     if (p.callerPaneId) pane(ctx, p.callerPaneId);

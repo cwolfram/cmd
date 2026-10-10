@@ -4,12 +4,13 @@
 // pairing links, asks the Mac to approve new devices, keeps the device list,
 // and runs one HostChannel per connected device. It knows modes only through
 // the registry. Sessions are served by the core like socket clients, held to
-// policy.ts. Every pairing, session, revoke, denied call and failed handshake is
+// policy.ts. Devices that subscribed get the Mac's notifications as Web Push
+// (webpush.ts). Every pairing, session, revoke, denied call and failed handshake is
 // logged (scope "remote") and kept in the remote_log table.
 
 import crypto from "node:crypto";
 import path from "node:path";
-import type { CoreEvent, PaneId, RemoteAccessMode, RemoteTheme, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteSession, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
+import type { AppNotification, CoreEvent, PaneId, RemoteAccessMode, RemoteTheme, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteSession, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import { encodePairing, equal, fromBase64Url, randomBytes, toBase64Url, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import type { Connection, Served } from "../kernel/connection.ts";
@@ -20,6 +21,7 @@ import { exec as loginExec } from "../terminals/loginpath.ts";
 import { registerBuiltinModes } from "./access/builtin.ts";
 import { AccessModes, unknownMode, type AccessMode, type AccessRun, type Check, type ModeContext } from "./access/mode.ts";
 import { HostKeys } from "./keys.ts";
+import { sendPush, SubscriptionGone, vapidPublicKey, type PushSubscriptionData } from "./webpush.ts";
 import { webClientDir } from "./webroot.ts";
 import type { Transport } from "./transport.ts";
 import { HostChannel, type ChannelHost } from "./session.ts";
@@ -30,6 +32,13 @@ const PAIRING_TTL_MS = 5 * 60_000;
 const APPROVAL_TTL_MS = 2 * 60_000;
 /** Failed handshakes per minute before new channels are dropped unread for the rest of it. */
 const MAX_FAILURES = 3;
+/** Who sends our pushes, for the push services (VAPID's subject). */
+const PUSH_SUBJECT = "https://github.com/janoelze/cmd";
+/** How long a push service keeps a notification for a phone that's offline: later than this it's old news. */
+const PUSH_TTL_S = 3600;
+/** A push's title and body are cut to these, so the payload always fits one record. */
+const PUSH_TITLE_MAX = 120;
+const PUSH_BODY_MAX = 600;
 export const REMOTE_VERSION = "1";
 
 export interface RemoteServiceOptions {
@@ -47,6 +56,8 @@ export interface RemoteServiceOptions {
   exec?: ModeContext["exec"];
   /** The built web client the direct listener serves; default: webroot.ts. */
   webDir?: string | null;
+  /** Tests: a fake push service (default: fetch). */
+  pushFetch?: typeof fetch;
 }
 
 export class RemoteService {
@@ -258,6 +269,67 @@ export class RemoteService {
     this.#o.broadcast({ type: "remote.input", deviceId: s.deviceId, name, paneId });
   }
 
+  /** What remote.bootstrap tells a device about push: the key to subscribe with, and whether it has. */
+  pushInfo(deviceId: string): { key: string; subscribed: boolean } | null {
+    if (!this.#key) return null;
+    return { key: vapidPublicKey(this.#keys.vapid()), subscribed: !!this.#device(deviceId)?.push };
+  }
+
+  /** A device's push subscription (push.subscribe); replaces the one it had. */
+  subscribe(conn: Connection, sub: PushSubscriptionData): void {
+    const d = this.#device(conn.deviceId);
+    if (!d) throw new Error("only paired devices get notifications");
+    this.#o.store.saveRemoteDevice({ ...d, push: { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } } });
+    if (d.push?.endpoint !== sub.endpoint) this.audit("push-on", d.id, new URL(sub.endpoint).hostname);
+    this.#changed();
+  }
+
+  unsubscribe(conn: Connection): void {
+    const d = this.#device(conn.deviceId);
+    if (!d) throw new Error("only paired devices get notifications");
+    this.#dropPush(d.id, "push-off");
+  }
+
+  /** Sends a notification the Mac shows (alert set) to every device that subscribed, while remote access is on. */
+  notify(n: AppNotification): void {
+    if (!n.alert || !this.#key || !this.#o.settings.settings["remote.enabled"]) return;
+    const devices = this.#o.store.remoteDevices().filter((d) => d.push);
+    if (!devices.length) return;
+    const payload = new TextEncoder().encode(
+      JSON.stringify({
+        host: toBase64Url(this.#key.publicKey),
+        id: n.id,
+        title: cut(n.title, PUSH_TITLE_MAX),
+        body: cut(n.body, PUSH_BODY_MAX),
+        paneId: n.paneId,
+        windowId: n.windowId ?? null,
+        workspaceId: n.workspaceId ?? null,
+        urgent: n.urgent,
+        at: n.at,
+      }),
+    );
+    const keys = this.#keys.vapid();
+    for (const d of devices) {
+      sendPush(d.push!, payload, { keys, subject: PUSH_SUBJECT, ttl: PUSH_TTL_S, urgency: n.urgent ? "high" : "normal", fetch: this.#o.pushFetch }).catch((err) => {
+        if (err instanceof SubscriptionGone) this.#dropPush(d.id, "push-gone");
+        else log.warn(`push to ${d.name} failed: ${(err as Error).message}`);
+      });
+    }
+  }
+
+  #device(id: string | undefined): RemoteDeviceRecord | undefined {
+    return id ? this.#o.store.remoteDevices().find((d) => d.id === id) : undefined;
+  }
+
+  #dropPush(id: string, kind: string): void {
+    const d = this.#device(id);
+    if (!d?.push) return;
+    const { push: _, ...rest } = d;
+    this.#o.store.saveRemoteDevice(rest);
+    this.audit(kind, id, null);
+    this.#changed();
+  }
+
   devices(): RemoteDevice[] {
     this.#expire();
     const ttl = this.#ttl();
@@ -270,6 +342,7 @@ export class RemoteService {
       lastSeenAt: d.lastSeenAt,
       expiresAt: d.lastSeenAt + ttl,
       connected: live.has(d.id),
+      push: !!d.push,
     }));
   }
 
@@ -448,10 +521,14 @@ function builtinModes(): AccessModes {
 /** The Mac's theme as paired phones draw it (they never get settings.updated). */
 export const remoteTheme = (s: Settings): RemoteTheme => ({ appearance: s["theme.appearance"], dark: s["theme.dark"], light: s["theme.light"] });
 
-/** Remote access (`core.remote`): the audit log as events in the core's log, sessions served like the socket's, phones told when the theme changes. */
-export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast">, stateDir: string | null): RemoteService {
+/**
+ * Remote access (`core.remote`): the audit log as events in the core's log, sessions served
+ * like the socket's, phones told when the theme changes, and the Mac's notifications pushed
+ * to devices that subscribed.
+ */
+export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast" | "notifications">, stateDir: string | null, o: { pushFetch?: typeof fetch } = {}): RemoteService {
   core.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => core.broadcast({ type: "theme.updated", theme: remoteTheme(core.settings.settings) }));
-  return new RemoteService({
+  const remote = new RemoteService({
     store: core.store,
     audit: {
       record: (kind, deviceId, detail) => core.data.record({ id: `remote:${Date.now()}:${kind}:${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
@@ -461,5 +538,14 @@ export function createRemote(core: Pick<CoreContext, "store" | "data" | "setting
     stateDir,
     serve: (conn) => core.serve(conn),
     broadcast: (e) => core.broadcast(e),
+    pushFetch: o.pushFetch,
   });
+  core.notifications.on("notification", (n) => remote.notify(n));
+  return remote;
+}
+
+/** At most `max` characters, with an ellipsis when cut. */
+function cut(s: string, max: number): string {
+  const chars = Array.from(s); // never half an emoji
+  return chars.length <= max ? s : `${chars.slice(0, max - 1).join("")}…`;
 }

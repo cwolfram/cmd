@@ -11,16 +11,24 @@ import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until } from "../../../test/system.ts";
+import { decryptPush, receiverKeys } from "./push-receiver.ts";
 
 const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cmd-remote-")));
 let relay: Relay;
 let core: Core;
 /** Events a local client (the desktop app) sees. */
 const events: CoreEvent[] = [];
+/** What the core posted to push services, and what they answer. */
+const pushes: { url: string; body: Uint8Array; headers: Record<string, string> }[] = [];
+let pushStatus = 201;
+const pushFetch = (async (url: string, init: RequestInit) => {
+  pushes.push({ url, body: init.body as Uint8Array, headers: init.headers as Record<string, string> });
+  return new Response(null, { status: pushStatus });
+}) as typeof fetch;
 
 beforeAll(async () => {
   relay = await startRelay({ log: () => {} });
-  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home: dir });
+  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home: dir, pushFetch });
   core.serve({ access: "local", send: () => {}, event: (e) => events.push(e), close: () => {} }).receive(JSON.stringify({ id: 1, method: "events.subscribe", params: {} }));
   core.settings.set("remote.relay", relay.url);
   core.settings.set("remote.client", "https://client.test");
@@ -176,6 +184,58 @@ describe("remote access", () => {
     await expect.poll(() => size()).toMatchObject({ cols: 130, rows: 42, sizedBy: null });
   });
 
+  it("pushes the Mac's notifications to a device that subscribed", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const boot = await client.call("remote.bootstrap", {});
+    expect(boot.push).toMatchObject({ subscribed: false });
+    expect(boot.push!.key).toMatch(/^B[A-Za-z0-9_-]{86}$/); // uncompressed P-256
+    // Only the browsers' push services, and only from a device.
+    await expect(client.call("push.subscribe", { endpoint: "https://192.168.1.1/hook", keys: { p256dh: "x", auth: "y" } })).rejects.toThrow(/push service/);
+    await expect(core.call("push.subscribe", { endpoint: "https://web.push.apple.com/x", keys: { p256dh: "x", auth: "y" } })).rejects.toThrow(/paired devices/);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://web.push.apple.com/abc", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    expect(core.remote.devices()[0]!.push).toBe(true);
+    expect((await client.call("remote.bootstrap", {})).push).toMatchObject({ subscribed: true });
+
+    // Only what the Mac shows as a notification (alert) is pushed.
+    await core.call("notify.send", { title: "Build", body: "Done in 4m" });
+    await expect.poll(() => pushes.length).toBe(1);
+    expect(pushes[0]!.url).toBe("https://web.push.apple.com/abc");
+    expect(pushes[0]!.headers).toMatchObject({ Urgency: "high", "Content-Encoding": "aes128gcm" });
+    expect(pushes[0]!.headers.Authorization).toMatch(/^vapid t=.+, k=/);
+    const sent = JSON.parse(decryptPush(pushes[0]!.body, browser.private, browser.auth));
+    expect(sent).toMatchObject({ host: Buffer.from(hostKey).toString("base64url"), title: "Build", body: "Done in 4m", urgent: true });
+
+    // Remote access off: nothing leaves the Mac.
+    await core.call("remote.disable", {});
+    await core.call("notify.send", { body: "quiet" });
+    await core.call("remote.enable", {});
+    await until("the relay link online", () => core.remote.status().state === "online");
+    expect(pushes).toHaveLength(1);
+
+    // The push service says the subscription is gone: it's dropped.
+    pushStatus = 410;
+    await core.call("notify.send", { body: "again" });
+    await expect.poll(() => core.remote.devices()[0]!.push).toBe(false);
+    pushStatus = 201;
+    c.ws.close();
+  });
+
+  it("stops pushing to a device that unsubscribed", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://fcm.googleapis.com/fcm/send/xyz", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    await client.call("push.unsubscribe", {});
+    expect(core.remote.devices()[0]!.push).toBe(false);
+    const before = pushes.length;
+    await core.call("notify.send", { body: "nobody" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(pushes).toHaveLength(before);
+    c.ws.close();
+  });
+
   it("refuses unknown devices", async () => {
     const c = await connect(route, { hostKey, device: await generateKeyPair() });
     await expect.poll(c.closed).toBe(true);
@@ -193,6 +253,6 @@ describe("remote access", () => {
   it("logs what happened, as events in the log", async () => {
     const kinds = (await core.call("remote.log", { limit: 500 })).map((r) => r.kind);
     expect(core.data.query({ types: ["remote.audit"], limit: 500 }).length).toBe(kinds.length);
-    for (const k of ["enabled", "paired", "session", "denied", "pair-denied", "handshake-failed", "revoked"]) expect(kinds).toContain(k);
+    for (const k of ["enabled", "paired", "session", "denied", "pair-denied", "handshake-failed", "revoked", "push-on", "push-gone", "push-off"]) expect(kinds).toContain(k);
   });
 });
