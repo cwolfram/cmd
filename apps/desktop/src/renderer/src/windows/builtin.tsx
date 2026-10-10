@@ -6,6 +6,7 @@ import "./json/register.tsx";
 import "./sqlite/register.tsx";
 import "./visualizer/register.tsx";
 import "./image/register.tsx";
+import "./video/register.tsx";
 import "./jam/register.tsx";
 import "./browser/register.tsx";
 import "./files/register.tsx";

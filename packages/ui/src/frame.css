@@ -253,3 +253,28 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 /* A checkerboard behind the picture only, in fixed cells that don't swim with the zoom. */
 .ui-picture { display: block; background: conic-gradient(var(--bg-hover) 25%, transparent 0 50%, var(--bg-hover) 0 75%, transparent 0) 0 0 / 16px 16px; }
 .ui-picture[data-crisp] { image-rendering: pixelated; }
+
+/* ── scrubber (media.tsx) ── */
+.ui-scrub { flex: none; padding: var(--space-md) var(--inset); background: var(--bg-sidebar); box-shadow: inset 0 1px 0 var(--separator); user-select: none; }
+.ui-scrub-track { position: relative; height: 16px; margin-inline: var(--space-sm); cursor: default; touch-action: none; }
+.ui-scrub-track::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--ink) 14%, transparent); }
+.ui-scrub-played { position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: var(--radius-pill); background: var(--accent); pointer-events: none; }
+.ui-scrub-head { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: var(--radius-pill); background: var(--text); box-shadow: 0 0 0 0.5px var(--popover-edge), 0 1px 3px var(--shadow); pointer-events: none; }
+.ui-scrub-tip { position: absolute; bottom: calc(100% + var(--space-xs)); transform: translateX(-50%); padding: var(--space-2xs) var(--space-sm); background: var(--popover-bg); border: 1px solid var(--popover-edge); border-radius: var(--radius-sm); color: var(--text); font: var(--text-xs)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+
+/* With frames: a strip as tall as a frame, the playhead a line through it. */
+.ui-scrub[data-thumbs] .ui-scrub-track { height: 44px; margin-inline: 0; }
+.ui-scrub[data-thumbs] .ui-scrub-track::before { display: none; }
+.ui-scrub-frames { position: absolute; inset: 0; display: flex; overflow: hidden; border-radius: var(--radius-sm); background: var(--scrim); pointer-events: none; }
+.ui-scrub-frames img { flex: 1; min-width: 0; height: 100%; object-fit: cover; display: block; }
+.ui-scrub[data-thumbs] .ui-scrub-head { top: calc(-1 * var(--space-2xs)); bottom: calc(-1 * var(--space-2xs)); width: 2px; height: auto; margin: 0 0 0 -1px; border-radius: var(--radius-pill); }
+
+/* Trim: what's cut is shaded, the kept range framed in the accent with a grip at each end. */
+.ui-scrub-shade { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--scrim) 65%, transparent); pointer-events: none; }
+.ui-scrub-shade:first-of-type { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.ui-scrub-range { position: absolute; top: 0; bottom: 0; border-block: 2px solid var(--accent); pointer-events: none; }
+.ui-scrub-handle { position: absolute; top: -2px; bottom: -2px; width: var(--space-md); background: var(--accent); pointer-events: auto; cursor: ew-resize; }
+.ui-scrub-handle[data-end="start"] { right: 100%; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.ui-scrub-handle[data-end="end"] { left: 100%; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.ui-scrub-handle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 2px; height: 14px; margin: -7px 0 0 -1px; border-radius: var(--radius-pill); background: var(--on-accent); opacity: 0.8; }
+.ui-scrub[data-trim] .ui-scrub-track { margin-inline: var(--space-md); }

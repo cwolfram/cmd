@@ -326,6 +326,40 @@ export const sqliteType: WindowType<{ path: string; table?: string; tab?: string
   },
 };
 
+export const VIDEO_EXTENSIONS = ["mp4", "m4v", "mov", "webm"];
+
+/**
+ * A video: played on the stage, trimmed into a new file. `t` is where it was
+ * paused (s), `rate` its speed, `loop` and `muted` its toggles.
+ */
+export const videoType: WindowType<{ path: string; t?: number; rate?: number; loop?: boolean; muted?: boolean }> = {
+  kind: "video",
+  title: "Video",
+  icon: "film",
+  // The browser plays the same files; priority makes videos open here.
+  opens: { extensions: VIDEO_EXTENSIONS, priority: 10 },
+  fromTarget: (t) => ({ path: t.type === "path" ? t.path : "" }),
+  create(input) {
+    const file = path.resolve(expandHome(str(input.path) ?? ""));
+    if (!fs.statSync(file).isFile()) throw new Error(`not a file: ${file}`);
+    return { state: { path: file }, title: path.basename(file) };
+  },
+  update(state, patch) {
+    const next = { ...state };
+    const p = str(patch.path);
+    if (p !== undefined) {
+      const file = path.resolve(expandHome(p));
+      if (!fs.statSync(file).isFile()) throw new Error(`not a file: ${file}`);
+      next.path = file;
+    }
+    if (typeof patch.t === "number" && patch.t >= 0) next.t = patch.t;
+    if (typeof patch.rate === "number" && patch.rate > 0 && patch.rate <= 4) next.rate = patch.rate;
+    if (typeof patch.loop === "boolean") next.loop = patch.loop;
+    if (typeof patch.muted === "boolean") next.muted = patch.muted;
+    return { state: next, title: path.basename(next.path) };
+  },
+};
+
 /**
  * Built-in widgets (docs/16-widgets.md): native views over what the core
  * already knows, offered in the Widget Library, not the File menu.
@@ -680,6 +714,7 @@ export function registerBuiltins(types: WindowTypes): void {
   types.register(pdfType);
   types.register(sqliteType);
   types.register(imageType);
+  types.register(videoType);
   types.register(magicType);
   types.register(agentsType);
   types.register(diffType);
