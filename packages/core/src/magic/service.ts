@@ -44,6 +44,7 @@ import { DENO_VERSION, denoVersion, describeDataError, findDeno, installDeno, ru
 import type { Previewer } from "../widgets/preview.ts";
 import { WidgetSecrets } from "../widgets/secrets.ts";
 import type { VerifyContext } from "../widgets/verify.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("magic");
 
@@ -920,4 +921,31 @@ export function refineRequest(prev: MagicState, change: string): string {
         : ""
     : "";
   return [earlier, `Change it as asked, keeping what still fits and everything those requests asked for that the change doesn't override: ${change}`, legacy].filter(Boolean).join("\n\n");
+}
+
+/** Magic (`core.magic`) over the core's windows, AI and notifications; `widgetSocket`: where data.ts runs reach the event log. */
+export function createMagic(
+  core: Pick<CoreContext, "windows" | "settings" | "ai" | "notifications" | "workspaces" | "widgetTokens" | "broadcast" | "previewer" | "watched" | "libraryChanged">,
+  o: Pick<MagicServiceOptions, "backend" | "stateDir" | "deno" | "installDeno"> & { widgetSocket: string | null },
+): MagicService {
+  return new MagicService({
+    widgetSocket: o.widgetSocket ? { path: o.widgetSocket, token: (widgetId, workspaceId, events) => core.widgetTokens.issue({ widgetId, workspaceId, events }) } : null,
+    windows: core.windows,
+    settings: () => core.settings.settings,
+    ai: core.ai,
+    broadcast: (e) => core.broadcast(e),
+    notify: (n) => core.notifications.widget(n),
+    backend: o.backend,
+    stateDir: o.stateDir ?? null,
+    previewer: () => core.previewer(),
+    deno: o.deno,
+    installDeno: o.installDeno,
+    watched: () => core.watched(),
+    libraryChanged: () => core.libraryChanged(),
+    cwdFor: (w) => core.workspaces.get(w.workspaceId)?.root ?? core.workspaces.home().root,
+    workspaceFor: (w) => {
+      const sp = core.workspaces.get(w.workspaceId);
+      return sp && !sp.home ? { name: sp.name, root: sp.root } : null;
+    },
+  });
 }

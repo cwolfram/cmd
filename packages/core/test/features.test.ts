@@ -8,8 +8,8 @@ import { fakeFactory } from "./fake-pty.ts";
 describe("features", () => {
   const core = new Core({ socketPath: "/dev/null", dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0 });
   afterAll(() => core.close());
-  // The features' handlers as Core sees them (its own #ctx is private; these tests only read the keys).
-  const slices = ALL.filter((f) => f.handlers).map((f) => [f.id, Object.keys(f.handlers!({ core } as never))] as const);
+  // Handlers only close over the context: building them reads nothing.
+  const slices = ALL.filter((f) => f.handlers).map((f) => [f.id, Object.keys(f.handlers!({} as never))] as const);
 
   it("name their methods after themselves", () => {
     for (const [id, methods] of slices) {

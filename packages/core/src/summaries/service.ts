@@ -24,6 +24,9 @@ import { parseClaude, parseCodex, type ConversationEntry, type SessionDocument }
 import { prune, redact } from "./prune.ts";
 import { buildContext } from "../ai/context.ts";
 import { renderSummary, SUMMARY_SCHEMA, type SummaryFacts, type SummaryText } from "./render.ts";
+import type { CoreContext } from "../kernel/context.ts";
+import { sessionIdOf } from "../agents/tracker.ts";
+import { conversationOf } from "../data/views/conversation.ts";
 
 const log = logger("summaries");
 
@@ -318,4 +321,28 @@ export class SummaryService {
     done.catch(() => {}); // the file and the notification say it; callers that wait get the error
     return { path: file, windowId, done };
   }
+}
+
+/** Session summaries (`core.summaries`), kept in `dir`, shown in a Markdown window. */
+export function createSummaries(core: Pick<CoreContext, "ai" | "agents" | "data" | "transcripts" | "windows" | "workspaces" | "notifications" | "broadcast" | "opened">, dir: string | null): SummaryService {
+  return new SummaryService({
+    ai: {
+      object: (o) => core.ai.object(o),
+      modelName: () => {
+        const p = core.ai.provider();
+        return p ? (core.ai.status().providers[p].models?.fast.name ?? null) : null;
+      },
+    },
+    agent: (id) => core.agents.get(id),
+    turns: (id) => core.agents.activity.turns(id, 500),
+    transcript: (a) => (sessionIdOf(a) ? conversationOf(core.data, `${a.kind}:${sessionIdOf(a)}`) : null),
+    agentTitle: (kind) => core.transcripts.get(kind)?.title ?? kind,
+    dir,
+    show: (file, workspaceId) => {
+      const open = core.windows.others().find((w) => (w.kind === "markdown" || w.kind === "text") && w.state.path === file);
+      if (open) return core.broadcast({ type: "window.focus", id: open.id }), open.id;
+      return core.opened(core.windows.open("markdown", { path: file }, core.workspaces.mustOpen(workspaceId))).id;
+    },
+    notify: (id, title, body) => core.notifications.window(id, "summary", title, body),
+  });
 }

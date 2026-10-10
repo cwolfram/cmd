@@ -4,21 +4,21 @@
 
 import path from "node:path";
 import type { ActionsMethods, WorkspaceId } from "@cmd/protocol";
-import type { Core } from "../kernel/core.ts";
-import type { Feature, FeatureContext } from "../kernel/features.ts";
+import type { CoreContext } from "../kernel/context.ts";
+import type { Feature } from "../kernel/features.ts";
 import type { HandlerSlice } from "../kernel/handlers.ts";
 import { projectIdOf } from "../data/project.ts";
 import { expandHome } from "../windows/builtin.ts";
 import { ActionsService } from "./service.ts";
 
 /** The folder Workspace Actions are for: a path given, else the workspace's root. */
-export function actionsRoot(core: Core, p: string | undefined, workspaceId: WorkspaceId | undefined): string {
+export function actionsRoot(core: Pick<CoreContext, "workspaces">, p: string | undefined, workspaceId: WorkspaceId | undefined): string {
   if (p) return path.resolve(expandHome(p));
   return (workspaceId ? core.workspaces.get(workspaceId)?.root : undefined) ?? core.workspaces.home().root;
 }
 
 /** The service (`core.actions`), with what it tells the app and when it describes again. */
-export function createActions({ core, broadcast, opened }: FeatureContext): ActionsService {
+export function createActions(core: Pick<CoreContext, "panes" | "store" | "data" | "ai" | "settings" | "windows" | "agents" | "workspaces" | "usage" | "broadcast" | "opened">): ActionsService {
   const actions = new ActionsService({
     panes: core.panes,
     db: core.store.db,
@@ -44,13 +44,13 @@ export function createActions({ core, broadcast, opened }: FeatureContext): Acti
       return pane;
     },
   });
-  actions.on("changed", (root) => broadcast({ type: "actions.changed", root }));
+  actions.on("changed", (root) => core.broadcast({ type: "actions.changed", root }));
   // A dev server said where it listens: open it beside its terminal, once, if asked to.
   actions.on("url", (paneId, url) => {
     const pane = core.panes.get(paneId);
     if (!pane || !core.settings.settings["actions.openBrowser"]) return;
     if (core.windows.list().some((w) => w.kind === "browser" && w.workspaceId === pane.workspaceId && typeof w.state.url === "string" && w.state.url.startsWith(url.replace(/\/$/, "")))) return;
-    opened(core.windows.open("browser", { url }, core.workspaces.mustOpen(pane.workspaceId)));
+    core.opened(core.windows.open("browser", { url }, core.workspaces.mustOpen(pane.workspaceId)));
   });
   core.settings.bind(["actions.describe"], () => actions.aiChanged());
   core.ai.on("updated", () => actions.aiChanged());
@@ -59,11 +59,11 @@ export function createActions({ core, broadcast, opened }: FeatureContext): Acti
 
 export const actionsFeature = {
   id: "actions",
-  handlers: ({ core, place }: FeatureContext): HandlerSlice<keyof ActionsMethods> => ({
+  handlers: (core: CoreContext): HandlerSlice<keyof ActionsMethods> => ({
     "actions.list": (p) => core.actions.list(actionsRoot(core, p.path, p.workspaceId)),
-    "actions.run": (p) => core.actions.run(p.root, p.actionId, place({ workspaceId: p.workspaceId }, { path: p.root }).id, { restart: p.restart, fresh: p.fresh }),
+    "actions.run": (p) => core.actions.run(p.root, p.actionId, core.place({ workspaceId: p.workspaceId }, { path: p.root }).id, { restart: p.restart, fresh: p.fresh }),
     "actions.stop": (p) => (core.actions.stop(p.root, p.actionId), null),
     "actions.pin": (p) => (core.actions.pin(p.root, p.actionId, p.pinned), null),
   }),
-  dispose: ({ core }: FeatureContext) => core.actions.dispose(),
+  dispose: (core: CoreContext) => core.actions.dispose(),
 } satisfies Feature;

@@ -22,7 +22,9 @@ import type { Agent, AppNotification, Attention, Pane, PaneId, Settings, Workspa
 import type { OscEvent } from "../terminals/osc.ts";
 import type { PaneManager } from "../terminals/panes.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
-import { agentNotice, subjectOf, type NoticeKind } from "../agents/notice.ts";
+import { agentNotice, cleanAiBody, NOTICE_SYSTEM, noticeContext, subjectOf, type NoticeKind } from "../agents/notice.ts";
+import { buildContext } from "../ai/context.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 /** Writes an agent notification's body with AI; null: use cmd's own (agents/notice.ts). */
 export type NoticeWriter = (a: Agent, kind: NoticeKind, signal: AbortSignal) => Promise<string | null>;
@@ -61,8 +63,8 @@ const cleanTitle = (t: string) => t.replace(/^[\s✳✻✽✶✢·•*◐◑◒�
 
 
 export class NotificationCenter extends EventEmitter<{ notification: [AppNotification] }> {
-  /** The workspace a terminal or window is in, for the notifications about it (set by the core once windows exist). */
-  workspaceOf: (paneId: PaneId | null, windowId: WindowId | null) => WorkspaceId | null = () => null;
+  /** The workspace a terminal or window is in, for the notifications about it. */
+  workspaceOf: (paneId: PaneId | null, windowId: WindowId | null) => WorkspaceId | null;
   #panes: PaneManager;
   #settings: () => Settings;
   #agentStates = new Map<string, Agent["state"]>();
@@ -74,8 +76,9 @@ export class NotificationCenter extends EventEmitter<{ notification: [AppNotific
   #writer: NoticeWriter | null;
   #agents: AgentTracker;
 
-  constructor(panes: PaneManager, agents: AgentTracker, settings: () => Settings, writer: NoticeWriter | null = null) {
+  constructor(panes: PaneManager, agents: AgentTracker, settings: () => Settings, writer: NoticeWriter | null = null, workspaceOf: NotificationCenter["workspaceOf"] = () => null) {
     super();
+    this.workspaceOf = workspaceOf;
     this.#panes = panes;
     this.#settings = settings;
     this.#writer = writer;
@@ -271,4 +274,24 @@ function quick(a: Agent): boolean {
 function label(pane: Pane): string {
   const t = cleanTitle(pane.title);
   return t && t !== pane.shell.split("/").pop() ? t : pane.foreground || "Terminal";
+}
+
+/** The core's notifications (`core.notifications`): written with AI when it's ready, sent to every client. */
+export function createNotifications(core: Pick<CoreContext, "panes" | "agents" | "settings" | "ai" | "naming" | "windows" | "broadcast">): NotificationCenter {
+  const workspaceOf = (paneId: PaneId | null, windowId: WindowId | null) => (paneId ? core.panes.get(paneId)?.workspaceId : windowId ? core.windows.others().find((w) => w.id === windowId)?.workspaceId : null) ?? null;
+  const center = new NotificationCenter(core.panes, core.agents, () => core.settings.settings, (a, kind, signal) => writeNotice(core, a, kind, signal), workspaceOf);
+  center.on("notification", (notification) => core.broadcast({ type: "notification", notification }));
+  return center;
+}
+
+/** An agent notification's body, by the fast model; null without AI. */
+async function writeNotice(core: Pick<CoreContext, "ai" | "naming">, a: Agent, kind: NoticeKind, signal: AbortSignal): Promise<string | null> {
+  if (!core.ai.status().ready) return null;
+  const ctx = buildContext({ purpose: `notify.${kind}`, budget: 6000, parts: [{ name: "turn", text: JSON.stringify(noticeContext(a, kind)) }] });
+  // A name being decided for this turn goes in the title (the notifier reads it when sending): written meanwhile, within the notifier's wait.
+  // The notifier hears the agent's update before the namer does: after a tick, both have.
+  await null;
+  const named = Promise.race([core.naming.settled(a.id), new Promise((r) => signal.addEventListener("abort", r, { once: true }))]);
+  const [res] = await Promise.all([core.ai.complete({ tier: "fast", purpose: `notify.${kind}`, system: NOTICE_SYSTEM, prompt: ctx.text, effort: "minimal", maxOutputTokens: 800, signal, context: ctx.record }), named]);
+  return cleanAiBody(res.value);
 }

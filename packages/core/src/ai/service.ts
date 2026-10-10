@@ -31,6 +31,7 @@ import {
 import type { SecretsService } from "../kernel/secrets.ts";
 import { aiBackend, completeObject, completeText, type AiBackendOptions, type Backend, type CompleteRequest, type CompleteResult, type ObjectRequest, type Usage } from "./backends.ts";
 import { FALLBACK_MODELS, KeyRejected, listModels, pickModel } from "./models.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("ai");
 
@@ -380,3 +381,22 @@ const safeOutput = (fn: () => string) => {
     return undefined;
   }
 };
+
+/** The AI service (`core.ai`): every model call recorded in the log, settings applied live, clients told. */
+export function createAi(core: Pick<CoreContext, "settings" | "secrets" | "data" | "broadcast">, o: { stateDir: string | null; listModels?: AiServiceOptions["listModels"] }): AiService {
+  const ai = new AiService({
+    settings: () => core.settings.settings,
+    secrets: core.secrets,
+    stateDir: o.stateDir,
+    listModels: o.listModels,
+    // Every model call is a fact: what for, which model, how much; what was sent and what came back as the content.
+    onCall: (c) => {
+      const at = Date.now() - c.ms;
+      const content = c.input !== undefined || c.output !== undefined ? `${c.input ?? ""}\n\n=== output ===\n\n${c.output ?? ""}` : null;
+      core.data.record({ id: `ai:${at}:${c.purpose}:${Math.random().toString(36).slice(2, 8)}`, at, until: at + c.ms, type: "ai.call", source: "cmd", text: `${c.purpose} · ${c.model}`, data: { purpose: c.purpose, provider: c.provider, model: c.model, tier: c.tier, ms: c.ms, tokens: { in: c.usage?.input ?? 0, out: c.usage?.output ?? 0 }, ok: c.ok, ...(c.error ? { error: c.error } : {}), ...(c.context ? { context: { budget: c.context.budget, chars: c.context.chars, hash: c.context.hash, parts: c.context.parts, events: c.context.events.slice(0, 500) } } : {}) }, content });
+    },
+  });
+  ai.on("updated", (status) => core.broadcast({ type: "ai.updated", status }));
+  core.settings.bind(["ai.provider", "ai.anthropic.model", "ai.anthropic.fastModel", "ai.openai.model", "ai.openai.fastModel"], () => ai.settingsChanged());
+  return ai;
+}

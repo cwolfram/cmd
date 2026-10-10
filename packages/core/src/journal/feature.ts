@@ -3,8 +3,8 @@
 // the core and the lists of methods and window types only name it.
 
 import type { JournalMethods, WorkspaceId } from "@cmd/protocol";
-import type { Core } from "../kernel/core.ts";
-import type { Feature, FeatureContext } from "../kernel/features.ts";
+import type { CoreContext } from "../kernel/context.ts";
+import type { Feature } from "../kernel/features.ts";
 import type { HandlerSlice } from "../kernel/handlers.ts";
 import { scopedWidget } from "../windows/scoped.ts";
 import { JournalService, SYNC_FRESH_MS } from "./service.ts";
@@ -14,7 +14,7 @@ import { JournalStore } from "./store.ts";
 export const journalType = scopedWidget("journal", "Journal", "book", "What happened, a few lines a day: releases, features, fixes and investigations, from your agents, terminals and git.");
 
 /** The journal's service, from the core's (`core.journal`). */
-export function createJournal(core: Core): JournalService {
+export function createJournal(core: Pick<CoreContext, "store" | "agents" | "data" | "sessions" | "workspaces" | "ai" | "scheduler">): JournalService {
   return new JournalService({
     store: new JournalStore(core.store.db, { recordedBy: core.agents.activity.recordedBy, data: core.data, turns: (since) => core.agents.activity.turnsSince(since), sessions: (since) => core.sessions.sessionsSince(since), workspaces: () => core.workspaces.list() }),
     workspaces: () => core.workspaces.list(),
@@ -32,7 +32,7 @@ export function createJournal(core: Core): JournalService {
 
 export const journalFeature = {
   id: "journal",
-  handlers: ({ core }: FeatureContext): HandlerSlice<keyof JournalMethods> => ({
+  handlers: (core: CoreContext): HandlerSlice<keyof JournalMethods> => ({
     "journal.days": (p) => core.journal.days(journalScope(p), Math.min(p.count ?? 7, 60), p.write),
     "journal.day": async (p) => (await core.journal.sync(p.write === "force" ? 0 : SYNC_FRESH_MS), core.journal.day(journalScope(p), core.journal.dayOf(p.date), p.write)),
     "journal.week": (p) => core.journal.week(journalScope(p), p.date, p.write),
@@ -53,13 +53,13 @@ export const journalFeature = {
   }),
   startup: {
     label: "Starting the journal",
-    run({ core }: FeatureContext) {
+    run(core: CoreContext) {
       core.journal.start();
       // A workspace opened on a folder: what git and imports recorded there before belongs to it too.
       core.workspaces.on("updated", () => void core.journal.assignWorkspaces());
     },
   },
-  dispose: ({ core }: FeatureContext) => core.journal.dispose(),
+  dispose: (core: CoreContext) => core.journal.dispose(),
 } satisfies Feature;
 
 /** A journal method's scope: a workspace, else the one asked for, else everything. */

@@ -15,6 +15,7 @@ import { buildContext } from "../ai/context.ts";
 import { projectOf } from "../data/project.ts";
 import { askText } from "./names-eval.ts";
 import { askChecked, atPrompt, decide, NAME_SCHEMA, nameSystem, NO_NAME, shouldAsk, FIRST_TRIES, type NameState, type NamerAnswer, type NamerTurn } from "./namer.ts";
+import type { CoreContext } from "../kernel/context.ts";
 
 const log = logger("names");
 
@@ -102,4 +103,15 @@ export class AgentNaming {
     const res = await this.#o.ai.object<NamerAnswer>({ tier: "fast", purpose: "session.name", system: nameSystem(), prompt: ctx.text, schema: NAME_SCHEMA as unknown as Record<string, unknown>, effort: "minimal", maxOutputTokens: 300, temperature: 0, context: ctx.record });
     return res.value;
   }
+}
+
+/** Agent naming (`core.naming`) over the core's AI, settings and agents. */
+export function createNaming(core: Pick<CoreContext, "ai" | "settings" | "agents">): AgentNaming {
+  return new AgentNaming({
+    ai: { object: (o) => core.ai.object(o), ready: () => core.ai.status().ready },
+    settings: () => core.settings.settings,
+    agents: () => core.agents.list(),
+    turns: (id) => core.agents.activity.turns(id, 40),
+    name: (id, name, why) => core.agents.modelName(id, name, why),
+  });
 }

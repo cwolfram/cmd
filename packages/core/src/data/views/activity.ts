@@ -66,7 +66,8 @@ export class ActivityView {
   readonly needsRebuild: boolean;
   #pace: Pacer;
 
-  constructor(data: DataService, views: ViewsStore, o: { deferRebuild?: boolean; pace?: Pacer } = {}) {
+  constructor(data: DataService, views: ViewsStore, o: { deferRebuild?: boolean; pace?: Pacer; workspaceOf?: (paneId: PaneId) => string | null } = {}) {
+    this.workspaceOf = o.workspaceOf ?? (() => null);
     this.#data = data;
     this.#views = views;
     this.#pace = o.pace ?? inlinePacer;
@@ -81,8 +82,8 @@ export class ActivityView {
     return ACTIVITY_SCHEMA;
   }
 
-  /** The workspace a pane is in, for agent events (set by the core; tests leave it). */
-  workspaceOf: (paneId: PaneId) => string | null = () => null;
+  /** The workspace a pane is in, for agent events (the core's panes; tests leave it out). */
+  workspaceOf: (paneId: PaneId) => string | null;
 
   /**
    * Stores an event an agent's hook reported; returns it normalised. The row

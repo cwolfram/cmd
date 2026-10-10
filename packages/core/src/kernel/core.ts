@@ -9,15 +9,15 @@ import path from "node:path";
 import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, RemoteTheme, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, AppNotification, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { EXPORT_FORMAT, lineSplitter, TURN_FORMAT } from "@cmd/protocol";
 import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
-import { AgentTracker, sessionIdOf } from "../agents/tracker.ts";
+import { AgentTracker } from "../agents/tracker.ts";
 import type { JournalService } from "../journal/service.ts";
 import { createJournal } from "../journal/feature.ts";
-import { ALL, featureHandlers, type FeatureContext } from "./features.ts";
+import { ALL, featureHandlers } from "./features.ts";
+import { contextOf, type CoreContext } from "./context.ts";
 import type { Handlers } from "./handlers.ts";
 import { recordNames, recordNotifications, recordWorkspaces, recordWindows } from "../data/recorders.ts";
 import { removeOldBackups } from "../data/migrations.ts";
 import { DataService } from "../data/service.ts";
-import { buildContext } from "../ai/context.ts";
 import { describeAgent, describePane } from "../data/describe.ts";
 import { PaneOutputRecorder } from "../data/sources/pane-output.ts";
 import { projectIdOf } from "../data/project.ts";
@@ -29,14 +29,12 @@ import { SessionsView } from "../data/views/sessions.ts";
 import { Scheduler } from "./scheduler.ts";
 import { SearchView } from "../data/views/search.ts";
 import { TranscriptIngest } from "../data/sources/ingest.ts";
-import { conversationOf } from "../data/views/conversation.ts";
 import { rewrite } from "../agents/activity/fixture.ts";
 import { AgentHomes } from "../agents/homes.ts";
-import { cleanAiBody, NOTICE_SYSTEM, noticeContext, type NoticeKind } from "../agents/notice.ts";
-import { AgentNaming } from "../agents/naming.ts";
+import { createNaming, type AgentNaming } from "../agents/naming.ts";
 import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefingFlag, writeHookFiles, type HookFiles } from "../agents/hooks.ts";
 import { hookEventName } from "../agents/state.ts";
-import { NotificationCenter } from "../notifications/center.ts";
+import { createNotifications, type NotificationCenter } from "../notifications/center.ts";
 import { CommandLog, indexCommandOutput } from "../terminals/commands.ts";
 import { createTimers, type TimerAlarms } from "../windows/timers.ts";
 import { PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
@@ -55,16 +53,16 @@ import { createPath, duplicatePath, renamePath, transferPaths } from "../lib/fil
 import { Store } from "./store.ts";
 import { SettingsService } from "./settings.ts";
 import { WorkspaceManager } from "../workspaces/manager.ts";
-import { MagicService } from "../magic/service.ts";
+import { createMagic, type MagicService } from "../magic/service.ts";
 import { SecretsService } from "./secrets.ts";
 import type { Backend } from "../ai/backends.ts";
-import { AiService } from "../ai/service.ts";
+import { createAi, type AiService } from "../ai/service.ts";
 import { playwrightPreviewer, type Previewer } from "../widgets/preview.ts";
 import type { MagicPreviewRequest, MagicPreviewShot } from "@cmd/protocol";
 import type { Connection, Served } from "./connection.ts";
 import { checkRemoteCall, RemoteDenied, remoteEventVisible, type PolicyContext } from "../remote/policy.ts";
 import { RemoteService } from "../remote/service.ts";
-import { SummaryService } from "../summaries/service.ts";
+import { createSummaries, type SummaryService } from "../summaries/service.ts";
 import { UsageStats } from "./usage.ts";
 import { changeCode } from "../jam/change.ts";
 import type { DevKeys } from "./secrets.ts";
@@ -261,6 +259,14 @@ export class Core {
     this.scheduler.on("startup", (status) => this.#broadcast({ type: "core.startup", status }));
     this.store = new Store(opts.dbPath ?? ":memory:");
     this.settings = new SettingsService(opts.settingsPath ?? null);
+    // Before anything that counts (windows, terminals, agents): services may use it from their first call.
+    this.usage = new UsageStats({
+      url: opts.usageUrl ?? null,
+      key: opts.usageKey ?? null,
+      enabled: () => this.settings.settings["diagnostics.usageStats"],
+      id: machineId,
+      version: process.env.CMD_APP_VERSION ?? "source",
+    });
     const settings = () => this.settings.settings;
     // Window types (built-ins now; plugins register more through the same API).
     this.windowTypes = new WindowTypes();
@@ -312,8 +318,7 @@ export class Core {
       if (types.some((t) => t.startsWith("agent."))) void this.agents.activity.rebuild();
       if (types.some((t) => t.startsWith("transcript."))) void this.sessions.rebuild().then(() => this.#searchView.invalidate());
     });
-    const activity = new ActivityView(this.data, this.views, { deferRebuild: !!opts.stateDir, pace: this.scheduler });
-    activity.workspaceOf = (paneId) => this.panes.get(paneId)?.workspaceId ?? null;
+    const activity = new ActivityView(this.data, this.views, { deferRebuild: !!opts.stateDir, pace: this.scheduler, workspaceOf: (paneId) => this.panes.get(paneId)?.workspaceId ?? null });
     this.sessions = new SessionsView(this.views, this.data, { deferRebuild: !!opts.stateDir, pace: this.scheduler });
     this.sessions.onChange((rows) => this.#viewChanged("sessions", rows));
     this.sessions.onReset(() => this.#viewReset((q) => q.view === "sessions"));
@@ -343,8 +348,7 @@ export class Core {
       this.settings.bind(["agents.homes"], () => this.#homesDiscovered && this.#discoverHomes());
       this.settings.bind(["agents.hooks.auto"], () => this.#homesDiscovered && this.#autoHooks());
     }
-    this.notifications = new NotificationCenter(this.panes, this.agents, settings, (a, kind, signal) => this.#writeNotice(a, kind, signal));
-    this.notifications.on("notification", (notification) => this.#broadcast({ type: "notification", notification }));
+    this.notifications = createNotifications(this.#ctx);
     this.commands = new CommandLog(this.panes, this.data);
     this.resources = opts.sampler ? new ResourceMonitor(this.panes, opts.sampler, 2000, () => this.#subscribers.size > 0) : null;
     this.processes = opts.procSampler ? new ProcessSampler(opts.procSampler) : null;
@@ -361,7 +365,6 @@ export class Core {
     this.workspaces.on("updated", rootsChanged);
     this.workspaces.on("removed", rootsChanged);
     this.windows = new WindowManager(this.panes, this.store, this.windowTypes, overrides);
-    this.notifications.workspaceOf = (paneId, windowId) => (paneId ? this.panes.get(paneId)?.workspaceId : windowId ? this.windows.others().find((w) => w.id === windowId)?.workspaceId : null) ?? null;
     // Windows of a workspace that is gone or closed (e.g. the core died mid-close) go Home.
     for (const w of this.windows.others()) {
       if (this.workspaces.get(w.workspaceId)?.closedAt !== null) this.windows.move(w.id, this.workspaces.home().id);
@@ -386,72 +389,15 @@ export class Core {
     });
     this.secrets = new SecretsService(opts.secretsPath ?? null, opts.devKeys);
     this.secrets.on("updated", (status) => this.#broadcast({ type: "secrets.updated", status }));
-    this.ai = new AiService({
-      settings,
-      secrets: this.secrets,
-      stateDir: opts.stateDir ?? null,
-      listModels: opts.aiListModels,
-      // Every model call is a fact: what for, which model, how much; what was sent and what came back as the content.
-      onCall: (c) => {
-        const at = Date.now() - c.ms;
-        const content = c.input !== undefined || c.output !== undefined ? `${c.input ?? ""}\n\n=== output ===\n\n${c.output ?? ""}` : null;
-        this.data.record({ id: `ai:${at}:${c.purpose}:${Math.random().toString(36).slice(2, 8)}`, at, until: at + c.ms, type: "ai.call", source: "cmd", text: `${c.purpose} · ${c.model}`, data: { purpose: c.purpose, provider: c.provider, model: c.model, tier: c.tier, ms: c.ms, tokens: { in: c.usage?.input ?? 0, out: c.usage?.output ?? 0 }, ok: c.ok, ...(c.error ? { error: c.error } : {}), ...(c.context ? { context: { budget: c.context.budget, chars: c.context.chars, hash: c.context.hash, parts: c.context.parts, events: c.context.events.slice(0, 500) } } : {}) }, content });
-      },
-    });
-    this.ai.on("updated", (status) => this.#broadcast({ type: "ai.updated", status }));
-    this.settings.bind(["ai.provider", "ai.anthropic.model", "ai.anthropic.fastModel", "ai.openai.model", "ai.openai.fastModel"], () => this.ai.settingsChanged());
+    this.ai = createAi(this.#ctx, { stateDir: opts.stateDir ?? null, listModels: opts.aiListModels });
     if (opts.stateDir) this.ai.start();
-    this.naming = new AgentNaming({
-      ai: { object: (o) => this.ai.object(o), ready: () => this.ai.status().ready },
-      settings: () => this.settings.settings,
-      agents: () => this.agents.list(),
-      turns: (id) => this.agents.activity.turns(id, 40),
-      name: (id, name, why) => this.agents.modelName(id, name, why),
-    });
-    this.summaries = new SummaryService({
-      ai: {
-        object: (o) => this.ai.object(o),
-        modelName: () => {
-          const p = this.ai.provider();
-          return p ? (this.ai.status().providers[p].models?.fast.name ?? null) : null;
-        },
-      },
-      agent: (id) => this.agents.get(id),
-      turns: (id) => this.agents.activity.turns(id, 500),
-      transcript: (a) => (sessionIdOf(a) ? conversationOf(this.data, `${a.kind}:${sessionIdOf(a)}`) : null),
-      agentTitle: (kind) => this.transcripts.get(kind)?.title ?? kind,
-      dir: opts.stateDir ? path.join(opts.stateDir, "summaries") : null,
-      show: (file, workspaceId) => {
-        const open = this.windows.others().find((w) => (w.kind === "markdown" || w.kind === "text") && w.state.path === file);
-        if (open) return this.#broadcast({ type: "window.focus", id: open.id }), open.id;
-        return this.#opened(this.windows.open("markdown", { path: file }, this.workspaces.mustOpen(workspaceId))).id;
-      },
-      notify: (id, title, body) => this.notifications.window(id, "summary", title, body),
-    });
+    this.naming = createNaming(this.#ctx);
+    this.summaries = createSummaries(this.#ctx, opts.stateDir ? path.join(opts.stateDir, "summaries") : null);
     this.journal = createJournal(this);
     recordWindows(this.data, this.windows);
     recordWorkspaces(this.data, this.workspaces);
     recordNotifications(this.data, this.notifications);
-    this.magic = new MagicService({
-      widgetSocket: path.isAbsolute(opts.socketPath) ? { path: widgetsSocketPath(opts.socketPath), token: (widgetId, workspaceId, events) => this.widgetTokens.issue({ widgetId, workspaceId, events }) } : null,
-      windows: this.windows,
-      settings,
-      ai: this.ai,
-      broadcast: (e) => this.#broadcast(e),
-      notify: (n) => this.notifications.widget(n),
-      backend: opts.magicBackend,
-      stateDir: opts.stateDir ?? null,
-      previewer: () => this.#previewer(),
-      deno: opts.magicDeno,
-      installDeno: opts.magicInstallDeno,
-      watched: () => this.#subscribers.size > 0,
-      libraryChanged: () => this.#libraryChanged(),
-      cwdFor: (w) => this.workspaces.get(w.workspaceId)?.root ?? this.workspaces.home().root,
-      workspaceFor: (w) => {
-        const sp = this.workspaces.get(w.workspaceId);
-        return sp && !sp.home ? { name: sp.name, root: sp.root } : null;
-      },
-    });
+    this.magic = createMagic(this.#ctx, { widgetSocket: path.isAbsolute(opts.socketPath) ? widgetsSocketPath(opts.socketPath) : null, backend: opts.magicBackend, stateDir: opts.stateDir ?? null, deno: opts.magicDeno, installDeno: opts.magicInstallDeno });
     this.actions = createActions(this.#ctx);
     this.panes.on("request", (paneId, action, arg) => this.#onShellRequest(paneId, action, arg));
     this.watches.on("changed", (path) => this.#broadcast({ type: "fs.changed", path }));
@@ -472,13 +418,6 @@ export class Core {
         this.panes.forgetHistory(paneId);
       }
       this.#broadcast({ type: "pane.removed", paneId });
-    });
-    this.usage = new UsageStats({
-      url: opts.usageUrl ?? null,
-      key: opts.usageKey ?? null,
-      enabled: () => this.settings.settings["diagnostics.usageStats"],
-      id: machineId,
-      version: process.env.CMD_APP_VERSION ?? "source",
     });
     this.agents.on("updated", (agent) => {
       describeAgent(this.data, agent);
@@ -584,8 +523,15 @@ export class Core {
     return at === home || home.startsWith(at.endsWith(path.sep) ? at : at + path.sep) ? null : at;
   }
 
-  /** What features get (kernel/features.ts). */
-  readonly #ctx: FeatureContext = { core: this, broadcast: (e) => this.#broadcast(e), place: (p, o) => this.#place(p, o), opened: (w) => this.#opened(w) };
+  /** What services and features get (context.ts). */
+  readonly #ctx: CoreContext = contextOf(this, {
+    broadcast: (e) => this.#broadcast(e),
+    place: (p, o) => this.#place(p, o),
+    opened: (w) => this.#opened(w),
+    watched: () => this.#subscribers.size > 0,
+    libraryChanged: () => this.#libraryChanged(),
+    previewer: () => this.#previewer(),
+  });
 
   readonly handlers: Handlers = {
     "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") }),
@@ -897,17 +843,6 @@ export class Core {
   }
 
   /** An agent notification's body from the fast tier (notifications.ai); null without a provider. */
-  async #writeNotice(a: Agent, kind: NoticeKind, signal: AbortSignal): Promise<string | null> {
-    if (!this.ai.status().ready) return null;
-    const ctx = buildContext({ purpose: `notify.${kind}`, budget: 6000, parts: [{ name: "turn", text: JSON.stringify(noticeContext(a, kind)) }] });
-    // A name being decided for this turn goes in the title (the notifier reads it when sending): written meanwhile, within the notifier's wait.
-    // The notifier hears the agent's update before the namer does: after a tick, both have.
-    await null;
-    const named = Promise.race([this.naming.settled(a.id), new Promise((r) => signal.addEventListener("abort", r, { once: true }))]);
-    const [res] = await Promise.all([this.ai.complete({ tier: "fast", purpose: `notify.${kind}`, system: NOTICE_SYSTEM, prompt: ctx.text, effort: "minimal", maxOutputTokens: 800, signal, context: ctx.record }), named]);
-    return cleanAiBody(res.value);
-  }
-
   #discoverHomes(): void {
     if (this.#closed) return;
     this.#homesDiscovered = true;
