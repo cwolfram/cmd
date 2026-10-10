@@ -7,7 +7,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import type { AppWindow, FileEntry, Pane, Workspace, WorkspaceId, WindowId } from "@cmd/protocol";
-import type { PaneManager } from "../panes.ts";
+import type { PaneManager } from "../terminals/panes.ts";
 import type { Store } from "../store.ts";
 import { expandHome } from "./builtin.ts";
 import { targetFor, TEXT_MAX_BYTES } from "./routing.ts";

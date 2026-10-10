@@ -3,7 +3,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { shq } from "../shell.ts";
+import { shq } from "../terminals/shell.ts";
 import { parseClaude, parseCodex, parseCopilot, parseQwen, type Obj } from "./parser.ts";
 import { realDir, type LocateContext, type TranscriptRoot, type TranscriptSource, type TranscriptSources } from "./sources.ts";
 

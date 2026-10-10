@@ -9,9 +9,9 @@
 
 import { randomUUID } from "node:crypto";
 import type { CommandRun, PaneId } from "@cmd/protocol";
-import type { DataService } from "./data/service.ts";
+import type { DataService } from "../data/service.ts";
 import type { PaneManager } from "./panes.ts";
-import { projectIdOf } from "./data/project.ts";
+import { projectIdOf } from "../data/project.ts";
 
 /** Escape sequences out of captured output: colours, cursor moves, OSC titles, carriage returns. */
 export const stripAnsi = (s: string) => s.replace(/\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]|\r/g, "");

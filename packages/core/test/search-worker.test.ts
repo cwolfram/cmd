@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "@cmd/protocol";
-import { commandBody } from "../src/commands.ts";
+import { commandBody } from "../src/terminals/commands.ts";
 import { DataService } from "../src/data/service.ts";
 import { claudeLine, codexLine, docEvents } from "../src/data/sources/transcripts.ts";
 import { DataStore, type StoreEvent } from "../src/data/store.ts";

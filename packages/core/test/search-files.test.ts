@@ -9,7 +9,7 @@ import { DataService } from "../src/data/service.ts";
 import { ViewsStore } from "../src/data/views/views.ts";
 import { SessionsView } from "../src/data/views/sessions.ts";
 import { SearchView } from "../src/data/views/search.ts";
-import { commandBody, indexCommandOutput } from "../src/commands.ts";
+import { commandBody, indexCommandOutput } from "../src/terminals/commands.ts";
 import { inlinePacer } from "../src/scheduler.ts";
 
 describe("file search", () => {

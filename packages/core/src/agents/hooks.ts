@@ -19,7 +19,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { HOOK_FORMAT, type AgentHome, type AgentKind, type HookTarget } from "@cmd/protocol";
-import { shq } from "../shell.ts";
+import { shq } from "../terminals/shell.ts";
 
 export interface HookFiles {
   /** The hook script, `<script> <kind>`; agent configs carry its code and name it (hookCommand). */

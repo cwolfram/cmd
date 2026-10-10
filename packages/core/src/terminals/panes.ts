@@ -12,19 +12,19 @@ import { EventEmitter } from "node:events";
 import { logger } from "@cmd/protocol/node";
 import type { Attention, Pane, PaneId, PaneUsage, Progress, Settings, WorkspaceId } from "@cmd/protocol";
 import { usageChanged } from "./resources.ts";
-import { placeOf, samePlace } from "./checkout.ts";
+import { placeOf, samePlace } from "../checkout.ts";
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { DEVICE_REPLIES, OscScanner, type OscEvent } from "./osc.ts";
-import { agentVersion, classify, displayName, isSpawnHelper, type Classification, type ForegroundInfo } from "./agents/procinfo.ts";
-import type { Store } from "./store.ts";
+import { agentVersion, classify, displayName, isSpawnHelper, type Classification, type ForegroundInfo } from "../agents/procinfo.ts";
+import type { Store } from "../store.ts";
 import { integrate, shellName } from "./shells.ts";
-import { ptysExhausted } from "./terminals/ptys.ts";
-import { LocalBackend } from "./terminals/local.ts";
-import type { PtyFactory } from "./terminals/pty.ts";
-import type { Term, TermBackend } from "./terminals/types.ts";
+import { ptysExhausted } from "./ptys.ts";
+import { LocalBackend } from "./local.ts";
+import type { PtyFactory } from "./pty.ts";
+import type { Term, TermBackend } from "./types.ts";
 
-export type { Pty, PtyFactory, SpawnOptions } from "./terminals/pty.ts";
-export { nodePtyFactory } from "./terminals/pty.ts";
+export type { Pty, PtyFactory, SpawnOptions } from "./pty.ts";
+export { nodePtyFactory } from "./pty.ts";
 
 const log = logger("panes");
 

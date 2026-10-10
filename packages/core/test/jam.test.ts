@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { Core } from "../src/core.ts";
-import type { PaneManager } from "../src/panes.ts";
+import type { PaneManager } from "../src/terminals/panes.ts";
 import type { Store } from "../src/store.ts";
 import { registerBuiltins } from "../src/windows/builtin.ts";
 import { WindowManager } from "../src/windows/manager.ts";

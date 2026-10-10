@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { Store } from "../src/store.ts";
 import {
   listDir,

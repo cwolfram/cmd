@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS } from "@cmd/protocol";
 import { AgentTracker } from "../src/agents/tracker.ts";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 

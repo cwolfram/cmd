@@ -1,7 +1,7 @@
 export { Core, VERSION, type CoreOptions } from "./core.ts";
-export { PaneManager, nodePtyFactory, type Pty, type PtyFactory } from "./panes.ts";
+export { PaneManager, nodePtyFactory, type Pty, type PtyFactory } from "./terminals/panes.ts";
 export { AgentTracker, launchCommand } from "./agents/tracker.ts";
-export { shq, envPrefix } from "./shell.ts";
+export { shq, envPrefix } from "./terminals/shell.ts";
 export { describeTool } from "./agents/state.ts";
 export { ActivityView } from "./data/views/activity.ts";
 export { DataService } from "./data/service.ts";
@@ -19,4 +19,4 @@ export { SessionsView } from "./data/views/sessions.ts";
 export { SearchView } from "./data/views/search.ts";
 export { TranscriptSources, locateContext, type TranscriptSource, type TranscriptRoot, type LocateContext } from "./search/sources.ts";
 export { registerBuiltinSources, claudeSource, codexSource, qwenSource, copilotSource } from "./search/builtin.ts";
-export { OscScanner, parseOsc, stripAnsi } from "./osc.ts";
+export { OscScanner, parseOsc, stripAnsi } from "./terminals/osc.ts";

@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const SHELL_DIR = path.resolve(import.meta.dirname, "../shell");
+const SHELL_DIR = path.resolve(import.meta.dirname, "../../shell");
 /** zsh integration (shell/zsh): .zshenv restores the user's ZDOTDIR, then adds hooks. */
 export const ZSH_INTEGRATION_DIR = path.join(SHELL_DIR, "zsh");
 export const BASH_INTEGRATION_SCRIPT = path.join(SHELL_DIR, "bash", "cmd-integration.bash");

@@ -1,4 +1,4 @@
-import type { Pty, PtyFactory, SpawnOptions } from "../src/panes.ts";
+import type { Pty, PtyFactory, SpawnOptions } from "../src/terminals/panes.ts";
 
 export class FakePty implements Pty {
   static last: FakePty | null = null;

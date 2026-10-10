@@ -5,7 +5,7 @@
 import type http from "node:http";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Settings } from "@cmd/protocol";
-import type { ExecResult } from "../src/loginpath.ts";
+import type { ExecResult } from "../src/terminals/loginpath.ts";
 import type { AdapterContext } from "../src/remote/access/adapter.ts";
 import { createTailscaleAdapter, DOWNLOAD_URL } from "../src/remote/access/tailscale.ts";
 

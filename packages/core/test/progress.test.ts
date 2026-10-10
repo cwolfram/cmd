@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "@cmd/protocol";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory } from "./fake-pty.ts";
 
 afterEach(() => vi.useRealTimers());

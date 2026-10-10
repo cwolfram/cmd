@@ -14,7 +14,7 @@ import type { CoreEvent, Method, Params, RemoteScope } from "@cmd/protocol";
 import { refusedStatement } from "../sqlite/statements.ts";
 import { expandPath, inCmdInstance, isDeniedPath, remotePrivatePaths } from "../paths-deny.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
-import type { PaneManager } from "../panes.ts";
+import type { PaneManager } from "../terminals/panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WindowManager } from "../windows/index.ts";
 

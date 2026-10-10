@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OscScanner, parseOsc, stripAnsi } from "../src/osc.ts";
+import { OscScanner, parseOsc, stripAnsi } from "../src/terminals/osc.ts";
 
 describe("OscScanner", () => {
   it("parses titles terminated by BEL and ST", () => {
@@ -157,7 +157,7 @@ describe("OSC 9;4 progress", () => {
 
 describe("commandOutput", () => {
   it("drops the shell's partial-line marker and trailing space", async () => {
-    const { commandOutput } = await import("../src/commands.ts");
+    const { commandOutput } = await import("../src/terminals/commands.ts");
     expect(commandOutput("hello\r\n%" + " ".repeat(99) + "\r \r")).toBe("hello");
     expect(commandOutput("\x1b[1mno newline\x1b[0m%" + " ".repeat(40))).toBe("no newline"); // the marker right after it
     expect(commandOutput("50% done\n")).toBe("50% done");

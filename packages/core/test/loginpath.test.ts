@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { loginShellPath, mergePath } from "../src/loginpath.ts";
+import { loginShellPath, mergePath } from "../src/terminals/loginpath.ts";
 import { rmTemp } from "./tmp.ts";
 import { needs } from "../../../test/system.ts";
 

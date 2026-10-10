@@ -2,8 +2,8 @@
 // (shell, agent, and everything they spawned), sampled by the procinfo helper.
 
 import type { PaneUsage, ProcessStat } from "@cmd/protocol";
-import type { ProcUsage, TreeUsage } from "./agents/procinfo.ts";
-import { classify } from "./agents/procinfo.ts";
+import type { ProcUsage, TreeUsage } from "../agents/procinfo.ts";
+import { classify } from "../agents/procinfo.ts";
 import type { PaneManager } from "./panes.ts";
 
 export type TreeSampler = (pids: number[]) => Promise<TreeUsage[]>;

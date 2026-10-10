@@ -27,10 +27,10 @@ import os from "node:os";
 import type { Agent, PaneId, Settings } from "@cmd/protocol";
 import { ENV } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { sessionIdOf, type AgentTracker } from "./agents/tracker.ts";
+import { sessionIdOf, type AgentTracker } from "../agents/tracker.ts";
 import type { PaneManager } from "./panes.ts";
-import type { WorkspaceManager } from "./workspaces/manager.ts";
-import type { Store } from "./store.ts";
+import type { WorkspaceManager } from "../workspaces/manager.ts";
+import type { Store } from "../store.ts";
 
 const log = logger("restore");
 

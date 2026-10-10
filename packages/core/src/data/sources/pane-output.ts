@@ -11,7 +11,7 @@
 // Only panes running an agent: plain terminals' output is their commands'.
 
 import type { AgentTurn, PaneId } from "@cmd/protocol";
-import type { PaneManager } from "../../panes.ts";
+import type { PaneManager } from "../../terminals/panes.ts";
 import type { DataService } from "../service.ts";
 import type { ActivityView } from "../views/activity.ts";
 

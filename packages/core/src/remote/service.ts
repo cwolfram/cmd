@@ -15,7 +15,7 @@ import { encodePairing, equal, fromBase64Url, randomBytes, toBase64Url, type Byt
 import type { Connection, Served } from "../connection.ts";
 import type { SettingsService } from "../settings.ts";
 import type { RemoteDeviceRecord, Store } from "../store.ts";
-import { exec as loginExec } from "../loginpath.ts";
+import { exec as loginExec } from "../terminals/loginpath.ts";
 import { registerBuiltinModes } from "./access/builtin.ts";
 import { AccessModes, unknownMode, type AccessMode, type AccessRun, type Check, type ModeContext } from "./access/mode.ts";
 import { HostKeys } from "./keys.ts";

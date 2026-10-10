@@ -10,7 +10,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { ActionRun, ActionsList, Pane, PaneId, WorkspaceId, WorkspaceAction } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import { WatchService } from "../watch.ts";
-import type { PaneManager } from "../panes.ts";
+import type { PaneManager } from "../terminals/panes.ts";
 import { scan, type Scan } from "./catalog.ts";
 import { checkoutOf, placeOf, worktreesOf } from "../checkout.ts";
 import { classify } from "./classify.ts";

@@ -1,7 +1,7 @@
 // The core keeps real terminal state per pane; re-attaching UIs get it serialized.
 import { describe, expect, it } from "vitest";
 import headless from "@xterm/headless";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory } from "./fake-pty.ts";
 
 /** What a UI shows after writing a snapshot into a fresh terminal of the same size. */

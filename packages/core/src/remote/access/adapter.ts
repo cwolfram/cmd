@@ -7,7 +7,7 @@
 
 import type http from "node:http";
 import type { Settings } from "@cmd/protocol";
-import type { ExecResult } from "../../loginpath.ts";
+import type { ExecResult } from "../../terminals/loginpath.ts";
 import type { AccessModeInfo, Check } from "./mode.ts";
 
 export type { Check };

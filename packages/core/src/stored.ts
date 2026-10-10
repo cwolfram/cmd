@@ -7,7 +7,7 @@
 
 import type { Agent, AgentHome, AgentTurn, AppWindow, Workspace, TurnFile } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import type { PaneRecord } from "./panes.ts";
+import type { PaneRecord } from "./terminals/panes.ts";
 import type { TranscriptRoot } from "./search/sources.ts";
 import type { RemoteDeviceRecord } from "./store.ts";
 import type { ClosedRecord } from "./windows/closed.ts";

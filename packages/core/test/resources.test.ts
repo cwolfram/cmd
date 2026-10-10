@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { PaneManager } from "../src/panes.ts";
-import { ProcessSampler, processName, ResourceMonitor, usageChanged } from "../src/resources.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
+import { ProcessSampler, processName, ResourceMonitor, usageChanged } from "../src/terminals/resources.ts";
 import { ProcInfo } from "../src/agents/procinfo.ts";
 import { needs, until } from "../../../test/system.ts";
 import { fakeFactory } from "./fake-pty.ts";

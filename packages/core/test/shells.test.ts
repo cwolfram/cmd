@@ -5,10 +5,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { OscEvent } from "../src/osc.ts";
+import type { OscEvent } from "../src/terminals/osc.ts";
 import { Core } from "../src/core.ts";
-import { nodePtyFactory } from "../src/panes.ts";
-import { BASH_INTEGRATION_SCRIPT, FISH_INTEGRATION_DATA_DIR, ZSH_INTEGRATION_DIR, integrate } from "../src/shells.ts";
+import { nodePtyFactory } from "../src/terminals/panes.ts";
+import { BASH_INTEGRATION_SCRIPT, FISH_INTEGRATION_DATA_DIR, ZSH_INTEGRATION_DIR, integrate } from "../src/terminals/shells.ts";
 import { rmTemp } from "./tmp.ts";
 import { needs, until } from "../../../test/system.ts";
 

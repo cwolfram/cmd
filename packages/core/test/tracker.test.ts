@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID, type Agent } from "@cmd/protocol";
 import { AgentTracker } from "../src/agents/tracker.ts";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 
 let panes: PaneManager;

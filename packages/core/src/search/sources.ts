@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import type { AgentKind, Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { envPrefix } from "../shell.ts";
+import { envPrefix } from "../terminals/shell.ts";
 import { headObjects, type Obj, type SessionDocument, type TranscriptText } from "./parser.ts";
 
 const log = logger("search");

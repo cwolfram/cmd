@@ -19,8 +19,8 @@ import os from "node:os";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Agent, AppNotification, Attention, Pane, PaneId, Settings, WorkspaceId, WindowId } from "@cmd/protocol";
-import type { OscEvent } from "./osc.ts";
-import type { PaneManager } from "./panes.ts";
+import type { OscEvent } from "./terminals/osc.ts";
+import type { PaneManager } from "./terminals/panes.ts";
 import type { AgentTracker } from "./agents/tracker.ts";
 import { agentNotice, subjectOf, type NoticeKind } from "./agents/notice.ts";
 

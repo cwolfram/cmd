@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { classify } from "../src/agents/procinfo.ts";
 import { AgentTracker } from "../src/agents/tracker.ts";
-import { PaneManager } from "../src/panes.ts";
+import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 
 describe("classify (port of AgentProcess.classify)", () => {

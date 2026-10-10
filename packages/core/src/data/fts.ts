@@ -7,7 +7,7 @@
 // (bodyOf): what the recorder indexed, re-derived from the stored row and blob.
 
 import type { DataEvent } from "@cmd/protocol";
-import { commandBody } from "../commands.ts";
+import { commandBody } from "../terminals/commands.ts";
 import { identifierParts } from "../search/query.ts";
 import { claudeLine, codexLine } from "./sources/transcripts.ts";
 
