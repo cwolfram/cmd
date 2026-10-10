@@ -182,7 +182,7 @@ As with AR1-17-02: rename-only commits, one folder at a time.
 
 ### AR1-17-05 · Make a feature one folder per side, with one contribution entry
 
-- **Status:** open
+- **Status:** open · core and protocol half done for the journal (journal-feature branch, see Progress)
 - **Severity:** medium
 - **Effort:** L (> 2 days; the layout half of wave 3)
 - **Where:** for the journal today: `core/src/journal/`, `core/src/core.ts`, `protocol/src/{rpc,journal,settings,events}.ts`, `renderer/src/settings/layout.ts`, `shared/commands.ts`, `renderer/src/App.tsx`, `components/Journal*.tsx`, `windows/builtin.tsx`, `cli/src/journal.ts`
@@ -204,6 +204,15 @@ The central files import a list of contributions instead of holding entries. The
 - [ ] For the journal, `git grep -il journal -- packages apps ':!*test*'` lists only files under `features/journal` folders (plus `cli/src/journal.ts`) and one line each in the contribution lists.
 - [ ] Adding a new setting or command to the journal changes no file outside its feature folders.
 - [ ] CLAUDE.md's "append-only registries" note is updated to say which lists remain central.
+
+**Progress (2026-10-10).** The core and protocol half, for the journal:
+- `kernel/features.ts` lists features (`Feature`: `id`, `handlers(core)`, `startup`, `dispose`); `Core` spreads their handlers into `Handlers` (tsc still fails on a method nobody handles), runs their startup jobs where the journal's ran and disposes them. `kernel/handlers.ts` has `Handlers` and `HandlerSlice<K>`.
+- `journal/feature.ts` declares the journal's service construction, its 8 handlers, its startup job, its teardown and its window type (`windows/builtin.ts` registers it in its old place, so the Widget Library order holds; the scoped list widget shape moved to `windows/scoped.ts`).
+- `JournalMethods` lives in protocol `journal.ts`; `Methods` extends it.
+- `test/features.test.ts`: each feature's methods are named after it, none twice, all served.
+
+Folders stay where they were (`core/src/journal/`, `renderer/src/windows/journal/`): a `features/` level would move every feature for no gain over one folder per feature, which they already are. The journal has no settings or commands, so those contributions wait for a feature that has them (and for AR1-15-03). Still central: `remote/policy.ts` lists the journal's methods (a policy per method; a feature could declare it next to its handlers), `data/project.ts` and `data/recorders.ts` import `repoOfSync` and `projectOf` from `journal/` (they belong in `lib/`), and the CLI's dispatch. Next: timers and actions the same way (AR1-16-08), then settings and commands as contributions.
+
 
 ### AR1-17-06 · Give docs/ unique numbers, an index and a status per doc
 
