@@ -33,12 +33,23 @@ if (!shard) {
   fs.mkdirSync(shots, { recursive: true });
   for (const f of fs.readdirSync(shots)) if (/^(failed|hung)/.test(f)) fs.rmSync(path.join(shots, f)); // the last run's
 }
+// How long each scenario took in the last runs here (each run adds its own), to deal shards by.
+const timesFile = path.join(root, ".cmd-dev", "scenario-times.json");
+const readTimes = () => {
+  try {
+    return JSON.parse(fs.readFileSync(timesFile, "utf8"));
+  } catch {
+    return {};
+  }
+};
 if (shards > 1 && !shard && !only) {
   const { spawn } = await import("node:child_process");
+  // Read once here, so every shard deals the same way.
+  const measured = readTimes();
   const t0 = Date.now();
   // Each shard's output in one piece when it ends, not interleaved; then every failure.
   const runs = await Promise.all(Array.from({ length: shards }, (_, i) => new Promise((resolve) => {
-    const child = spawn(process.execPath, [import.meta.filename, "--shard", `${i + 1}/${shards}`], { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(process.execPath, [import.meta.filename, "--shard", `${i + 1}/${shards}`], { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, E2E_COSTS: JSON.stringify(measured) } });
     let out = "";
     child.stdout.on("data", (d) => (out += d));
     child.stderr.on("data", (d) => (out += d));
@@ -224,10 +235,11 @@ const SCENARIOS = {
   "app-window": [],
 };
 const failures = [];
+const took = {}; // seconds per passed scenario, for scenario-times.json
 const outcome = new Map(); // name → "passed" | "failed" | "skipped" | "not run"
 // --only: the named scenarios (a part of a name picks each it is in), what they need, and onboarding.
-// About how long each scenario takes, in seconds (others: 0.2), to deal the shards evenly.
-// Measured with E2E_SCREEN=ci (the "# name" lines of a run through a timestamping pipe).
+// About how long each scenario takes, in seconds (others: 0.2), to deal the shards evenly when
+// no run here has measured them yet (CI); .cmd-dev/scenario-times.json has the last run's.
 const COST = { magic: 3.9, strip: 3.1, grid: 2.9, restart: 2.7, embedded: 2.3, settings: 1.9, "site-permissions": 1.3, "core-status": 1.3, untitled: 1.1, osc8: 1.1, onboarding: 0.9, sidebars: 0.8, workspaces: 0.6, text: 0.6, json: 0.6, "files-menus": 0.6, "app-window": 0.6, terminals: 0.5, browser: 0.5, palette: 0.4 };
 const wanted = (() => {
   if (!only && !shard) return null;
@@ -240,9 +252,10 @@ const wanted = (() => {
   if (shard) {
     // Longest first, each to the shard it adds the least time to (with what it needs).
     const sets = Array.from({ length: shard[1] }, () => new Set(["onboarding"]));
-    const load = (set) => [...set].reduce((t, n) => t + (COST[n] ?? 0.2), 0);
+    const costs = { ...COST, ...JSON.parse(process.env.E2E_COSTS || "{}") };
+    const load = (set) => [...set].reduce((t, n) => t + (costs[n] ?? 0.2), 0);
     // browser uses the system clipboard: it and what needs it run in one shard.
-    for (const name of Object.keys(SCENARIOS).sort((a, b) => (COST[b] ?? 0.2) - (COST[a] ?? 0.2))) {
+    for (const name of Object.keys(SCENARIOS).sort((a, b) => (costs[b] ?? 0.2) - (costs[a] ?? 0.2))) {
       const grown = sets.map((set) => { const g = new Set(set); add(name, g); return g; });
       const browserShard = sets.findIndex((set) => set.has("browser"));
       const i = browserShard >= 0 && grown[browserShard].has("browser") && grown.every((g) => g.has("browser")) // name needs browser
@@ -273,9 +286,11 @@ async function scenario(name, fn) {
   console.log(`\n# ${name}`);
   current = name;
   step(`scenario ${name}`);
+  const t0 = Date.now();
   try {
     await Promise.race([fn(), new Promise((_, reject) => (abortScenario = reject))]);
     outcome.set(name, "passed");
+    took[name] = Math.round((Date.now() - t0) / 100) / 10;
   } catch (e) {
     outcome.set(name, "failed");
     const error = String(e?.message ?? e);
@@ -2106,6 +2121,12 @@ server.close();
 step("closing");
 await Promise.race([closeApp(), new Promise((r) => setTimeout(r, 30_000))]);
 await stopCore(home, { terminals: true });
+// Merged into what other shards and runs wrote (a part of a shard's time is its needs, run there too).
+try {
+  const tmp = `${timesFile}.${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify({ ...readTimes(), ...took }, null, 1));
+  fs.renameSync(tmp, timesFile);
+} catch {}
 report();
 if (failures.length) console.log(`screenshots in ${shots}`);
 else console.log(`all checks passed${process.env.E2E_SHOTS ? `; screenshots in ${shots}` : " (E2E_SHOTS=1 for screenshots)"}`);
