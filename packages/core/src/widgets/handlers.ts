@@ -1,0 +1,26 @@
+// The Widget Library's methods (widget.*, docs/16): list it, put a widget in a workspace,
+// rename, duplicate and delete the ones made with Magic.
+
+import type { CoreContext } from "../kernel/context.ts";
+import { slice } from "../kernel/handlers.ts";
+import { magicRef, widgetRef } from "./library.ts";
+
+export const widgetHandlers = (core: CoreContext) =>
+  slice({
+    "widget.list": () => core.library.entries(),
+    "widget.add": (p) => {
+      const r = widgetRef(p.ref);
+      if (!r.widgetId && core.windowTypes.get(r.kind)?.role !== "widget") throw new Error(`not a widget: ${p.ref}`);
+      return core.windowOps.open({ ...p, kind: r.kind, input: r.widgetId ? { widgetId: r.widgetId } : p.cwd ? { cwd: p.cwd } : {} });
+    },
+    "widget.rename": (p) => (core.magic.renameWidget(magicRef(p.ref), p.title), null),
+    "widget.duplicate": (p) => {
+      const id = core.magic.duplicateWidget(magicRef(p.ref));
+      return core.library.entries().find((e) => e.ref === `magic:${id}`)!;
+    },
+    "widget.delete": (p) => (core.magic.deleteWidget(magicRef(p.ref)), null),
+    // A widget's data.ts says it on the widgets socket (kernel/server.ts), not here.
+    "widget.hello": () => {
+      throw new Error("widget.hello is for the widgets socket");
+    },
+  });

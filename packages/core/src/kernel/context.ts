@@ -26,7 +26,17 @@ import type { ClosedWindows, WindowManager, WindowTypes } from "../windows/index
 import type { TimerAlarms } from "../windows/timers.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WidgetTokens } from "../data/widgets.ts";
-import type { Previewer } from "../widgets/preview.ts";
+import type { PreviewBroker } from "../widgets/previews.ts";
+import type { WidgetLibrary } from "../widgets/library.ts";
+import type { AgentSetup } from "../agents/setup.ts";
+import type { Search } from "../search/search.ts";
+import type { Subscriptions } from "../data/subscriptions.ts";
+import type { WindowOps } from "../windows/ops.ts";
+import type { RemoteService } from "../remote/service.ts";
+import type { ProcessSampler, ResourceMonitor } from "../terminals/resources.ts";
+import type { WatchService } from "../lib/watch.ts";
+import type { SqliteService } from "../sqlite/service.ts";
+import type { CoreServer } from "./server.ts";
 import type { Scheduler } from "./scheduler.ts";
 import type { SecretsService } from "./secrets.ts";
 import type { SettingsService } from "./settings.ts";
@@ -61,6 +71,18 @@ export interface Services {
   magic: MagicService;
   actions: ActionsService;
   widgetTokens: WidgetTokens;
+  server: CoreServer;
+  subscriptions: Subscriptions;
+  agentSetup: AgentSetup;
+  search: Search;
+  library: WidgetLibrary;
+  previews: PreviewBroker;
+  windowOps: WindowOps;
+  remote: RemoteService;
+  resources: ResourceMonitor | null;
+  processes: ProcessSampler | null;
+  watches: WatchService;
+  sqlite: SqliteService;
 }
 
 /** What only Core does. */
@@ -73,17 +95,13 @@ export interface CoreActions {
   opened<W extends AppWindow | null>(w: W): W;
   /** Whether any client is subscribed (what nobody can see can wait). */
   watched(): boolean;
-  /** The Widget Library changed: clients get it again (debounced). */
-  libraryChanged(): void;
-  /** Who renders widget previews: the app, else Playwright; null: nobody. */
-  previewer(): Promise<Previewer | null>;
   /** Answers JSON-RPC on a connection: the socket's, or a paired device's session. */
   serve(conn: Connection): Served;
 }
 
 export type CoreContext = Services & CoreActions;
 
-const SERVICES: (keyof Services)[] = ["settings", "store", "scheduler", "data", "views", "sessions", "usage", "secrets", "ai", "panes", "commands", "agents", "homes", "naming", "transcripts", "notifications", "workspaces", "windowTypes", "windows", "closed", "timers", "summaries", "journal", "magic", "actions", "widgetTokens"];
+const SERVICES: (keyof Services)[] = ["settings", "store", "scheduler", "data", "views", "sessions", "usage", "secrets", "ai", "panes", "commands", "agents", "homes", "naming", "transcripts", "notifications", "workspaces", "windowTypes", "windows", "closed", "timers", "summaries", "journal", "magic", "actions", "widgetTokens", "server", "subscriptions", "agentSetup", "search", "library", "previews", "windowOps", "remote", "resources", "processes", "watches", "sqlite"];
 
 /** The context over `owner`'s services (read when used, so a service may take the context before the ones it calls exist). */
 export function contextOf(owner: Partial<Services>, actions: CoreActions): CoreContext {

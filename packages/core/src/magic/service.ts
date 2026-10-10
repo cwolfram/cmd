@@ -925,11 +925,9 @@ export function refineRequest(prev: MagicState, change: string): string {
 
 /** Magic (`core.magic`) over the core's windows, AI and notifications; `widgetSocket`: where data.ts runs reach the event log. */
 export function createMagic(
-  core: Pick<CoreContext, "windows" | "settings" | "ai" | "notifications" | "workspaces" | "widgetTokens" | "broadcast" | "previewer" | "watched" | "libraryChanged">,
+  core: Pick<CoreContext, "windows" | "settings" | "ai" | "notifications" | "workspaces" | "widgetTokens" | "broadcast" | "previews" | "watched" | "library">,
   o: Pick<MagicServiceOptions, "backend" | "stateDir" | "deno" | "installDeno"> & { widgetSocket: string | null },
 ): MagicService {
-  // Developer widgets come and go from the library with their setting.
-  core.settings.bind(["widgets.developer"], () => core.libraryChanged());
   return new MagicService({
     widgetSocket: o.widgetSocket ? { path: o.widgetSocket, token: (widgetId, workspaceId, events) => core.widgetTokens.issue({ widgetId, workspaceId, events }) } : null,
     windows: core.windows,
@@ -939,11 +937,11 @@ export function createMagic(
     notify: (n) => core.notifications.widget(n),
     backend: o.backend,
     stateDir: o.stateDir ?? null,
-    previewer: () => core.previewer(),
+    previewer: () => core.previews.previewer(),
     deno: o.deno,
     installDeno: o.installDeno,
     watched: () => core.watched(),
-    libraryChanged: () => core.libraryChanged(),
+    libraryChanged: () => core.library.changed(),
     cwdFor: (w) => core.workspaces.get(w.workspaceId)?.root ?? core.workspaces.home().root,
     workspaceFor: (w) => {
       const sp = core.workspaces.get(w.workspaceId);

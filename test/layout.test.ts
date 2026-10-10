@@ -1,9 +1,9 @@
 // Where code goes (docs/architecture-review-01/17): counts that only go down, in the
 // style of design-css.test.ts. Loose files at the root of the core and the renderer, entries
-// in the renderer's components/, and source files over LONG lines per package are counted
-// in layout-debt.json: a new one fails here (put the file in its feature's folder, or split
-// it), and a count that fell fails too, until `pnpm layout-debt` writes the lower one, so a
-// move or a split can't quietly grow back.
+// in the renderer's components/, source files over LONG lines per package and the lines of the
+// core's composition root (core.ts) are counted in layout-debt.json: a new one fails here (put
+// the code in its feature's folder, or split the file), and a count that fell fails too, until
+// `pnpm layout-debt` writes the lower one, so a move or a split can't quietly grow back.
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -39,6 +39,8 @@ const now: Record<string, string[]> = {
   "flat files in apps/desktop/src/renderer/src": flat("apps/desktop/src/renderer/src"),
   "entries in apps/desktop/src/renderer/src/components": entries("apps/desktop/src/renderer/src/components"),
   ...Object.fromEntries(packages.map((p) => [`files over ${LONG} lines in ${p}`, sources(p).filter((f) => lines(f) > LONG)])),
+  // The core's composition root (AR1-03-01): what a feature does goes in its folder, not here. One entry per line.
+  "lines in packages/core/src/kernel/core.ts": Array.from({ length: lines("packages/core/src/kernel/core.ts") }, (_, i) => `line ${i + 1}`),
 };
 const counts = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, v.length]));
 
@@ -60,7 +62,7 @@ describe("repo layout", () => {
   it("no count is higher than layout-debt.json allows", () => {
     const over = Object.entries(now)
       .filter(([k, v]) => v.length > (base[k] ?? 0))
-      .map(([k, v]) => `${v.length} ${k}, ${base[k] ?? 0} allowed. Put new code in its feature's folder, or split the file:\n    ${v.sort().join("\n    ")}`);
+      .map(([k, v]) => `${v.length} ${k}, ${base[k] ?? 0} allowed. Put new code in its feature's folder, or split the file:\n    ${v.sort().slice(0, 20).join("\n    ")}${v.length > 20 ? "\n    …" : ""}`);
     expect(over, over.join("\n")).toEqual([]);
   });
 

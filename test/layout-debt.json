@@ -3,12 +3,13 @@
   "flat files in apps/desktop/src/renderer/src": 1,
   "entries in apps/desktop/src/renderer/src/components": 11,
   "files over 600 lines in packages/cli": 1,
-  "files over 600 lines in packages/core": 7,
+  "files over 600 lines in packages/core": 6,
   "files over 600 lines in packages/protocol": 1,
   "files over 600 lines in packages/remote-crypto": 0,
   "files over 600 lines in packages/ui": 2,
   "files over 600 lines in apps/desktop": 6,
   "files over 600 lines in apps/relay": 0,
   "files over 600 lines in apps/web": 0,
-  "files over 600 lines in tools/tours": 0
+  "files over 600 lines in tools/tours": 0,
+  "lines in packages/core/src/kernel/core.ts": 463
 }

@@ -23,6 +23,7 @@ import { LocalBackend } from "./local.ts";
 import type { PtyFactory } from "./pty.ts";
 import type { Term, TermBackend } from "./types.ts";
 import type { CoreContext } from "../kernel/context.ts";
+import { describePane } from "../data/describe.ts";
 import { shellOpenEnv } from "../windows/routing.ts";
 import { parseOverrides } from "../windows/types.ts";
 
@@ -837,4 +838,13 @@ export function createPanes(core: Pick<CoreContext, "settings" | "windowTypes" |
   });
   panes.on("output", (paneId, data, seq) => core.broadcast({ type: "pane.output", paneId, data, seq }));
   return panes;
+}
+
+/** A terminal's change to clients and the log; registered after the services' own listeners (see watchAgents). */
+export function watchPanes(core: Pick<CoreContext, "panes" | "data" | "resources" | "broadcast">): void {
+  core.panes.on("updated", (pane) => {
+    core.broadcast({ type: "pane.updated", pane });
+    describePane(core.data, pane);
+    if (!pane.usage && pane.pid > 0 && pane.exitCode === null) core.resources?.soon(); // a new terminal's memory shows at once
+  });
 }

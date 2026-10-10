@@ -33,6 +33,7 @@ import type { RawEvent } from "./activity/normalize.ts";
 import { ActivityReducer, addFile, type Reduction } from "./activity/reduce.ts";
 import { drainSpool } from "./activity/spool.ts";
 import type { CoreContext } from "../kernel/context.ts";
+import { describeAgent } from "../data/describe.ts";
 
 const log = logger("agents");
 
@@ -907,4 +908,30 @@ export function launchCommand(
 /** The agents (`core.agents`) over the core's terminals, store, settings and transcript sources. */
 export function createAgents(core: Pick<CoreContext, "panes" | "store" | "settings" | "transcripts">, o: Omit<TrackerOptions, "store" | "settings" | "sources">): AgentTracker {
   return new AgentTracker(core.panes, { ...o, store: core.store, settings: () => core.settings.settings, sources: core.transcripts });
+}
+
+/**
+ * What each agent change tells the rest, in this order: the log, the namer, clients, usage stats
+ * (counted once, from `since`), the transcript reader. Registered after the services' own
+ * listeners, so clients hear a change once the core has taken it in.
+ */
+export function watchAgents(core: Pick<CoreContext, "agents" | "panes" | "data" | "naming" | "usage" | "search" | "broadcast">, since: number): void {
+  const counted = new Set<AgentId>();
+  core.agents.on("updated", (agent) => {
+    describeAgent(core.data, agent);
+    core.naming.updated(agent);
+    core.broadcast({ type: "agent.updated", agent });
+    // Not subagents, restored ones, or ones already running when this core started (re-detected after a restart).
+    if (!counted.has(agent.id)) {
+      counted.add(agent.id);
+      const started = agent.spawn.source === "detected" && agent.paneId ? core.panes.foreground(agent.paneId)?.startedAt : undefined;
+      if (!agent.parentId && agent.spawn.source !== "restored" && !(started && started < since)) core.usage.agent(agent.kind); // 0: unknown (no native helper)
+    }
+    if (agent.native.transcriptPath) core.search.learn(agent.kind, agent.native.transcriptPath);
+  });
+  core.agents.on("removed", (agentId) => {
+    core.naming.removed(agentId);
+    counted.delete(agentId);
+    core.broadcast({ type: "agent.removed", agentId });
+  });
 }
