@@ -10,6 +10,8 @@
 // sticky ctrl) and a compose bar; the menu switches sizing and closes it.
 
 import { useEffect, useRef, useState } from "react";
+import { Button, Dialog, IconButton, ListRow, StatusDot, TextField, Icon } from "@cmd/ui";
+import { terminalColors, useTheme } from "@cmd/ui/themes";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
@@ -17,19 +19,12 @@ import type { Pane } from "@cmd/protocol";
 import type { Connection } from "./connection.ts";
 import { stateText, type Item } from "./model.ts";
 import { Screen } from "./screen.ts";
-import { Icon, Led, Sheet } from "./ui.tsx";
 
 const FONT = 13;
 const MIN_FONT = 5;
 /** A cell's size per point of font size (monospace, xterm's default line height). */
 const CELL_W = 0.6;
 const CELL_H = 1.2;
-/** cmd's Dark theme (apps/desktop themes/dark.ts). */
-const THEME = {
-  background: "#161618", foreground: "#e6e6ea", cursor: "#9d9dff", selectionBackground: "#3a3a6e",
-  black: "#16161c", red: "#ff6b5e", green: "#7bd88f", yellow: "#ffd866", blue: "#8f8fff", magenta: "#e08cff", cyan: "#6fe0e8", white: "#d6d6dc",
-  brightBlack: "#6c6c78", brightRed: "#ff8a7f", brightGreen: "#9be6aa", brightYellow: "#ffe38f", brightBlue: "#b0b0ff", brightMagenta: "#eeb0ff", brightCyan: "#9aeef3", brightWhite: "#ffffff",
-};
 /** The range the core accepts (remote/policy.ts). */
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -75,6 +70,8 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
   const ctrlRef = useRef(false);
   ctrlRef.current = ctrl;
   const [menu, setMenu] = useState(false);
+  const theme = useTheme();
+  const colors = terminalColors(theme);
   const client = conn.client;
   const send = (data: string) => void client?.call("pane.write", { paneId: pane.id, data }).catch(() => {});
   /** Keys typed or tapped; a sticky ctrl applies to the next one. */
@@ -95,7 +92,7 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
       fontFamily: '"SF Mono", ui-monospace, Menlo, monospace',
       disableStdin: !control,
       scrollback: 5000,
-      theme: THEME,
+      theme: terminalColors(theme),
     });
     const fit = new FitAddon();
     t.loadAddon(fit);
@@ -128,6 +125,11 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
       t.dispose();
     };
   }, [conn, pane.id, client]);
+
+  // The Mac's theme changed (or Auto followed the phone): repaint.
+  useEffect(() => {
+    if (term.current) term.current.t.options.theme = terminalColors(theme);
+  }, [theme]);
 
   // Size: fit the space (and the Mac's terminal to it), or scale the Mac's size into it.
   useEffect(() => {
@@ -194,14 +196,12 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
   };
 
   return (
-    <div className="term-screen">
+    <div className="term-screen" style={{ background: colors.background }}>
       <header className="bar term-bar">
-        <button className="icon-btn" onClick={onBack} aria-label="Back to Now">
-          <Icon name="back" size={22} />
-        </button>
+        <IconButton icon="chevron.left" size="lg" label="Back to Now" onClick={onBack} />
         <div className="term-head">
           <div className="term-name">
-            <Led light={item.light} /> <span>{item.title}</span>
+            <StatusDot state={item.light} size="sm" /> <span>{item.title}</span>
           </div>
           <div className="term-state">
             {item.workspace ? `${item.workspace} · ` : ""}
@@ -209,42 +209,37 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
             {item.detail ? ` · ${item.detail}` : ""}
           </div>
         </div>
-        <button className="icon-btn" onClick={() => setMenu(true)} aria-label="More">
-          <Icon name="more" size={22} />
-        </button>
+        <IconButton icon="ellipsis" size="lg" label="More" onClick={() => setMenu(true)} />
       </header>
       <div className="term" ref={host} />
       {control ? (
         <div className="term-input">
           <div className="keys">
-            <button className={`key${ctrl ? " on" : ""}`} onClick={() => setCtrl(!ctrl)}>
+            <Button size="sm" className="key" pressed={ctrl} onClick={() => setCtrl(!ctrl)}>
               ctrl
-            </button>
+            </Button>
             {KEYS.map((k) => (
-              <button key={k.label} className={`key${k.wide ? " wide" : ""}`} onClick={() => write(k.data)}>
+              <Button key={k.label} size="sm" className="key" onClick={() => write(k.data)}>
                 {k.label}
-              </button>
+              </Button>
             ))}
-            <button className="key" onClick={() => void paste()} aria-label="Paste">
-              <Icon name="paste" size={16} />
-            </button>
+            <Button size="sm" className="key" icon="doc.on.clipboard" aria-label="Paste" onClick={() => void paste()} />
           </div>
           <form className="compose" onSubmit={(e) => (e.preventDefault(), submit())}>
-            <button type="button" className="icon-btn" aria-label="Type into the terminal" onClick={() => term.current?.t.focus()}>
-              <Icon name="keyboard" size={20} />
-            </button>
-            <input
+            <IconButton icon="keyboard" size="lg" label="Type into the terminal" onClick={() => term.current?.t.focus()} />
+            <TextField
+              fill
+              size="lg"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={setText}
               placeholder={ctrl ? "ctrl + a key…" : "Message or command"}
+              aria-label="Message or command"
               enterKeyHint="send"
               autoCapitalize="off"
               autoCorrect="off"
               spellCheck={false}
             />
-            <button type="submit" className="send" disabled={!text} aria-label="Send">
-              ⏎
-            </button>
+            <Button type="submit" size="lg" variant="primary" icon="arrow.up" disabled={!text} aria-label="Send" />
           </form>
         </div>
       ) : (
@@ -252,41 +247,38 @@ export function TerminalScreen({ conn, item, control, onBack }: { conn: Connecti
           <Icon name="lock" size={14} /> View only. Your Mac can allow control in Settings → Remote Access.
         </div>
       )}
-      {menu && (
-        <Sheet title={item.title} onClose={() => setMenu(false)}>
-          <TerminalMenu conn={conn} pane={pane} control={control} fitting={fitting} onFit={(v) => (setFitting(v), setMenu(false))} onClosed={() => (setMenu(false), onBack())} />
-        </Sheet>
-      )}
+      <Dialog open={menu} onClose={() => setMenu(false)} title={item.title} padded={false}>
+        <TerminalMenu conn={conn} pane={pane} control={control} fitting={fitting} onFit={(v) => (setFitting(v), setMenu(false))} onClosed={() => (setMenu(false), onBack())} />
+      </Dialog>
     </div>
   );
 }
 
 function TerminalMenu(p: { conn: Connection; pane: Pane; control: boolean; fitting: boolean; onFit: (v: boolean) => void; onClosed: () => void }) {
   const [confirm, setConfirm] = useState(false);
-  if (!p.control) return <div className="sheet-note">View only: this phone shows the Mac's terminal at the Mac's size.</div>;
+  if (!p.control) return <p className="note padded">View only: this phone shows the Mac's terminal at the Mac's size.</p>;
   return (
-    <div className="sheet-list">
-      <button className="sheet-item" onClick={() => p.onFit(!p.fitting)}>
-        <Icon name="fit" />
-        <span>
-          {p.fitting ? "Use the Mac's size" : "Fit to this phone"}
-          <small>{p.fitting ? `Now ${p.pane.cols}×${p.pane.rows}, sized for this phone` : "The Mac's terminal takes this screen's size while you look at it"}</small>
-        </span>
-      </button>
-      <button
-        className="sheet-item danger"
+    <div className="menu-rows">
+      <ListRow
+        role="button"
+        icon="arrow.up.left.and.arrow.down.right"
+        title={p.fitting ? "Use the Mac's Size" : "Fit to This Phone"}
+        detail={p.fitting ? `Now ${p.pane.cols}×${p.pane.rows}, sized for this phone` : "The Mac's terminal takes this screen's size while you look at it"}
+        onClick={() => p.onFit(!p.fitting)}
+      />
+      <ListRow
+        role="button"
+        icon="xmark"
+        markTone="danger"
+        title={confirm ? "Tap Again to Close" : "Close Terminal"}
+        detail="Ends what runs in it, on the Mac too"
+        tone="danger"
         onClick={() => {
           if (!confirm) return setConfirm(true);
           void p.conn.client?.call("pane.kill", { paneId: p.pane.id }).catch(() => {});
           p.onClosed();
         }}
-      >
-        <Icon name="close" />
-        <span>
-          {confirm ? "Tap again to close it" : "Close terminal"}
-          <small>Ends what runs in it, on the Mac too</small>
-        </span>
-      </button>
+      />
     </div>
   );
 }

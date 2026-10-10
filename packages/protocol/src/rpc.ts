@@ -1,7 +1,7 @@
 // Core API. Transport: newline-delimited JSON-RPC 2.0 over a Unix socket.
 // Every method is reachable from the UI, the `cmd` CLI and (later) MCP.
 
-import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteStatus, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
+import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteStatus, RemoteTheme, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
 import type { DataClassInfo, DataEvent, DataQuery, DataStats, NewDataEvent, SessionInfo, TurnRow, ViewQuery } from "./events.ts";
 import type { SettingKey, Settings } from "./settings.ts";
 import type { AiModel, AiStatus } from "./ai.ts";
@@ -477,6 +477,8 @@ export interface Methods {
       device: { id: string; scope: RemoteScope } | null;
       /** This Mac, as the phone names it ("Jan's MacBook Pro"). */
       host: { name: string };
+      /** The Mac's theme settings, so the phone looks the same (cores before 0.25 leave it out). */
+      theme: RemoteTheme;
     };
   };
   /** The windows this connection shows (terminals, Magic): remote sessions get pane.output and magic.data only for these. */
@@ -512,6 +514,8 @@ export type CoreEvent =
   | { type: "agent.updated"; agent: Agent }
   | { type: "agent.removed"; agentId: AgentId }
   | { type: "settings.updated"; snapshot: SettingsSnapshot }
+  /** The theme.* settings changed: what remote sessions get instead of settings.updated. */
+  | { type: "theme.updated"; theme: RemoteTheme }
   | { type: "secrets.updated"; status: SecretsStatus }
   | { type: "ai.updated"; status: AiStatus }
   | { type: "search.status"; status: SearchStatus }

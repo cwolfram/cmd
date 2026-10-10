@@ -127,6 +127,20 @@ describe("remote access", () => {
     await expect.poll(() => core.remote.status().sessions).toEqual([]);
   });
 
+  it("shows the Mac's theme, not its settings", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const boot = await client.call("remote.bootstrap", {});
+    expect(boot.theme).toEqual({ appearance: "dark", dark: "pastel-dark", light: "pastel-light" });
+    const got: CoreEvent[] = [];
+    client.onEvent((e) => got.push(e));
+    core.settings.set("theme.appearance", "auto");
+    core.settings.set("theme.dark", "nord");
+    await expect.poll(() => got.filter((e) => e.type === "theme.updated").at(-1)).toEqual({ type: "theme.updated", theme: { appearance: "auto", dark: "nord", light: "pastel-light" } });
+    expect(got.some((e) => e.type === "settings.updated")).toBe(false);
+    c.ws.close();
+  });
+
   it("disconnects without unpairing", async () => {
     const c = await connect(route, { hostKey, device });
     await c.session;

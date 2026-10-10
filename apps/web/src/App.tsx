@@ -4,13 +4,13 @@
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bucketOf } from "@cmd/protocol";
+import { Button, Callout, EmptyState, IconButton, StatusDot } from "@cmd/ui";
 import { Connection, pair, type Phase } from "./connection.ts";
 import { forgetIdentity, loadIdentity, type Identity } from "./identity.ts";
 import { itemOf, useModel } from "./model.ts";
 import { Now } from "./Now.tsx";
 import { Settings } from "./Settings.tsx";
 import { TerminalScreen } from "./Terminal.tsx";
-import { Icon } from "./ui.tsx";
 
 type Boot = { kind: "loading" } | { kind: "welcome" } | { kind: "pairing"; words: string[] | null; error: string | null } | { kind: "paired"; conn: Connection };
 
@@ -42,7 +42,7 @@ export function App() {
         </Center>
       );
     case "pairing":
-      if (boot.error) return <Center icon="close" title="Couldn't pair">{boot.error}</Center>;
+      if (boot.error) return <Center icon="xmark.octagon" title="Couldn't pair">{boot.error}</Center>;
       if (!boot.words) return <Center icon="lock" title="Pairing…" />;
       return (
         <Center icon="lock" title="Approve on your Mac">
@@ -81,16 +81,13 @@ function Paired({ conn }: { conn: Connection }) {
 
   if (phase.kind === "refused")
     return (
-      <Center icon="lock" title="Not paired anymore">
+      <Center icon="lock" title="Not paired anymore" action={<Button size="lg" onClick={() => void forgetIdentity().then(() => location.reload())}>Forget This Mac</Button>}>
         Your Mac doesn't know this browser now. Pair again from cmd → Settings → Remote Access.
-        <button className="btn" onClick={() => void forgetIdentity().then(() => location.reload())}>
-          Forget This Mac
-        </button>
       </Center>
     );
   if (!model)
     return phase.kind === "offline" ? (
-      <Center icon="offline" title="Your Mac is offline">
+      <Center icon="wifi.slash" title="Your Mac is offline">
         {offlineText(phase)}
       </Center>
     ) : (
@@ -115,20 +112,26 @@ function Paired({ conn }: { conn: Connection }) {
           <header className="bar">
             <div className="bar-title">
               <h1>Now</h1>
-              <span className={`status ${phase.kind}`}>
-                <span className="status-dot" /> {model.host}
+              <span className="status">
+                <StatusDot state={phase.kind === "online" ? "success" : phase.kind === "offline" ? "warning" : "off"} size="sm" /> {model.host}
               </span>
             </div>
-            <button className="icon-btn" onClick={() => setSettings(true)} aria-label="Settings">
-              <Icon name="settings" size={22} />
-            </button>
+            <IconButton icon="gearshape" size="lg" label="Settings" onClick={() => setSettings(true)} />
           </header>
-          {phase.kind === "offline" && <div className="banner">{offlineText(phase)}</div>}
+          {phase.kind === "offline" && (
+            <Callout tone="warning" banner>
+              {offlineText(phase)}
+            </Callout>
+          )}
           <Now conn={conn} model={model} workspaceId={workspaceId} onWorkspace={setWorkspaceId} onOpen={openPane} />
         </>
       )}
-      {pane && phase.kind === "offline" && <div className="banner floating">{offlineText(phase)}</div>}
-      {settings && <Settings conn={conn} phase={phase} model={model} onClose={() => setSettings(false)} />}
+      {pane && phase.kind === "offline" && (
+        <div className="floating">
+          <Callout tone="warning">{offlineText(phase)}</Callout>
+        </div>
+      )}
+      <Settings open={settings} conn={conn} phase={phase} model={model} onClose={() => setSettings(false)} />
     </div>
   );
 }
@@ -136,14 +139,13 @@ function Paired({ conn }: { conn: Connection }) {
 const offlineText = (p: Extract<Phase, { kind: "offline" }>) =>
   `${p.reason === "mac" ? "It may be asleep, or remote access is off." : "Can't reach it right now."} Since ${new Date(p.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Retrying…`;
 
-function Center({ icon, title, children }: { icon: Parameters<typeof Icon>[0]["name"]; title: string; children?: ReactNode }) {
+/** A whole screen with one thing to say: pairing, offline, not paired. */
+function Center({ icon, title, children, action }: { icon: string; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="center">
-      <div className="center-icon">
-        <Icon name={icon} size={28} />
-      </div>
-      <h1>{title}</h1>
-      {children && <div className="center-body">{children}</div>}
+      <EmptyState icon={icon} title={title} action={action}>
+        {children}
+      </EmptyState>
     </div>
   );
 }

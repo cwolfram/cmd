@@ -7,11 +7,13 @@
 // E2E_HOSTED=1 runs it against the deployed relay and client instead;
 // E2E_DIRECT=1 has the core serve the built client and take the phone's socket
 // itself (docs/38, "Your own URL" on loopback, which browsers treat as secure).
+// E2E_BROWSER=chromium emulates the iPhone in Chromium (WebKit can't start in the
+// Agent Safehouse sandbox); WebKit is the real check.
 
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
-import { devices, webkit } from "playwright";
+import { chromium, devices, webkit } from "playwright";
 import { pathToFileURL } from "node:url";
 import net from "node:net";
 import { stopCore } from "../scripts/stop-core.mjs";
@@ -63,7 +65,7 @@ core.unref();
 
 let mac;
 // WebKit, as on an iPhone: it differs where it matters (an X25519 CryptoKey in IndexedDB reads back as null).
-const browser = await webkit.launch();
+const browser = await (process.env.E2E_BROWSER === "chromium" ? chromium : webkit).launch();
 try {
   const sock = path.join(home, "core.sock");
   await until(async () => fs.existsSync(sock), "the core starts");
@@ -93,13 +95,13 @@ try {
   check(/iPhone/.test(requests[0].name), `the Mac sees the device's name (${requests[0].name})`);
   await shot("1-approve");
   await call("remote.approve", { requestId: requests[0].requestId, allow: true, scope: "control" });
-  await page.locator(".empty").waitFor();
+  await page.locator(".ui-empty").waitFor();
   check(true, "approved: the phone lands on Now");
 
   const pane = await call("pane.create", {});
-  await page.locator(".row").first().waitFor();
+  await page.locator(".now .ui-list-row").first().waitFor();
   check(true, "a new terminal shows up in Now");
-  await page.locator(".row").first().click();
+  await page.locator(".now .ui-list-row").first().click();
   await page.locator(".term .xterm-rows").waitFor();
   await until(async () => (await call("remote.status")).sessions[0]?.watching.includes(pane.id), "opening it follows it on the Mac");
   // Control: the Mac's terminal takes the phone's size; the page itself doesn't scroll.
@@ -113,7 +115,7 @@ try {
   await until(async () => (await call("pane.list")).find((p) => p.id === pane.id).rows < fitted.rows, "a smaller viewport (keyboard) refits the rows");
   await page.setViewportSize(vp);
   await page.locator(".compose input").fill("echo phone-was-here");
-  await page.locator(".compose .send").click();
+  await page.locator(".compose").getByRole("button", { name: "Send" }).click();
   await until(async () => (await call("pane.read", { paneId: pane.id })).text.includes("phone-was-here\n"), "the compose bar types into the terminal");
   await until(async () => (await page.locator(".term").innerText()).includes("phone-was-here"), "the output comes back to the phone");
   await page.getByRole("button", { name: "^C" }).click();
@@ -131,9 +133,9 @@ try {
   await page.getByRole("button", { name: "Back to Now" }).click();
   // Settings: which Mac, what access, forget.
   await page.getByRole("button", { name: "Settings" }).click();
-  await page.locator(".sheet").getByText("Control: can type and change files").waitFor();
+  await page.getByRole("dialog").getByText("Control: can type and change files").waitFor();
   check(true, "Settings says what this device may do");
-  await page.waitForTimeout(300); // the sheet's rise
+  await page.waitForTimeout(300); // the sheet's rise (fixed-wait: a screenshot of it in place)
   await shot("2b-settings");
   await page.keyboard.press("Escape");
 
@@ -168,18 +170,32 @@ try {
     ["UserPromptSubmit", { prompt: "rate limit the public endpoints" }],
     ["Stop", { last_assistant_message: "Added a token-bucket limiter to /v1/*; 42 tests pass." }],
   ]);
-  await page.locator(".row-needs").waitFor();
-  check(/^needs you/i.test((await page.locator("h2").allInnerTexts())[0] ?? ""), "Now puts what needs you first");
+  await page.locator('.ui-list-row[data-group="needs"]').waitFor();
+  check(/^needs you/i.test((await page.locator(".ui-list-heading-title").allInnerTexts())[0] ?? ""), "Now puts what needs you first");
   await shot("2-now");
-  await page.emulateMedia({ colorScheme: "dark" });
+
+  // The Mac's theme: its picks (not the rest of its settings), live; Auto follows the phone.
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const themeBg = { "pastel-dark": "rgb(10, 11, 12)", nord: "rgb(39, 44, 54)", "github-light": "rgb(246, 248, 250)" }; // themes/*.ts: colors.bg
+  await call("settings.set", { key: "theme.appearance", value: "dark" });
+  await until(async () => (await bg()) === themeBg["pastel-dark"], "the phone draws in the Mac's dark theme");
+  await call("settings.set", { key: "theme.dark", value: "nord" });
+  await until(async () => (await bg()) === themeBg.nord, "a new theme on the Mac reaches the phone at once");
   await shot("2d-now-dark");
+  await call("settings.set", { key: "theme.appearance", value: "auto" });
+  await call("settings.set", { key: "theme.light", value: "github-light" });
+  await page.emulateMedia({ colorScheme: "light" });
+  await until(async () => (await bg()) === themeBg["github-light"], "Auto: a light phone gets the Mac's light theme");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await until(async () => (await bg()) === themeBg.nord, "Auto: a dark phone gets the Mac's dark theme");
   await page.emulateMedia({ colorScheme: "light" });
 
-  await page.locator(".chip", { hasText: "site" }).click();
-  await page.locator(".row", { hasText: "Pricing page" }).waitFor();
-  check((await page.locator(".row").count()) === 1, "a workspace chip filters Now");
+  await page.locator(".filters .ui-button", { hasText: "site" }).click();
+  // Its title, or the name cmd gives the session from its prompt ("Pricing table") once it has one.
+  await page.locator(".now .ui-list-row", { hasText: "Pricing" }).waitFor();
+  check((await page.locator(".now .ui-list-row").count()) === 1, "a workspace chip filters Now");
   await shot("2c-workspace");
-  await page.locator(".chip", { hasText: "All" }).click();
+  await page.locator(".filters .ui-button", { hasText: "All" }).click();
   await page.locator(".actions").getByRole("button", { name: "Next" }).click();
   await page.locator(".term-state", { hasText: "Needs you" }).waitFor();
   check(true, "Next opens the oldest thing that needs you");
@@ -189,7 +205,7 @@ try {
 
   // The phone comes back after a reload: it remembers the Mac, no pairing.
   await page.reload();
-  await page.locator(".row").first().waitFor();
+  await page.locator(".now .ui-list-row").first().waitFor();
   check(true, "a reload reconnects without pairing again");
 
   const [device] = await call("remote.devices");

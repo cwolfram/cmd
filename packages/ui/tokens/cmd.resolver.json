@@ -1,7 +1,7 @@
 {
   "name": "cmd",
   "version": "2025-10-01",
-  "description": "cmd's design tokens (DTCG 2025.10). The base set, then a light appearance (light themes) and reduced motion. pnpm tokens builds them into packages/ui/src/tokens.css and tokens.gen.ts, and the Magic widget frame's packages/core/src/magic/prompt/tokens.css (kit 2).",
+  "description": "cmd's design tokens (DTCG 2025.10). The base set, then a light appearance (light themes), reduced motion and touch screens. pnpm tokens builds them into packages/ui/src/tokens.css and tokens.gen.ts, and the Magic widget frame's packages/core/src/magic/prompt/tokens.css (kit 2).",
   "sets": {
     "base": {
       "description": "Everything, tuned for dark themes. theme.tokens.json documents what each theme sets at runtime.",
@@ -54,6 +54,18 @@
         ]
       },
       "default": "full"
+    },
+    "pointer": {
+      "description": "pointer: coarse (touch screens, the web client on a phone); emitted as a media query.",
+      "contexts": {
+        "fine": [],
+        "coarse": [
+          {
+            "$ref": "pointer-coarse.tokens.json"
+          }
+        ]
+      },
+      "default": "fine"
     }
   },
   "resolutionOrder": [
@@ -65,6 +77,9 @@
     },
     {
       "$ref": "#/modifiers/motion"
+    },
+    {
+      "$ref": "#/modifiers/pointer"
     }
   ]
 }

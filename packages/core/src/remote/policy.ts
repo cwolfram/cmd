@@ -400,6 +400,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "workspace.removed":
     case "notification":
     case "pane.resync":
+    case "theme.updated": // theme ids only, not the rest of the settings
       return true;
     case "settings.updated":
     case "secrets.updated":

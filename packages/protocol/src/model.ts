@@ -375,6 +375,13 @@ export interface GitStatus {
  */
 export type RemoteScope = "view" | "control";
 
+/** The theme.* settings a paired device sees, so it draws in the Mac's themes (ids from @cmd/ui/themes). */
+export interface RemoteTheme {
+  appearance: "auto" | "dark" | "light";
+  dark: string;
+  light: string;
+}
+
 /** A browser paired with this Mac. */
 export interface RemoteDevice {
   id: string;

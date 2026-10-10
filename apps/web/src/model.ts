@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { bucketOf, type Agent, type CoreEvent, type Pane, type Workspace } from "@cmd/protocol";
 import type { Connection, Phase } from "./connection.ts";
+import { setMacTheme } from "./theme.ts";
 import type { Light } from "./ui.tsx";
 
 export interface Model {
@@ -20,12 +21,13 @@ export interface Model {
 type Legacy = { spaces?: Workspace[]; spaceId?: string; space?: Workspace };
 const paneOf = (p: Pane): Pane => (p.workspaceId ? p : { ...p, workspaceId: (p as Pane & Legacy).spaceId ?? "" });
 
-/** The bootstrap, kept current by events. Stays (stale) while offline. */
+/** The bootstrap, kept current by events. Stays (stale) while offline. Applies the Mac's theme as it comes and changes. */
 export function useModel(conn: Connection, phase: Phase): Model | null {
   const [model, setModel] = useState<Model | null>(null);
   useEffect(() => {
     if (phase.kind !== "online") return;
     const b = phase.boot;
+    setMacTheme(b.theme);
     setModel({
       panes: new Map(b.panes.map((p) => [p.id, paneOf(p)])),
       agents: new Map(b.agents.map((a) => [a.id, a])),
@@ -36,7 +38,8 @@ export function useModel(conn: Connection, phase: Phase): Model | null {
   }, [phase]);
   useEffect(
     () =>
-      conn.onEvent((e: CoreEvent) =>
+      conn.onEvent((e: CoreEvent) => {
+        if (e.type === "theme.updated") return setMacTheme(e.theme);
         setModel((m) => {
           if (!m) return m;
           const next = { ...m };
@@ -51,8 +54,8 @@ export function useModel(conn: Connection, phase: Phase): Model | null {
           } else if (type === "workspace.removed") (next.workspaces = new Map(m.workspaces)).delete((e as { id: string }).id);
           else return m;
           return next;
-        }),
-      ),
+        });
+      }),
     [conn],
   );
   return model;

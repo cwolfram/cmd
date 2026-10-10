@@ -6,7 +6,7 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, AppNotification, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
+import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, RemoteTheme, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, AppNotification, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { EXPORT_FORMAT, lineSplitter, TURN_FORMAT } from "@cmd/protocol";
 import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
 import { AgentTracker, sessionIdOf } from "./agents/tracker.ts";
@@ -289,6 +289,8 @@ export class Core {
       store: this.store,
       historyDir: opts.stateDir ? path.join(opts.stateDir, "history") : null,
     });
+    // Paired phones draw in the Mac's themes; they never get settings.updated.
+    this.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => this.#broadcast({ type: "theme.updated", theme: this.#remoteTheme() }));
     // Developer widgets come and go from the library with their setting.
     this.settings.bind(["widgets.developer"], () => this.#libraryChanged());
     this.settings.bind(["shell.openFolders", "shell.openFiles", "shell.openUrls", "open.handlers"], () => {
@@ -905,6 +907,7 @@ export class Core {
       windowTypes: this.windowTypes.info(),
       device: null,
       host: { name: computerName() },
+      theme: this.#remoteTheme(),
     }),
     "window.follow": () => null,
     "events.subscribe": () => ({
@@ -917,6 +920,11 @@ export class Core {
       ui: this.store.uiState(),
     }),
   };
+
+  #remoteTheme(): RemoteTheme {
+    const s = this.settings.settings;
+    return { appearance: s["theme.appearance"], dark: s["theme.dark"], light: s["theme.light"] };
+  }
 
   #hookTargets(): HookTarget[] {
     if (!this.#hooks) return [];

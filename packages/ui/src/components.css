@@ -1628,3 +1628,25 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   .ui-ai[data-state="thinking"] .ui-ai-field { box-shadow: inset 0 0 0 1.5px var(--accent); }
   .ui-ai[data-state="thinking"] .ui-ai-edge { opacity: 0; }
 }
+
+/* ── touch screens ──
+   pointer: coarse (the web client on a phone). tokens.css scales the type, controls,
+   rows and inset; this is what isn't a token: rows and headings a finger can hit,
+   marks and lights that grow with the text, no hover states left on after a tap,
+   and dialogs as sheets from the bottom edge. The desktop never matches it. */
+@media (pointer: coarse) {
+  .ui-list-heading { height: var(--control-h-sm); }
+  .ui-list-row.short { height: var(--row-h); }
+  .ui-list-row.tall { min-height: var(--row-h-lg); padding-top: var(--space-sm); padding-bottom: var(--space-sm); }
+  .ui-list-row-title, .ui-list-row-detail { line-height: 1.35; }
+  .ui-list-row:hover, .ui-button:hover:not(:disabled), .ui-icon-button:hover:not(:disabled) { background: none; }
+  .ui-list-row:active { background: var(--bg-hover); }
+  .ui-button:active:not(:disabled), .ui-icon-button:active:not(:disabled) { background: var(--control-active); }
+  .ui-mark, .ui-button > .sf, .ui-icon-button > .sf { zoom: 1.35; }
+  .ui-scrim, .ui-scrim[data-position="center"] { align-items: flex-end; padding: 0; }
+  .ui-dialog { width: 100% !important; max-height: 90%; border-width: var(--sheet-edge-width) 0 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .ui-dialog[data-motion="pop"] { animation-name: ui-sheet-in; animation-duration: var(--dur); }
+  .ui-dialog[data-motion="pop"][data-closing] { animation-name: ui-sheet-out; animation-duration: var(--dur-fast); }
+}
+@keyframes ui-sheet-in { from { transform: translateY(100%); } }
+@keyframes ui-sheet-out { to { transform: translateY(100%); } }

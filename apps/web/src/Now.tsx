@@ -4,9 +4,10 @@
 // oldest thing that needs you.
 
 import { useMemo, useState } from "react";
+import { Badge, Button, EmptyState, ListRow, ListSection } from "@cmd/ui";
 import type { Connection } from "./connection.ts";
 import { sections, workspaceList, type Item, type Model } from "./model.ts";
-import { ago, Icon, Led } from "./ui.tsx";
+import { ago } from "./ui.tsx";
 
 export function Now({ conn, model, workspaceId, onWorkspace, onOpen }: { conn: Connection; model: Model; workspaceId: string | null; onWorkspace: (id: string | null) => void; onOpen: (paneId: string) => void }) {
   const groups = useMemo(() => sections(model, workspaceId), [model, workspaceId]);
@@ -33,55 +34,47 @@ export function Now({ conn, model, workspaceId, onWorkspace, onOpen }: { conn: C
   return (
     <>
       {workspaces.length > 1 && (
-        <nav className="chips">
-          <button className={`chip${workspaceId === null ? " on" : ""}`} onClick={() => onWorkspace(null)}>
+        <nav className="filters" aria-label="Workspaces">
+          <Button size="sm" pressed={workspaceId === null} onClick={() => onWorkspace(null)}>
             All
-          </button>
+          </Button>
           {workspaces.map(({ workspace, needs }) => (
-            <button key={workspace.id} className={`chip${workspaceId === workspace.id ? " on" : ""}`} onClick={() => onWorkspace(workspace.id)}>
+            <Button key={workspace.id} size="sm" pressed={workspaceId === workspace.id} onClick={() => onWorkspace(workspace.id)} trailing={needs > 0 ? <Badge tone="warning" solid size="sm">{needs}</Badge> : undefined}>
               {workspace.name}
-              {needs > 0 && <span className="chip-badge">{needs}</span>}
-            </button>
+            </Button>
           ))}
         </nav>
       )}
       <main className="now">
         {groups.length === 0 ? (
-          <div className="empty">
-            <Icon name="terminal" size={28} />
-            <div>Nothing running{workspaceId ? ` in ${workspaceName(workspaceId)}` : ""}.</div>
-            {control && <div className="dim">Start a terminal or a Claude session below.</div>}
-          </div>
+          <EmptyState icon="terminal" title={`Nothing running${workspaceId ? ` in ${workspaceName(workspaceId)}` : ""}`}>
+            {control ? "Start a terminal or a Claude session below." : null}
+          </EmptyState>
         ) : (
           groups.map((g) => (
-            <section key={g.group}>
-              <h2>
-                {g.title} <span className="count">{g.items.length}</span>
-              </h2>
-              <div className="card">
-                {g.items.map((it) => (
-                  <Row key={it.paneId} it={it} showWorkspace={workspaceId === null && workspaces.length > 1} onOpen={onOpen} />
-                ))}
-              </div>
-            </section>
+            <ListSection key={g.group} title={g.title} count={g.items.length} tone={g.group === "needs" ? "needs" : undefined}>
+              {g.items.map((it) => (
+                <Row key={it.paneId} it={it} showWorkspace={workspaceId === null && workspaces.length > 1} onOpen={onOpen} />
+              ))}
+            </ListSection>
           ))
         )}
       </main>
       {(control || needs.length > 0) && (
         <footer className="actions">
           {needs.length > 0 && (
-            <button className="action primary" onClick={() => onOpen(needs[0]!.paneId)}>
-              <Icon name="next" size={16} /> Next
-            </button>
+            <Button size="lg" variant="primary" icon="bolt" onClick={() => onOpen(needs[0]!.paneId)}>
+              Next
+            </Button>
           )}
           {control && (
             <>
-              <button className="action" disabled={busy} onClick={() => void start("terminal")}>
-                <Icon name="terminal" size={16} /> Terminal
-              </button>
-              <button className="action" disabled={busy} onClick={() => void start("claude")}>
-                <Icon name="sparkles" size={16} /> Claude
-              </button>
+              <Button size="lg" icon="terminal" disabled={busy} onClick={() => void start("terminal")}>
+                Terminal
+              </Button>
+              <Button size="lg" icon="sparkles" disabled={busy} onClick={() => void start("claude")}>
+                Claude
+              </Button>
             </>
           )}
         </footer>
@@ -91,20 +84,21 @@ export function Now({ conn, model, workspaceId, onWorkspace, onOpen }: { conn: C
 }
 
 function Row({ it, showWorkspace, onOpen }: { it: Item; showWorkspace: boolean; onOpen: (paneId: string) => void }) {
+  const place = showWorkspace && it.workspace ? it.workspace : null;
   return (
-    <button className={`row row-${it.group}`} onClick={() => onOpen(it.paneId)}>
-      <Led light={it.light} />
-      <span className="row-icon">
-        <Icon name={it.agent ? "sparkles" : "terminal"} size={16} />
-      </span>
-      <span className="row-text">
-        <span className="row-top">
-          <span className="row-title">{it.title}</span>
-          {showWorkspace && it.workspace && <span className="workspace-tag">{it.workspace}</span>}
-          <span className="row-when">{ago(it.since)}</span>
-        </span>
-        {it.detail && <span className="row-sub">{it.detail}</span>}
-      </span>
-    </button>
+    <ListRow
+      role="button"
+      tabIndex={0}
+      icon={it.agent ? "sparkles" : "terminal"}
+      light={it.light === "idle" ? undefined : it.light}
+      title={it.title}
+      place={place}
+      detail={it.detail ? (place ? `${place} · ${it.detail}` : it.detail) : undefined}
+      tone={it.group === "needs" ? "needs" : undefined}
+      end={<span className="when">{ago(it.since)}</span>}
+      data-group={it.group}
+      onClick={() => onOpen(it.paneId)}
+      onKeyDown={(e) => e.key === "Enter" && onOpen(it.paneId)}
+    />
   );
 }

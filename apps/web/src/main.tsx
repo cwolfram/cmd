@@ -1,9 +1,16 @@
 // The remote-access web client (docs/13-remote-access.md): a prototype that
 // pairs with a Mac and shows its terminals and agents, end-to-end encrypted.
+// Drawn with @cmd/ui in the Mac's theme (theme.ts); on a phone the kit's touch
+// sizes apply (pointer: coarse).
 
 import { createRoot } from "react-dom/client";
+import { UIProvider } from "@cmd/ui";
+import "@cmd/ui/ui.css";
 import { App } from "./App.tsx";
+import { startTheme } from "./theme.ts";
 import "./styles.css";
+
+startTheme();
 
 // The app fills what's visible: on a phone that's above the keyboard. iOS
 // shrinks the visual viewport (not the layout one) when the keyboard opens and
@@ -19,4 +26,9 @@ vv?.addEventListener("scroll", follow);
 window.addEventListener("resize", follow);
 follow();
 
-createRoot(document.getElementById("root")!).render(<App />);
+// No icon renderer: the kit draws its Lucide outlines (SF Symbols are Apple's own).
+createRoot(document.getElementById("root")!).render(
+  <UIProvider>
+    <App />
+  </UIProvider>,
+);

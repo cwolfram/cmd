@@ -1,6 +1,6 @@
 // Builds cmd's design tokens (DTCG 2025.10 files in this folder, tied together by
 // cmd.resolver.json) into what the kit uses:
-//   ../src/tokens.css      the base set on :root (and .ui-theme), reduced motion as a media query
+//   ../src/tokens.css      the base set on :root (and .ui-theme), reduced motion and touch screens as media queries
 //   ../src/tokens.gen.ts   the scales as types (the kit's props take only these names),
 //                          LIGHT_VARS for light themes, and TOKENS: every token with its
 //                          description, for the gallery, docs and agents
@@ -119,6 +119,8 @@ export function build(): { css: string; ts: string; widgetCss: string; previewTh
   const theme = (t: Token) => t.extensions?.["org.cmd.theme"] !== undefined;
   const declare = (t: Token, indent = "  ") => [...(t.description ? [`${indent}/* ${t.description} */`] : []), `${indent}${t.name}: ${css(t)};`];
   const reducedMotion = ["@media (prefers-reduced-motion: reduce) {", "  :root {", ...reduced.map((t) => `    ${t.name}: ${css(t)};`), "  }", "}", ""];
+  const coarse = overrides("pointer", "coarse");
+  const touch = ["@media (pointer: coarse) {", "  :root, .ui-theme {", ...coarse.flatMap((t) => declare(t, "    ")), "  }", "}", ""];
 
   // ── tokens.css
   const lines = [
@@ -140,7 +142,7 @@ export function build(): { css: string; ts: string; widgetCss: string; previewTh
     }
     lines.push(...declare(t));
   }
-  lines.push("}", "", ...reducedMotion);
+  lines.push("}", "", ...reducedMotion, ...touch);
 
   // ── the widget frame's tokens.css: the same, and the widget names
   const widgetCss = [

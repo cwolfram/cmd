@@ -77,6 +77,14 @@ import {
   Users,
   WandSparkles,
   X,
+  // The web client (apps/web).
+  ArrowUp,
+  ClipboardPaste,
+  CornerDownLeft,
+  Lock,
+  Maximize2,
+  WifiOff,
+  Zap,
 } from "lucide-static";
 
 /** SF Symbol name → Lucide SVG. Unknown names render nothing, as on macOS. */
@@ -158,6 +166,14 @@ const LUCIDE: Record<string, string> = {
   "cylinder.split.1x2": Database,
   tablecells: Table,
   "play.fill": Play,
+  // The web client (apps/web), where there are no SF Symbols.
+  "arrow.up": ArrowUp,
+  "arrow.up.left.and.arrow.down.right": Maximize2,
+  bolt: Zap,
+  "doc.on.clipboard": ClipboardPaste,
+  lock: Lock,
+  return: CornerDownLeft,
+  "wifi.slash": WifiOff,
 };
 
 /** Lucide's stroke width for an SF Symbol weight (Lucide's default, 2, is about medium). */
