@@ -2,7 +2,8 @@
 // in a folder, found in its own files (package.json, Makefile, justfile…), with
 // what they do, how often they ran and whether one is running now.
 
-import type { GitPlace, PaneId } from "./model.ts";
+import type { GitPlace, PaneId, WorkspaceId } from "./model.ts";
+import type { Def } from "./settings.ts";
 
 /** What the widget, the library and the palette call it; one place to rename. */
 export const ACTIONS_TITLE = "Workspace Actions";
@@ -87,4 +88,31 @@ export interface ActionsList {
   elsewhere: (ActionRun & { root: string; branch: string | null })[];
   /** The model is writing descriptions. */
   describing: boolean;
+}
+
+/** Workspace Actions' settings, part of SETTINGS_SCHEMA (settings.ts). */
+export const ACTIONS_SETTINGS = {
+  "actions.describe": { title: "Describe actions with AI", type: "boolean", default: true, description: "A few words on what each action does, from the fast model.", details: "Only the scripts' names and commands and the shell commands in the README go to the model. Descriptions written in the files are always kept." },
+  "actions.openBrowser": { title: "Open dev servers in a browser", type: "boolean", default: false, description: "Open a dev server's local address in a browser window beside it." },
+} as const satisfies Record<string, Def>;
+
+/** A folder's Workspace Actions changed: its files, a run, the model's descriptions (actions.list again). Part of CoreEvent (rpc.ts). */
+export type ActionsEvent = { type: "actions.changed"; root: string };
+
+/** Workspace Actions' RPC methods, part of `Methods` (rpc.ts). */
+export interface ActionsMethods {
+  /**
+   * Workspace Actions (docs/39): the ways to run the project in a folder (`path`,
+   * else the workspace's root), ranked, described, and their runs. Changes arrive as actions.changed.
+   */
+  "actions.list": { params: { path?: string; workspaceId?: WorkspaceId }; result: ActionsList };
+  /**
+   * Run an action in its terminal when that is back at its prompt, else in a new one in the workspace.
+   * A server still running isn't started twice: `started` false and its pane. `restart`: ⌃C, then run it again; `fresh`: always a new terminal.
+   */
+  "actions.run": { params: { root: string; actionId: string; workspaceId?: WorkspaceId; restart?: boolean; fresh?: boolean }; result: { paneId: PaneId; started: boolean } };
+  /** ⌃C to an action's running terminal. */
+  "actions.stop": { params: { root: string; actionId: string }; result: null };
+  /** Pin an action to the top of its folder's list; a command from history or the README is kept as one. */
+  "actions.pin": { params: { root: string; actionId: string; pinned: boolean }; result: null };
 }

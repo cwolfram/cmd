@@ -5,6 +5,7 @@
 
 import type { AppWindow, WindowId } from "@cmd/protocol";
 import type { WindowManager } from "./index.ts";
+import type { Feature, FeatureContext } from "../kernel/features.ts";
 import { durationLabel, type TimerState } from "./builtin.ts";
 
 /** setTimeout's limit; a longer wait is set again when it fires. */
@@ -57,3 +58,11 @@ export class TimerAlarms {
     for (const id of [...this.#timers.keys()]) this.#clear(id);
   }
 }
+
+/** The alarms (`core.timers`): a timer rings as a notification on its window. */
+export function createTimers({ core }: FeatureContext): TimerAlarms {
+  return new TimerAlarms(core.windows, (w, title, body) => core.notifications.window(w.id, "timer", title, body));
+}
+
+/** Timers as a feature (kernel/features.ts); the Timer widget's type is with the others (builtin.ts). */
+export const timersFeature = { id: "timers", dispose: ({ core }: FeatureContext) => core.timers.close() } satisfies Feature;

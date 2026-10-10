@@ -6,6 +6,8 @@
 // settings when they act, or subscribe to the keys they cache (SettingsService.bind
 // in the core, the settings.updated event in the UI).
 
+import { ACTIONS_SETTINGS } from "./actions.ts";
+
 /** When a change takes effect, for keys that can't apply to what is already running. Omitted = immediately. */
 export type SettingApplies = "newTerminals" | "firstLaunch";
 
@@ -18,7 +20,7 @@ export type SettingApplies = "newTerminals" | "firstLaunch";
  * window is the window's business (renderer settings/layout.ts).
  */
 type Common = { title?: string; description: string; details?: string; applies?: SettingApplies };
-type Def = Common &
+export type Def = Common &
   (
     | {
         type: "string";
@@ -253,8 +255,7 @@ export const SETTINGS_SCHEMA = {
     default: true,
     description: "Your AI provider sums up what the agent did.",
   },
-  "actions.describe": { title: "Describe actions with AI", type: "boolean", default: true, description: "A few words on what each action does, from the fast model.", details: "Only the scripts' names and commands and the shell commands in the README go to the model. Descriptions written in the files are always kept." },
-  "actions.openBrowser": { title: "Open dev servers in a browser", type: "boolean", default: false, description: "Open a dev server's local address in a browser window beside it." },
+  ...ACTIONS_SETTINGS,
   "widgets.developer": { title: "Developer widgets", type: "boolean", default: false, description: "Offer widgets that show what cmd records and does.", details: "Like the Event Stream. Safe to use; mostly useful when working on cmd or reporting a problem." },
   "notifications.widgets": { title: "Widgets report something", type: "boolean", default: true, description: "When a Magic widget reports news." },
   "notifications.dockBadge": { title: "Badge the Dock icon", type: "boolean", default: true, description: "Show the attention count on the Dock icon." },

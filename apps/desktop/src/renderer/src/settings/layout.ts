@@ -5,6 +5,7 @@
 // "Other" on the last settings page.
 
 import { SECRETS, SETTINGS_SCHEMA, type AiProvider, type SecretKey, type SecretsStatus, type SettingKey, type Settings } from "@cmd/protocol";
+import { actionsSettings } from "../windows/actions/settings.ts";
 
 export type ItemKey = SettingKey | SecretKey;
 /** A row; `when` hides it unless it matters for the current settings and keys. */
@@ -129,7 +130,7 @@ export const SETTINGS_PAGES: Page[] = [
       { title: "While building", items: ["magic.explore", "magic.showSteps"] },
       { title: "Running widgets", items: ["magic.autoFix", "magic.deno"] },
       { title: "Widget Library", items: ["widgets.developer"] },
-      { title: "Workspace Actions", items: ["actions.describe", "actions.openBrowser"] },
+      actionsSettings,
     ],
   },
   {

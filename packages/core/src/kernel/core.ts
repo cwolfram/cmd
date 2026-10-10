@@ -12,7 +12,7 @@ import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
 import { AgentTracker, sessionIdOf } from "../agents/tracker.ts";
 import type { JournalService } from "../journal/service.ts";
 import { createJournal } from "../journal/feature.ts";
-import { FEATURES, featureHandlers } from "./features.ts";
+import { ALL, featureHandlers, type FeatureContext } from "./features.ts";
 import type { Handlers } from "./handlers.ts";
 import { recordNames, recordNotifications, recordWorkspaces, recordWindows } from "../data/recorders.ts";
 import { removeOldBackups } from "../data/migrations.ts";
@@ -38,7 +38,7 @@ import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefi
 import { hookEventName } from "../agents/state.ts";
 import { NotificationCenter } from "../notifications/center.ts";
 import { CommandLog, indexCommandOutput } from "../terminals/commands.ts";
-import { TimerAlarms } from "../windows/timers.ts";
+import { createTimers, type TimerAlarms } from "../windows/timers.ts";
 import { PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
 import { isDir, restoredText, restoreSession } from "../terminals/restore.ts";
 import type { TermBackend } from "../terminals/types.ts";
@@ -68,8 +68,8 @@ import { SummaryService } from "../summaries/service.ts";
 import { UsageStats } from "./usage.ts";
 import { changeCode } from "../jam/change.ts";
 import type { DevKeys } from "./secrets.ts";
-import { ActionsService } from "../actions/service.ts";
-import { expandHome } from "../windows/builtin.ts";
+import type { ActionsService } from "../actions/service.ts";
+import { createActions } from "../actions/feature.ts";
 
 export const VERSION = "0.0.1";
 
@@ -367,7 +367,7 @@ export class Core {
       if (this.workspaces.get(w.workspaceId)?.closedAt !== null) this.windows.move(w.id, this.workspaces.home().id);
     }
     this.windows.on("updated", (window) => this.#broadcast({ type: "window.updated", window }));
-    this.timers = new TimerAlarms(this.windows, (w, title, body) => this.notifications.window(w.id, "timer", title, body));
+    this.timers = createTimers(this.#ctx);
     this.closed = new ClosedWindows(this.store);
     this.closed.on("changed", () => this.#broadcast({ type: "window.closedChanged" }));
     // What a closed window kept, once it can't be reopened any more.
@@ -452,41 +452,7 @@ export class Core {
         return sp && !sp.home ? { name: sp.name, root: sp.root } : null;
       },
     });
-    this.actions = new ActionsService({
-      panes: this.panes,
-      db: this.store.db,
-      commands: (root, since) => {
-        const projectId = projectIdOf(root);
-        if (!projectId) return [];
-        return this.data.query({ types: ["command"], projectId, at: [since, Date.now() + 1], by: "time", order: "desc", limit: 5000 }).flatMap((e) => {
-          const d = e.data as { command?: string | null; cwd?: string; exitCode?: number | null };
-          return d.command && d.cwd ? [{ command: d.command, cwd: d.cwd, at: e.at, exitCode: d.exitCode ?? null }] : [];
-        });
-      },
-      ai: { object: (o) => this.ai.object(o), ready: () => this.ai.status().ready },
-      describeOn: () => this.settings.settings["actions.describe"],
-      roots: () => this.windows.list().flatMap((w) => (w.kind === "actions" ? [this.#actionsRoot(w.state.path as string | undefined, w.workspaceId)] : [])),
-      agentsIn: (top) => this.agents.list().filter((a) => a.git?.top === top && a.state !== "exited").length,
-      agentCommand: (agent) => {
-        const v = (this.settings.settings as Record<string, unknown>)[`agents.${agent}.command`];
-        return typeof v === "string" && v.trim() ? v.trim() : null;
-      },
-      createPane: (o) => {
-        const pane = this.panes.create({ cwd: o.cwd, command: o.command, workspaceId: this.workspaces.mustOpen(o.workspaceId).id });
-        this.usage.window("terminal");
-        return pane;
-      },
-    });
-    this.actions.on("changed", (root) => this.#broadcast({ type: "actions.changed", root }));
-    // A dev server said where it listens: open it beside its terminal, once, if asked to.
-    this.actions.on("url", (paneId, url) => {
-      const pane = this.panes.get(paneId);
-      if (!pane || !this.settings.settings["actions.openBrowser"]) return;
-      if (this.windows.list().some((w) => w.kind === "browser" && w.workspaceId === pane.workspaceId && typeof w.state.url === "string" && w.state.url.startsWith(url.replace(/\/$/, "")))) return;
-      this.#opened(this.windows.open("browser", { url }, this.workspaces.mustOpen(pane.workspaceId)));
-    });
-    this.settings.bind(["actions.describe"], () => this.actions.aiChanged());
-    this.ai.on("updated", () => this.actions.aiChanged());
+    this.actions = createActions(this.#ctx);
     this.panes.on("request", (paneId, action, arg) => this.#onShellRequest(paneId, action, arg));
     this.watches.on("changed", (path) => this.#broadcast({ type: "fs.changed", path }));
     this.settings.on("updated", (snapshot) => this.#broadcast({ type: "settings.updated", snapshot }));
@@ -574,7 +540,7 @@ export class Core {
     // Commands from before their output was searchable: once, from what they printed.
     if (o.stateDir) s.startup("command-output", "Indexing command output", () => void indexCommandOutput(this.data, s).then((n) => n && log.info("command output indexed", { commands: n })));
     if (o.stateDir && o.statusRoot) s.startup("homes", "Looking for agents", () => this.#discoverHomes());
-    if (o.stateDir) for (const f of FEATURES) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this));
+    if (o.stateDir) for (const f of ALL) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this.#ctx));
     if (o.stateDir) s.startup("retention", "Scheduling retention", () => this.data.start());
     // The event log's copy aside from a migration is the way back for a week (migrations.ts), then it goes.
     if (o.stateDir) s.startup("log-backups", "Removing old event log copies", () => void removeOldBackups(path.join(o.stateDir!, "data", "events.sqlite")));
@@ -617,6 +583,9 @@ export class Core {
     const home = os.homedir();
     return at === home || home.startsWith(at.endsWith(path.sep) ? at : at + path.sep) ? null : at;
   }
+
+  /** What features get (kernel/features.ts). */
+  readonly #ctx: FeatureContext = { core: this, broadcast: (e) => this.#broadcast(e), place: (p, o) => this.#place(p, o), opened: (w) => this.#opened(w) };
 
   readonly handlers: Handlers = {
     "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") }),
@@ -691,7 +660,7 @@ export class Core {
       return { path: s.path, windowId: s.windowId, markdown: p.wait ? await s.done : null };
     },
     "agents.coverage": (p) => this.agents.activity.coverage(p.days),
-    ...featureHandlers(this),
+    ...featureHandlers(this.#ctx),
     "data.query": (p) => this.data.query(p.query),
     "data.stats": () => this.data.stats(),
     "data.explain": () => this.data.explain(),
@@ -838,10 +807,6 @@ export class Core {
     "fs.duplicate": (p) => duplicatePath(p.path),
     "fs.create": (p) => createPath(p.dir, p.kind),
     "fs.transfer": (p) => transferPaths(p.paths, p.dir, p.op),
-    "actions.list": (p) => this.actions.list(this.#actionsRoot(p.path, p.workspaceId)),
-    "actions.run": (p) => this.actions.run(p.root, p.actionId, this.#place({ workspaceId: p.workspaceId }, { path: p.root }).id, { restart: p.restart, fresh: p.fresh }),
-    "actions.stop": (p) => (this.actions.stop(p.root, p.actionId), null),
-    "actions.pin": (p) => (this.actions.pin(p.root, p.actionId, p.pinned), null),
     "git.status": (p) => gitStatus(p.path),
     "git.diff": (p) => gitDiff(p.path, p.file),
     "sqlite.schema": (p) => this.sqlite.schema(p.path),
@@ -1028,11 +993,6 @@ export class Core {
    * pane's, the parent agent's, the open workspace whose root most deeply contains
    * the path, else Home.
    */
-  /** The folder Workspace Actions are for: a path given, else the workspace's root. */
-  #actionsRoot(p: string | undefined, workspaceId: WorkspaceId | undefined): string {
-    if (p) return path.resolve(expandHome(p));
-    return (workspaceId ? this.workspaces.get(workspaceId)?.root : undefined) ?? this.workspaces.home().root;
-  }
 
   #place(p: Placement, o: { parentId?: AgentId | null; path?: string } = {}): Workspace {
     if (p.workspaceId) return this.workspaces.mustOpen(p.workspaceId);
@@ -1671,7 +1631,7 @@ export class Core {
     this.agents.close();
     this.usage.close();
     this.ai.dispose();
-    for (const f of FEATURES) f.dispose?.(this);
+    for (const f of ALL) f.dispose?.(this.#ctx);
     // The transcript reader first: its worker's last batches must not land on closed stores.
     this.#closed = true;
     this.#searchView.close();
@@ -1696,8 +1656,6 @@ export class Core {
       if (this.#sockIno !== null && fs.statSync(this.#opts.socketPath).ino === this.#sockIno) fs.unlinkSync(this.#opts.socketPath);
     } catch {}
     this.resources?.close();
-    this.timers.close();
-    this.actions.dispose();
     this.watches.close();
     this.sqlite.close();
     this.agents.close();
