@@ -225,7 +225,7 @@ export function SettingsWindow() {
               <SearchField ref={input} size="lg" value={query} placeholder="Search settings" onChange={(v) => (setQuery(v), setScrolled(false))} />
             </Stack>
             <Stack gap="none" grow>
-              <List>
+              <List variant="nav">
                 {NAV.map((n) => (
                   <ListRow key={n.id} icon={n.icon} title={n.title} selected={!q && n.id === page} dim={!!q && !hitPages.has(n.id)} onClick={() => (setQuery(""), setPage(n.id), setScrolled(false))} />
                 ))}

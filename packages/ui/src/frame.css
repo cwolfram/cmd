@@ -178,6 +178,8 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 /* Rows in a view (ListSection, ListRow): a little room above and below; the sides are the rows' own. */
 .ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--space-md)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
 .ui-list-rows { display: contents; }
+/* Nav: the pages beside a page; a selected row's pill lines up with the field above it. */
+.ui-list[data-variant="nav"] { --list-inset: var(--inset); }
 /* Grouped: sections apart, headings in line with the rows' icons, no boxes: the window is
    the frame. In a View with `inset`, rows and headings reach out into it by their padding,
    so their letters sit on the inset like a plain list's and they highlight as pills there. */

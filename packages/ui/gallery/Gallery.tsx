@@ -425,9 +425,9 @@ function WindowsPage() {
           </View>
         </Win>
       </Spec>
-      <Spec title="List" code='<List variant="plain" | "grouped">' note="Plain for navigation (a sidebar), grouped for things to run or change: indented, no boxes." plain>
+      <Spec title="List" code='<List variant="plain" | "grouped" | "nav">' note="Plain for a sidebar of things, grouped for things to run or change: indented, no boxes; nav for the pages beside a page, its pills on the inset." plain>
         <div className="g-row" style={{ alignItems: "flex-start" }}>
-          {(["plain", "grouped"] as const).map((v) => (
+          {(["plain", "grouped", "nav"] as const).map((v) => (
             <Win key={v} name={v} w={300} h={250}>
               <View inset={v === "grouped"}>
                 <List variant={v}>

@@ -339,8 +339,10 @@ export function Text({ tone, size, mono, strong, truncate, select, children }: {
  * edge in a View without an inset, their content at the window's inset, as in a sidebar.
  * Grouped: each section's rows in a box, in a View with `inset`, as in System Settings;
  * for lists of things to run or change rather than records.
+ * Nav: the pages beside a page (Settings' sidebar), highlights on the inset like the fields
+ * above them, their content inside.
  */
-export function List({ variant = "plain", children }: { variant?: "plain" | "grouped"; children: ReactNode }) {
+export function List({ variant = "plain", children }: { variant?: "plain" | "grouped" | "nav"; children: ReactNode }) {
   return (
     <div className="ui-list" data-variant={variant}>
       {children}
