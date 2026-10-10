@@ -53,7 +53,7 @@ Inside the two big packages, grouping has drifted:
 
 ### AR1-17-01 · Add a layout ratchet before moving anything
 
-- **Status:** open
+- **Status:** done (fb28e6a0)
 - **Severity:** medium
 - **Effort:** S (< ½ day)
 - **Where:** `apps/desktop/test/design-css.test.ts` (the model), new `test/layout.test.ts`
@@ -70,14 +70,14 @@ Inside the two big packages, grouping has drifted:
 **Proposal.** Add a count-only-goes-down test in the `design-css.test.ts` style, with a committed `layout-debt.json`. Count the flat files in `core/src` and the renderer root, the entries in `components/`, and the files over 600 lines per package. The test fails when a count rises and asks for `pnpm layout-debt` when it falls. The import rules from AR1-14-07 go into the same harness.
 
 **Success criteria.**
-- [ ] `test/layout.test.ts` exists and fails on a new flat file in `packages/core/src`.
-- [ ] It fails on a new file in `renderer/src/components/`.
-- [ ] `layout-debt.json` is committed; a script lowers it.
-- [ ] CLAUDE.md's Conventions section names the target folders (AR1-17-02..04).
+- [x] `test/layout.test.ts` exists and fails on a new flat file in `packages/core/src`.
+- [x] It fails on a new file in `renderer/src/components/`.
+- [x] `layout-debt.json` is committed; a script lowers it. (`test/layout-debt.json`, `pnpm layout-debt`; it also counts files over 600 lines per package, `tools/` included)
+- [x] CLAUDE.md's Conventions section names the target folders (AR1-17-02..04). (the core's, for now: the renderer's land with AR1-17-03/04)
 
 ### AR1-17-02 · Group the core by feature: a kernel, terminals, and one folder per feature
 
-- **Status:** open
+- **Status:** done (506d8b85)
 - **Severity:** medium
 - **Effort:** M (1–2 days, spread over several commits)
 - **Where:** `packages/core/src/*.ts` (27 files)
@@ -108,9 +108,9 @@ packages/core/src/
 - `core/test/` keeps its flat layout; renaming 63 test files buys little.
 
 **Success criteria.**
-- [ ] `packages/core/src` has no `.ts` files besides `index.ts`.
-- [ ] Every move commit is rename-only apart from import lines (`git show --stat -M` shows renames at ≥ 90 % similarity).
-- [ ] `pnpm typecheck && pnpm test` pass after each commit.
+- [x] `packages/core/src` has no `.ts` files besides `index.ts`. Kept `main.ts` too: it is the process entry that the app, `pnpm core`, e2e and perf scripts start by path. Moved: `kernel/`, `terminals/`, `lib/`, plus `notifications/center.ts` and `windows/timers.ts`; the feature folders stay at the top level (no `features/` until AR1-17-05).
+- [x] Every move commit is rename-only apart from import lines (`git show --stat -M` shows renames at ≥ 90 % similarity).
+- [x] `pnpm typecheck && pnpm test` pass after each commit.
 - [ ] Doc 04's scope list fits in one folder plus `agents/procinfo.ts`.
 
 ### AR1-17-03 · One folder per window type in the renderer, the terminal included
@@ -207,7 +207,7 @@ The central files import a list of contributions instead of holding entries. The
 
 ### AR1-17-06 · Give docs/ unique numbers, an index and a status per doc
 
-- **Status:** open
+- **Status:** done (9eafc6da)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `docs/`, `docs/00-overview.md`
@@ -218,18 +218,18 @@ The central files import a list of contributions instead of holding entries. The
 
 **Proposal.**
 - Renumber the second of each pair to the next free numbers, and fix references with `git grep`.
-- Add a `**Status:**` line under each title: `proposal`, `current`, `implemented (<commit>)` or `superseded by NN`.
+- Add a `**Status:**` line under each title: `proposal`, `current`, `implemented (<commit>)` or `superseded by NN`. (Done with `research`, `proposal`, `partly built`, `built`, `reference` or `superseded by NN`, each with a line on what is and isn't built: "current" and "implemented" didn't separate a research survey from a living guide.)
 - Make `00-overview.md` (or `docs/README.md`) list every doc with its status.
 - Add a small test that fails on a duplicate number or a doc missing from the index.
 
 **Success criteria.**
-- [ ] `ls docs | awk -F- '{print $1}' | sort | uniq -d` prints nothing.
-- [ ] Every `docs/NN-*.md` has a Status line, and the index lists every one.
-- [ ] A test fails on a duplicate number or an unindexed doc.
+- [x] `ls docs | awk -F- '{print $1}' | sort | uniq -d` prints nothing. (10-windows → 42, 14-performance → 43, 35-json-viewer → 44, 38-image-viewer → 45; the review's own "doc NN" means the docs in this folder)
+- [x] Every `docs/NN-*.md` has a Status line, and the index lists every one.
+- [x] A test fails on a duplicate number or an unindexed doc.
 
 ### AR1-17-07 · Put dev-only tooling apart from product packages
 
-- **Status:** open
+- **Status:** done (69b9f762)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/tours`, `scripts/`, `e2e/`
@@ -241,9 +241,9 @@ The central files import a list of contributions instead of holding entries. The
 **Proposal.** Move it to `tools/tours`, and add `tools/*` to `pnpm-workspace.yaml`. Optionally move `e2e/` and `scripts/perf` under `tools/` as well, so the top level reads apps / packages / tools / docs. Keep `pnpm tour` working.
 
 **Success criteria.**
-- [ ] `packages/` contains only code that ships in the app, CLI, relay or web client.
-- [ ] `pnpm tour <file>` and the tours skill work unchanged.
-- [ ] The staged runtime (`scripts/stage-runtime.mjs`) contains nothing from `tools/`.
+- [x] `packages/` contains only code that ships in the app, CLI, relay or web client.
+- [x] `pnpm tour <file>` and the tours skill work unchanged.
+- [x] The staged runtime (`scripts/stage-runtime.mjs`) contains nothing from `tools/`. `e2e/` and `scripts/perf` stay where they are.
 
 ## Not issues
 

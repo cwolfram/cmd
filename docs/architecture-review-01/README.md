@@ -1,6 +1,6 @@
 # Architecture review 01
 
-**Overall: 5/10** · 2026-10-10 · reviewed against commit `ddb7832` · 16 systems plus repo layout, 169 issues (2 critical, 37 high, 80 medium, 50 low; 5 done)
+**Overall: 5/10** · 2026-10-10 · reviewed against commit `ddb7832` · 16 systems plus repo layout, 169 issues (2 critical, 37 high, 80 medium, 50 low; 29 done)
 
 cmd's foundations hold up: one core that owns all state, a PTY host that outlives it, a typed RPC contract, an event log with views, a token-driven UI kit, and a scheduler with a stall watchdog. A week of shipping on top of them has left three kinds of debt. **The read side has no single policy.** Phones, widgets and model-written code each reach files and the event log through their own checks, and two of those checks leak. **Terminal and event streams have no positions.** Snapshots and live output can't be joined exactly, and nothing pushes back on a fast producer. **Every feature edits the same central files.** `core.ts`, `App.tsx`, `WindowsView.tsx`, `tracker.ts` and five append-only registries absorb every change, and nothing stops them from growing.
 
@@ -185,7 +185,7 @@ AR1-04-01 + AR1-04-03 in one `HOST_PROTOCOL` bump → AR1-02-02 (offsets on the 
 
 These are the remaining issues of size S (under ½ day), a good first pick for a free agent. Check its **Depends on** line first. Wave 0 above is the urgent subset.
 
-AR1-01-05, AR1-01-08, AR1-01-09, AR1-03-06, AR1-03-09, AR1-03-10, AR1-04-07, AR1-04-09, AR1-05-07, AR1-05-08, AR1-05-09, AR1-05-10, AR1-06-09, AR1-06-10, AR1-06-11, AR1-08-06, AR1-08-09, AR1-08-10, AR1-08-11, AR1-09-09, AR1-10-03, AR1-10-06, AR1-10-07, AR1-10-09, AR1-10-10, AR1-11-09, AR1-11-10, AR1-12-04, AR1-12-05, AR1-12-10, AR1-12-12, AR1-13-07, AR1-13-09, AR1-14-04, AR1-14-06, AR1-14-07, AR1-14-08, AR1-15-06, AR1-15-07, AR1-15-09, AR1-16-04, AR1-16-06, AR1-16-07, AR1-16-09, AR1-16-10, AR1-17-01, AR1-17-06, AR1-17-07, AR1-06-12, AR1-14-10, AR1-16-11.
+AR1-01-05, AR1-01-08, AR1-01-09, AR1-03-06, AR1-03-09, AR1-03-10, AR1-04-07, AR1-04-09, AR1-05-07, AR1-05-08, AR1-05-09, AR1-05-10, AR1-06-09, AR1-06-10, AR1-06-11, AR1-08-06, AR1-08-09, AR1-08-10, AR1-08-11, AR1-09-09, AR1-10-03, AR1-10-06, AR1-10-07, AR1-10-09, AR1-10-10, AR1-11-09, AR1-11-10, AR1-12-04, AR1-12-05, AR1-12-10, AR1-12-12, AR1-13-07, AR1-13-09, AR1-14-04, AR1-14-06, AR1-14-07, AR1-14-08, AR1-15-06, AR1-15-07, AR1-15-09, AR1-16-04, AR1-16-06, AR1-16-07, AR1-16-09, AR1-16-10, AR1-06-12, AR1-14-10, AR1-16-11.
 
 ## Process
 
