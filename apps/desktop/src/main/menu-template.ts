@@ -7,8 +7,8 @@ import { COMMANDS, type CommandSpec, type ContextItem, type Keybindings } from "
 
 type Send = (id: string) => void;
 type Role = NonNullable<MenuItemConstructorOptions["role"]>;
-/** A group of a menu: a command slot ("File/new"), or roles and slots in one run. */
-type Part = string | { role: Role };
+/** A group of a menu: a command slot ("File/new"), roles and slots in one run, or a slot as a submenu. */
+type Part = string | { role: Role } | { submenu: string; slot: string };
 type Menu = { label?: string; role?: Role; groups: Part[][] };
 
 const r = (role: Role) => ({ role });
@@ -21,8 +21,8 @@ function layout(mac: boolean, appName: string): Menu[] {
       label: "File",
       groups: [["File/new"], ["File/agents"], ["File/windows"], ["File/workspace"], ["File/save"], ["File/files"], ["File/close"], ["File/settings"], ...(mac ? [] : [["App/settings"], [r("quit")]])],
     },
-    { label: "Edit", groups: [[r("undo"), r("redo")], [r("cut"), "Edit/copy", r("paste"), "Edit/select"], ["Edit/find"], ["Edit/terminal"]] },
-    { label: "View", groups: [["View/layout"], ["View/sidebars"], ["View/palette"], ["View/zoom"], [r("togglefullscreen")], ["@developer"]] },
+    { label: "Edit", groups: [[r("undo"), r("redo")], [r("cut"), "Edit/copy", r("paste"), "Edit/select"], ["Edit/find"], ["Edit/text", { submenu: "Lines", slot: "Edit/lines" }, { submenu: "Code Folding", slot: "Edit/folding" }], ["Edit/terminal"]] },
+    { label: "View", groups: [["View/layout"], ["View/sidebars"], ["View/palette"], ["View/zoom"], ["View/editor"], [r("togglefullscreen")], ["@developer"]] },
     { label: "Session", groups: [["Session/move"], ["Session/select", "Session/agent"]] },
     { label: "Workspace", groups: [["Workspace/move", "Workspace/select"], ["Workspace/edit"], ["Workspace/actions"], ["Workspace/close"]] },
     { label: "Widgets", groups: [["Widgets/library"], ["Widgets/widget"], ["Widgets/remove"]] },
@@ -46,7 +46,7 @@ export function menuTemplate(send: Send, bindings: Keybindings, o: { mac: boolea
   const bySlot = new Map<string, CommandSpec[]>();
   for (const c of COMMANDS as readonly CommandSpec[]) bySlot.set(c.menu, [...(bySlot.get(c.menu) ?? []), c]);
   const part = (p: Part): MenuItemConstructorOptions[] => {
-    if (typeof p !== "string") return [p];
+    if (typeof p !== "string") return "submenu" in p ? [{ label: p.submenu, submenu: (bySlot.get(p.slot) ?? []).flatMap((c) => items(c, send, bindings)) }] : [p];
     if (p === "@developer") return [{ label: "Developer", submenu: [{ role: "reload" }, { role: "toggleDevTools" }] }];
     return (bySlot.get(p) ?? []).flatMap((c) => items(c, send, bindings));
   };
@@ -59,7 +59,7 @@ export function menuTemplate(send: Send, bindings: Keybindings, o: { mac: boolea
 
 /** Every slot the layout places (for the test: a command in another slot isn't in the menu). */
 export function menuSlots(mac: boolean): string[] {
-  return layout(mac, "cmd").flatMap((m) => m.groups.flat().filter((p): p is string => typeof p === "string"));
+  return layout(mac, "cmd").flatMap((m) => m.groups.flat().flatMap((p) => (typeof p === "string" ? [p] : "submenu" in p ? [p.slot] : [])));
 }
 
 /** A context menu's template; an entry that is an app command shows its shortcut, which the menu bar runs (not this menu). */

@@ -25,6 +25,8 @@ const PREFIX: Record<string, string> = { ">": "Commands", "@": "Sessions" };
 const HEADING: Record<string, string> = { Sessions: "Open" };
 /** `?query` searches agent transcripts (async, in the core). */
 export const SEARCH_PREFIX = "?";
+/** `:12` (or `:12:5`, a column too) goes to that line in the selected text window (shell/palette.ts lineItems). */
+export const LINE_PREFIX = ":";
 
 /** Subsequence match; earlier and tighter matches score higher. */
 function score(label: string, q: string): number {
@@ -235,7 +237,8 @@ export function Palette({
             if (e.key === "Escape") onClose();
             else if (e.key === "ArrowDown") (e.preventDefault(), (byKey.current = true), pick(Math.min(active + 1, results.length - 1)));
             else if (e.key === "ArrowUp") (e.preventDefault(), (byKey.current = true), pick(Math.max(active - 1, 0)));
-            else if (e.key === "Enter") run(results[active], e.metaKey);
+            // Its default would type a newline into whatever the item focuses (Go to Line's editor).
+            else if (e.key === "Enter") (e.preventDefault(), run(results[active], e.metaKey));
           }}
         />
         <ul ref={list} className="palette-list" id={`${id}-list`} role="listbox" aria-label={label ?? placeholder}>

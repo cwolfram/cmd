@@ -76,13 +76,23 @@ export const filesType: WindowType<{ path: string }> = {
  * Save asks first, `draft` the unsaved text, kept so it survives reloads. Saving
  * sets `path` and drops the draft. `reveal` asks the editor to show a line (a
  * search result): its line, column and the text to select; `at` makes each ask new.
+ * `pos` (where you were) and `zoom` (⌘+ ⌘−) are the editor's own, kept across reloads.
  */
 type Reveal = { line: number; column: number | null; text: string | null; at: number };
 const revealOf = (v: unknown): Reveal | undefined => {
   const r = v as Partial<Reveal> | null | undefined;
   return r && typeof r.line === "number" ? { line: r.line, column: typeof r.column === "number" ? r.column : null, text: typeof r.text === "string" ? r.text : null, at: typeof r.at === "number" ? r.at : Date.now() } : undefined;
 };
-export const textType: WindowType<{ path: string; dir?: string; draft?: string; reveal?: Reveal }> = {
+/** Where a text window was: the cursor's line (1-based) and column (0-based), and the top line shown. */
+type TextPos = { line: number; col: number; top: number };
+const posOf = (v: unknown): TextPos | undefined => {
+  const p = v as Partial<TextPos> | null;
+  const n = (x: unknown) => typeof x === "number" && Number.isInteger(x) && x >= 0;
+  return p && typeof p === "object" && n(p.line) && n(p.col) && n(p.top) ? { line: p.line!, col: p.col!, top: p.top! } : undefined;
+};
+const zoomOf = (v: unknown): number | undefined => (typeof v === "number" && Number.isInteger(v) && Math.abs(v) <= 32 ? v : undefined);
+
+export const textType: WindowType<{ path: string; dir?: string; draft?: string; reveal?: Reveal; pos?: TextPos; zoom?: number }> = {
   kind: "text",
   title: "Text Editor",
   icon: "doc.text",
@@ -113,7 +123,16 @@ export const textType: WindowType<{ path: string; dir?: string; draft?: string; 
       return { state: { path: file }, title: path.basename(file) };
     }
     const draft = str(patch.draft);
-    return { state: draft !== undefined && !state.path ? { ...state, draft } : state };
+    const pos = posOf(patch.pos);
+    const zoom = zoomOf(patch.zoom);
+    return {
+      state: {
+        ...state,
+        ...(draft !== undefined && !state.path ? { draft } : {}),
+        ...(pos ? { pos } : {}),
+        ...(zoom !== undefined ? { zoom } : {}),
+      },
+    };
   },
 };
 

@@ -48,6 +48,7 @@ export const SETTINGS_PAGES: Page[] = [
       { title: "Selected window", items: ["ui.focusOutline", "ui.focusColor", "ui.focusGlow", "ui.focusTitleBar", "ui.unfocusedDim", "ui.unfocusedDesaturation", "ui.showResources"] },
       { title: "Canvas", items: ["canvas.minimap", "canvas.minZoom", "canvas.maxZoom"] },
       { title: "File windows", items: ["files.git", "files.showHidden"] },
+      { title: "Text windows", items: ["editor.wordWrap"] },
     ],
   },
   {

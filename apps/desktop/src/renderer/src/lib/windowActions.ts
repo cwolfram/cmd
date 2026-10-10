@@ -24,7 +24,11 @@ export type WindowActions = {
   zoom?: (d: 1 | -1 | 0) => void;
   /** A file browser's own commands (windows/files/commands.ts), on its selected row or folder. */
   files?: { newFolder: () => void; duplicate: () => void; trash: () => void; up: () => void; open: () => void };
+  /** A text window's editor (windows/text/commands.ts): its line count, Go to Line, and its edits by name. */
+  text?: { lines: () => number; goToLine: (line: number, column?: number) => void; run: (edit: TextEdit) => void; focused: () => boolean };
 };
+/** The editor commands a text window runs (windows/text/commands.ts). */
+export type TextEdit = "toggleComment" | "moveLineUp" | "moveLineDown" | "duplicateLine" | "deleteLine" | "indent" | "outdent" | "fold" | "unfold" | "foldAll" | "unfoldAll";
 type Actions = WindowActions;
 const registry = new Map<string, Actions>();
 let registryVersion = 0;

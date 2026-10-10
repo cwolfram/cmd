@@ -13,7 +13,7 @@ import { select } from "../lib/selection.ts";
 import { getState } from "../lib/store.ts";
 import { listActions, runAction } from "../windows/actions/workspaceActions.ts";
 import { applies, runCommand, type CommandContext } from "./commands/registry.ts";
-import type { PaletteItem } from "./Palette.tsx";
+import { LINE_PREFIX, type PaletteItem } from "./Palette.tsx";
 
 /** What the palette's search matches besides past sessions: what's open. */
 export const SEARCH_GROUPS = ["Sessions"];
@@ -126,4 +126,16 @@ export async function searchAll(text: string, show: (items: PaletteItem[]) => vo
     ),
   ]);
   return all();
+}
+
+/** Go to Line: `:` and a number, in the selected window's editor (⌃G opens the palette with the `:`). */
+export function lineItems(query: string, c: CommandContext): PaletteItem[] {
+  const text = c.actions?.text;
+  if (!text || !query.startsWith(LINE_PREFIX)) return [];
+  const lines = text.lines();
+  const m = /^:\s*(\d+)(?::(\d+))?\s*$/.exec(query);
+  if (!m) return [{ id: "text.line", group: "Go to Line", label: `Type a line number, 1 to ${lines}`, icon: "arrow.right.to.line", run: () => {} }];
+  const line = Math.min(Math.max(1, Number(m[1])), lines);
+  const column = m[2] ? Math.max(1, Number(m[2])) : undefined;
+  return [{ id: "text.line", group: "Go to Line", label: column ? `Go to line ${line}, column ${column}` : `Go to line ${line}`, icon: "arrow.right.to.line", run: () => text.goToLine(line, column) }];
 }

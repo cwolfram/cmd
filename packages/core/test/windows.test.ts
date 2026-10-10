@@ -193,6 +193,14 @@ describe("window manager", () => {
     expect(wins.update(w.id, { state: { draft: "late" } }).state).toEqual({ path: saved });
   });
 
+  it("keeps a text window's place and text size, and ignores what isn't one", () => {
+    const { wins } = make(builtins(), {}, path.join(dir, "pos.sqlite"));
+    const f = file("pos.txt", "a\nb\nc");
+    const w = wins.open("text", { path: f }, workspace);
+    expect(wins.update(w.id, { state: { pos: { line: 2, col: 1, top: 1 }, zoom: 2 } }).state).toEqual({ path: f, pos: { line: 2, col: 1, top: 1 }, zoom: 2 });
+    expect(wins.update(w.id, { state: { pos: { line: "x" }, zoom: 1.5, other: 1 } }).state).toEqual({ path: f, pos: { line: 2, col: 1, top: 1 }, zoom: 2 });
+  });
+
   it("treats panes as terminal windows", () => {
     const { wins, panes } = make(builtins(), {}, path.join(dir, "term.sqlite"));
     const t = wins.open("terminal", { cwd: dir }, workspace);

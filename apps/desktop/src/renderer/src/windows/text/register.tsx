@@ -1,10 +1,11 @@
-// Text windows (renderer half): CodeMirror loads on first use; ⌘E to a preview where there is one, and the file's menu.
+// Text windows (renderer half): CodeMirror loads on first use; ⌘E to a preview where there is one, the file's menu, and the editor's commands (commands.ts).
 
 import { cmd } from "../../lib/bridge.ts";
 import { parentOf } from "../../lib/model.ts";
 import { copy } from "../../lib/actions.ts";
 import { lazyView, registerWindowView, stateStr } from "../registry.ts";
 import { previewFor, togglePreview } from "../preview.ts";
+import "./commands.ts";
 
 registerWindowView({
   kind: "text",

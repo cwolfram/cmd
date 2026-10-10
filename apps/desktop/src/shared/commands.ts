@@ -79,6 +79,19 @@ export const COMMANDS = spec([
   { id: "edit.findReplace", label: "Find and Replace…", keys: ["Alt+Cmd+F"], menu: "Edit/find" },
   // ⌘E on a Mac, but here ⌘E is Toggle Preview / Edit.
   { id: "edit.findSelection", label: "Use Selection for Find", menu: "Edit/find" },
+  // A text window's own (windows/text/commands.ts): its keys work only there (scope "window"), so terminals keep ⌥↑ and the rest.
+  { id: "text.goToLine", label: "Go to Line…", keys: ["Ctrl+G"], menu: "Edit/text", scope: "window" },
+  { id: "text.toggleComment", label: "Toggle Comment", keys: ["Cmd+/"], menu: "Edit/text", scope: "window" },
+  { id: "text.moveLineUp", label: "Move Line Up", keys: ["Alt+Up"], menu: "Edit/lines", scope: "window" },
+  { id: "text.moveLineDown", label: "Move Line Down", keys: ["Alt+Down"], menu: "Edit/lines", scope: "window" },
+  { id: "text.duplicateLine", label: "Duplicate Line", keys: ["Shift+Alt+Down"], menu: "Edit/lines", scope: "window" },
+  { id: "text.deleteLine", label: "Delete Line", keys: ["Shift+Cmd+K"], menu: "Edit/lines", scope: "window" },
+  { id: "text.indent", label: "Indent", keys: ["Cmd+]"], menu: "Edit/lines", scope: "window" },
+  { id: "text.outdent", label: "Outdent", keys: ["Cmd+["], menu: "Edit/lines", scope: "window" },
+  { id: "text.fold", label: "Fold", keys: ["Alt+Cmd+["], menu: "Edit/folding", scope: "window" },
+  { id: "text.unfold", label: "Unfold", keys: ["Alt+Cmd+]"], menu: "Edit/folding", scope: "window" },
+  { id: "text.foldAll", label: "Fold All", menu: "Edit/folding", scope: "window" },
+  { id: "text.unfoldAll", label: "Unfold All", menu: "Edit/folding", scope: "window" },
   { id: "edit.copyLastOutput", label: "Copy Last Command Output", keys: ["Shift+Cmd+A"], menu: "Edit/terminal" },
   // ⌘↑ / ⌘↓ in a terminal (its own keys, so text windows keep theirs: terminals.ts).
   { id: "terminal.prevPrompt", label: "Jump to Previous Prompt", menu: "Edit/terminal" },
@@ -106,6 +119,8 @@ export const COMMANDS = spec([
   { id: "window.undock", label: "Move to Board", menu: "Window/dock" },
   // A fixed size for consistent screenshots (marketing site).
   { id: "window.screenshotSize", label: "Resize to 1500 × 900", menu: "Window/size" },
+  // The editor.wordWrap setting, for every text window.
+  { id: "text.wordWrap", label: "Word Wrap", keys: ["Alt+Z"], checkable: "checkbox", menu: "View/editor", scope: "window" },
   { id: "view.zoomIn", label: "Bigger", keys: ["Cmd+Plus", "Cmd+="], menu: "View/zoom" },
   { id: "view.zoomOut", label: "Smaller", keys: ["Cmd+-"], menu: "View/zoom" },
   { id: "view.zoomReset", label: "Actual Size", keys: ["Cmd+0"], menu: "View/zoom" },
@@ -187,6 +202,8 @@ export function otherPlatformKey(acc: string): string {
   const key = parts.pop()!;
   const alias: Record<string, string> = { command: "cmd", cmdorctrl: "cmd", option: "alt", control: "ctrl" };
   const mods = new Set(parts.map((m) => alias[m.toLowerCase()] ?? m.toLowerCase()));
+  // ⌃G and other plain ⌃-letters belong to the shell elsewhere: ⌃⌥ instead.
+  if (mods.size === 1 && mods.has("ctrl") && /^[A-Z]$/.test(key)) return `Ctrl+Alt+${key}`;
   if (!mods.has("cmd")) return acc;
   if (mods.size === 1 && [",", "=", "Plus", "-", "0"].includes(key)) return `Ctrl+${key}`;
   const out = mods.has("shift") || mods.has("ctrl") ? ["Ctrl", "Alt", "Shift"] : mods.has("alt") ? ["Ctrl", "Alt"] : ["Ctrl", "Shift"];

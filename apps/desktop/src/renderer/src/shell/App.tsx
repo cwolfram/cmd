@@ -32,7 +32,7 @@ import { NewPicker } from "./NewPicker.tsx";
 import { openItems } from "./newItems.ts";
 import { useDock, useNotifications } from "./notifications.ts";
 import { Palette, SEARCH_PREFIX } from "./Palette.tsx";
-import { actionItems, commandItems, searchAll, SEARCH_GROUPS, usePaletteActions, windowItems } from "./palette.ts";
+import { actionItems, commandItems, lineItems, searchAll, SEARCH_GROUPS, usePaletteActions, windowItems } from "./palette.ts";
 import { useSelectionFollows } from "./selection.ts";
 import { closeSheet, openSheet, useSheet } from "./sheets.ts";
 import { SitePermissionSheet } from "./SitePermissionSheet.tsx";
@@ -180,8 +180,8 @@ export function App() {
           closing={shownPalette.closing}
           label="Command Palette"
           items={paletteItems}
-          // Typing a URL or a path offers to open it in a window.
-          dynamic={(q) => openItems(q, "Commands")}
+          // Typing a URL or a path offers to open it in a window; ":12" goes to a line in a text window.
+          dynamic={(q) => [...lineItems(q, ctx), ...openItems(q, "Commands")]}
           recent={recent}
           onRun={(id) => setRecent((r) => [id, ...r.filter((x) => x !== id)].slice(0, 20))}
           onClose={closeSheet}

@@ -208,6 +208,13 @@ export const SETTINGS_SCHEMA = {
     default: true,
     description: "Dotfiles in file windows. The eye button switches them.",
   },
+  "editor.wordWrap": {
+    title: "Wrap long lines",
+    type: "boolean",
+    default: true,
+    description: "In text windows. View › Word Wrap switches it too.",
+  },
+
   "ui.showResources": {
     title: "Show resource usage",
     type: "boolean",
