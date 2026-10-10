@@ -1,18 +1,18 @@
 // The Navigator (docs/21-sidebars.md): what the app's sidebar used to be, now a
 // built-in widget, docked left in every workspace by default. A search field over
 // open windows and the transcript index, then sections (Needs you, Agents,
-// Windows, Widgets, Recent past sessions). It reads App's rows and callbacks
+// Windows, Widgets, Recent: past sessions and closed windows). It reads App's rows and callbacks
 // through NavigatorContext, so every Navigator window shows the same.
 
 import { Button, EmptyState, List, ToolbarSearchField, useFlip, View, WindowToolbar } from "@cmd/ui";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { PaneId, SearchHit, SearchStatus, SessionInfo, WorkspaceId } from "@cmd/protocol";
+import type { ClosedWindow, PaneId, SearchHit, SearchStatus, SessionInfo, WindowId, WorkspaceId } from "@cmd/protocol";
 import { cmd } from "../bridge.ts";
 import { openSession } from "../actions.ts";
 import { usePersisted, useStoreValue, subscribeView } from "../store.ts";
 import { terminals } from "../terminals.ts";
 import { filterRows, flatten, sectionOf, SECTIONS, type Section, type SidebarRow } from "../model.ts";
-import { HistoryRow, SectionHeading, SessionRow, SidebarSection } from "./SidebarRows.tsx";
+import { ClosedRow, HistoryRow, SectionHeading, SessionRow, SidebarSection } from "./SidebarRows.tsx";
 import { IndexRing } from "./IndexRing.tsx";
 import { countRender } from "../perf.ts";
 import type { WindowViewProps } from "../windows/registry.ts";
@@ -27,6 +27,8 @@ export interface NavigatorData {
   onRowMenu: (row: SidebarRow) => void;
   onClose: (row: SidebarRow) => void;
   onNewTerminal: () => void;
+  /** Reopen a closed window where it was. */
+  onReopen: (id: WindowId) => void;
   search: SearchStatus | null;
 }
 
@@ -195,7 +197,14 @@ function Navigator(p: NavigatorData) {
             {recent.length > 0 && (
               <SidebarSection title="Recent" className="sb-recent">
                 <SectionHeading title="Recent" open={isOpen("recent")} onToggle={() => toggle("recent")} />
-                {isOpen("recent") && recent.map((h) => <HistoryRow key={`${h.agent}-${h.sessionId}`} hit={h} now={now} onOpen={(x) => void openSession(x)} />)}
+                {isOpen("recent") &&
+                  recent.map((r) =>
+                    "hit" in r ? (
+                      <HistoryRow key={`${r.hit.agent}-${r.hit.sessionId}`} hit={r.hit} now={now} onOpen={(x) => void openSession(x)} />
+                    ) : (
+                      <ClosedRow key={`c-${r.win.id}`} win={r.win} now={now} onOpen={p.onReopen} />
+                    ),
+                  )}
               </SidebarSection>
             )}
           </>
@@ -205,8 +214,20 @@ function Navigator(p: NavigatorData) {
   );
 }
 
+/** Past sessions that aren't open and closed windows, newest first. */
+function useRecent(workspaceId: WorkspaceId, live: string[]): ({ hit: SearchHit; at: number } | { win: ClosedWindow; at: number })[] {
+  const limit = useStoreValue((s) => s.settings.settings["ui.sidebarRecent"]);
+  const sessions = useRecentSessions(workspaceId, live);
+  const closed = useStoreValue((s) => s.closed);
+  return useMemo(() => {
+    const wins = closed.filter((c) => c.workspaceId === workspaceId).map((win) => ({ win, at: win.closedAt }));
+    const hits = sessions.map((hit) => ({ hit, at: hit.updatedAt ?? 0 }));
+    return [...wins, ...hits].sort((a, b) => b.at - a.at).slice(0, limit);
+  }, [closed, sessions, workspaceId, limit]);
+}
+
 /** The workspace's newest past sessions that aren't open: a live query over the sessions view. */
-function useRecent(workspaceId: WorkspaceId, live: string[]): SearchHit[] {
+function useRecentSessions(workspaceId: WorkspaceId, live: string[]): SearchHit[] {
   const limit = useStoreValue((s) => s.settings.settings["ui.sidebarRecent"]);
   // Room for the open ones, which are left out below.
   const want = limit > 0 ? limit + live.length : 0;

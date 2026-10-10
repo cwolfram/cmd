@@ -226,6 +226,7 @@ const SCENARIOS = {
   keybindings: [],
   mru: ["terminals"],
   "close-idle": ["mru"],
+  reopen: [],
   strip: ["terminals"],
   marker: ["terminals"],
   sidebars: ["marker"],
@@ -1729,6 +1730,44 @@ await scenario("close-idle", async () => {
   await menu("file.close");
   const n = await until(panes, (n) => n === before - 1);
   check(n === before - 1, `⌘W closes an idle terminal (${before} → ${n})`);
+});
+
+// ⇧⌘T reopens the last closed window under its id, in its place: a terminal as a new shell
+// in the folder it was in, with its old screen, running nothing again.
+await scenario("reopen", async () => {
+  const n0 = await panes();
+  const made = [];
+  for (let i = 0; i < 2; i++) {
+    await menu("file.newTerminal");
+    await until(panes, (n) => n === n0 + i + 1);
+    made.push((await shellReady()).id);
+  }
+  const [id] = made;
+  await select(id);
+  await focusIn(id);
+  await win.keyboard.type("cd /tmp && echo reopen-marker");
+  await win.keyboard.press("Enter");
+  await until(() => paneText(id), (t) => /^reopen-marker$/m.test(t));
+  await until(() => win.evaluate((id) => window.cmd.call("pane.list", {}).then((ps) => ps.find((p) => p.id === id)?.cwd), id), (c) => /\/tmp$/.test(c ?? ""));
+  await still();
+  const rect = (id) => win.evaluate((id) => { const r = document.querySelector(`.tile[data-pane="${id}"]`)?.getBoundingClientRect(); return r && [r.x, r.y, r.width, r.height].map(Math.round).join(","); }, id);
+  const before = await rect(id);
+  await menu("file.close");
+  await until(panes, (n) => n === n0 + 1);
+  const recent = await until(() => win.locator(".navigator .ui-list-row.history[aria-description='Closed']").count(), (n) => n > 0);
+  check(recent > 0, "a closed terminal is listed under Recent");
+  await shot(win, "reopen-recent.png");
+  check((await accel("file.reopenClosed")) === "Shift+Cmd+T", "⇧⌘T is Reopen Closed Window");
+  await menu("file.reopenClosed");
+  const back = await until(() => win.evaluate((id) => window.cmd.call("pane.list", {}).then((ps) => ps.find((p) => p.id === id) ?? null), id), Boolean);
+  check(!!back && /\/tmp$/.test(back.cwd), `the terminal is back under its id, in /tmp (${back?.cwd})`);
+  const text = await until(() => paneText(id), (t) => /Reopened/.test(t));
+  check(/^reopen-marker$/m.test(text) && /Reopened/.test(text), "it shows its old screen and says it was reopened");
+  await until(selected, (s) => s === id);
+  await still();
+  check((await rect(id)) === before, `it is back in its place (${before} → ${await rect(id)})`);
+  for (const p of made) await win.evaluate((id) => window.cmd.call("pane.kill", { paneId: id }), p);
+  await until(panes, (n) => n === n0);
 });
 
 // ── PaperWM-style strip ──

@@ -223,7 +223,7 @@ export const SETTINGS_SCHEMA = {
     default: false,
     description: "A workspace you switch to opens in a new window, not this one.",
   },
-  "ui.sidebarRecent": { title: "Recent sessions", unit: "sessions", type: "number", default: 5, min: 0, max: 20, step: 1, description: "Past sessions under Recent. 0 hides them." },
+  "ui.sidebarRecent": { title: "Recent items", unit: "items", type: "number", default: 5, min: 0, max: 20, step: 1, description: "Past sessions and closed windows under Recent. 0 hides them." },
   "ui.windowOutline": { title: "Outline width", unit: "px", type: "number", default: 1, min: 0, max: 3, step: 1, description: "Width of every window's outline. 0 is none." },
   "ui.windowOutlineContrast": { title: "Outline contrast", unit: "%", type: "number", default: 20, min: 0, max: 40, step: 1, description: "How much outlines stand out." },
   "ui.windowShadow": { title: "Shadow", labels: { none: "None", subtle: "Subtle", medium: "Medium", strong: "Strong", deep: "Deep" }, type: "enum", default: "subtle", options: ["none", "subtle", "medium", "strong", "deep"], description: "A drop shadow under windows and sidebars." },

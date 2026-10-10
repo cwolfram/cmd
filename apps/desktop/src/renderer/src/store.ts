@@ -4,7 +4,7 @@
 
 import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import type { Agent, AgentId, AppNotification, AppWindow, CommandRun, CoreEvent, Pane, PaneId, RemotePairRequest, RemoteStatus, SearchStatus, SettingsSnapshot, Workspace, WorkspaceId, StartupStatus, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
+import type { Agent, AgentId, AppNotification, AppWindow, ClosedWindow, CommandRun, CoreEvent, Pane, PaneId, RemotePairRequest, RemoteStatus, SearchStatus, SettingsSnapshot, Workspace, WorkspaceId, StartupStatus, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { OutputGate } from "@cmd/protocol/replay";
 import { reducedMotion } from "@cmd/ui";
@@ -45,6 +45,8 @@ export interface State {
   remoteInput: Map<PaneId, string>;
   /** The Widget Library (docs/16-widgets.md): built-in widgets, then yours by last use. */
   library: WidgetEntry[];
+  /** Closed windows to reopen, newest first (window.closed). */
+  closed: ClosedWindow[];
 }
 
 let state: State = {
@@ -62,6 +64,7 @@ let state: State = {
   pairRequests: [],
   remoteInput: new Map(),
   library: [],
+  closed: [],
 };
 const inputTimers = new Map<PaneId, ReturnType<typeof setTimeout>>();
 const listeners = new Set<() => void>();
@@ -208,6 +211,11 @@ const pendingUi = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** Update UI state now; write it to the core shortly after (debounced per key). */
 /** The Widget Library as the core just listed it. */
+/** An older core has no closed windows: the list stays empty. */
+function loadClosed(): void {
+  void cmd.call("window.closed", {}).then((closed) => set({ closed }), () => {});
+}
+
 export function setLibrary(library: WidgetEntry[]): void {
   set({ library });
 }
@@ -490,6 +498,9 @@ function handle(e: CoreEvent): void {
     case "widget.library":
       set({ library: e.entries });
       return;
+    case "window.closedChanged":
+      loadClosed();
+      return;
     case "notification":
       for (const fn of notificationListeners) fn(e.notification);
       return;
@@ -583,6 +594,7 @@ cmd.onStatus(async (status) => {
   checkWorkspace();
   void cmd.call("search.status", {}).then((search) => set({ search }), () => {});
   void cmd.call("widget.list", {}).then((library) => set({ library }), () => {});
+  loadClosed();
   // An older core has no remote access: leave it null.
   void cmd.call("remote.status", {}).then((remote) => set({ remote, pairRequests: remote.requests ?? [] }), () => {});
   // The windows show now; each terminal opens once its content is written (hold).

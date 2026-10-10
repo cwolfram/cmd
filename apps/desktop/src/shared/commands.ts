@@ -48,6 +48,7 @@ export const COMMANDS = spec([
   { id: "file.save", label: "Save", keys: ["Cmd+S"] },
   { id: "file.close", label: "Close Window", keys: ["Cmd+W"] },
   { id: "file.closeWindow", label: "Close App Window", keys: ["Shift+Cmd+W"] },
+  { id: "file.reopenClosed", label: "Reopen Closed Window", keys: ["Shift+Cmd+T"] },
   { id: "file.openSettingsFile", label: "Open settings.json" },
 
   { id: "edit.copy", label: "Copy", keys: ["Cmd+C"] },

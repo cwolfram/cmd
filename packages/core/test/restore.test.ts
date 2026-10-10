@@ -228,19 +228,21 @@ describe("restore after a core restart", () => {
 });
 
 describe("UI state of closed windows", () => {
-  it("goes with the window", async () => {
+  it("stays while the window can be reopened, and goes after", async () => {
     const { core } = start(path.join(dir, "ui.sqlite"));
     const w = core.windows.open("files", { path: dir }, core.workspaces.home());
     core.store.setUiState(`files.expanded.${w.id}`, [dir]);
     core.store.setUiState("sidebar.open", true);
     core.windows.close(w.id);
+    expect(core.store.uiState()).toEqual({ "sidebar.open": true, [`files.expanded.${w.id}`]: [dir] });
+    core.closed.forget(w.id);
     expect(core.store.uiState()).toEqual({ "sidebar.open": true });
     await core.close();
   });
 });
 
 describe("each terminal's own shell history", () => {
-  it("is kept under the pane's id for restoring, and goes when the terminal closes", async () => {
+  it("is kept under the pane's id for restoring and reopening, and goes once it can't be reopened", async () => {
     const db = path.join(dir, "hist.sqlite");
     const f = fakeFactory();
     const core = new Core({ socketPath: path.join(dir, "h.sock"), dbPath: db, terminals: f.factory, pollMs: 0, home: dir, stateDir: dir });
@@ -250,6 +252,8 @@ describe("each terminal's own shell history", () => {
     expect(file).toBe(path.join(dir, "history", `${pane.id}.zsh_history`));
     fs.writeFileSync(file, ": 1:0;echo hi\n");
     f.ptys[0]!.exit(0);
+    expect(fs.existsSync(file)).toBe(true);
+    core.closed.forget(pane.id);
     expect(fs.existsSync(file)).toBe(false);
     await core.close();
   });
@@ -263,6 +267,7 @@ describe("each terminal's own shell history", () => {
     expect(file).toBe(path.join(dir, "history", `${pane.id}.bash_history`));
     fs.writeFileSync(file, "echo hi\n");
     f.ptys[0]!.exit(0);
+    core.closed.forget(pane.id);
     expect(fs.existsSync(file)).toBe(false);
     core.settings.set("shell.program", "/usr/local/bin/fish");
     core.panes.create({ cwd: dir });

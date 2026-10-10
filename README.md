@@ -92,6 +92,7 @@ Every shortcut is a menu-bar item. Remap them under Settings → Keyboard Shortc
 | ⌃⌘J | next session that needs you |
 | ⌥⌘← / ⌥⌘→, ⌘1–9 | previous / next session, select a session |
 | ⌘W / ⇧⌘W | close the terminal (asks if something runs) / close the window |
+| ⇧⌘T | reopen the last closed window where it was (a terminal comes back in its folder, running nothing) |
 | ⌘F, ⌘G / ⇧⌘G | find in the window (a terminal's scrollback, a page, a file), next / previous |
 | ⌥⌘F | find and replace in the text editor |
 | ⌘↑ / ⌘↓ | jump to the previous / next prompt |

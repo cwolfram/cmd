@@ -80,6 +80,7 @@ export function buildMenu(send: Send, bindings: Keybindings): void {
         sep,
         ...i("file.close"),
         ...i("file.closeWindow"),
+        ...i("file.reopenClosed"),
         sep,
         ...i("file.openSettingsFile"),
         ...(mac ? [] : [sep, ...i("app.settings"), ...i("app.setup"), ...i("app.remoteAccess"), ...i("app.pairDevice"), sep, { role: "quit" as const }]),

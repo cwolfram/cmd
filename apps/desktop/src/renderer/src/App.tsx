@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GLIDE_MS, Presence, reducedMotion, Toaster, toast, usePresentValue } from "@cmd/ui";
-import type { ActionsList, PaneId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { ActionsList, PaneId, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { listActions, rerunLastAction, runAction, showActions } from "./workspaceActions.ts";
 import type { WebviewTag } from "electron";
 import { bucketOf, needsAttention } from "@cmd/protocol";
@@ -58,6 +58,7 @@ import { Palette, SEARCH_PREFIX as SEARCH, type PaletteItem } from "./components
 import { NavigatorContext, type NavigatorData } from "./components/Navigator.tsx";
 import { Dock } from "./components/Dock.tsx";
 import { TopBar } from "./components/TopBar.tsx";
+import { putBack, rememberPlaces, type Layout, type Place } from "./reopen.ts";
 import { dock, dockedIds, dockWidths, DOCK_WIDTH, liveDocks, MIN_BOARD, readDocks, sideOf, SIDES, undock, type Docks, type Side } from "./docks.ts";
 import { WorkspaceBar } from "./components/WorkspaceBar.tsx";
 import { WorkspaceIconPicker } from "./components/WorkspaceIcon.tsx";
@@ -266,6 +267,49 @@ export function App() {
     viewOrderBefore.current = viewOrder;
   }, [viewOrder]);
 
+  // Closed windows: where each one was, to put it back there when it's reopened (reopen.ts).
+  const boardOrder = useMemo(
+    () => arrangeTiles(gridOrder, flat.filter((r) => r.pane || r.win).map((r) => ({ id: windowIdOf(r)!, createdAt: r.pane?.createdAt ?? r.win?.createdAt ?? 0 }))).map((p) => p.id),
+    [flat, gridOrder],
+  );
+  const layoutNow = (): Layout => ({ order: boardOrder, docks: readDocks(storedDocks), widths: stripWidths, rects: canvasRects });
+  const shownBefore = useRef<{ workspaceId: WorkspaceId; ids: string[]; layout: Layout } | null>(null);
+  useEffect(() => {
+    if (!s.connected) return;
+    const layout = layoutNow();
+    const ids = [...boardOrder, ...[docks.left.id, docks.right.id].filter((x): x is string => !!x)];
+    const prev = shownBefore.current;
+    shownBefore.current = { workspaceId: all.workspaceId, ids, layout };
+    if (prev?.workspaceId !== all.workspaceId) return;
+    const st = getState();
+    const gone = prev.ids.filter((id) => !ids.includes(id) && !st.panes.has(id) && !st.windows.has(id));
+    if (gone.length) setWorkspaceView(all.workspaceId, "closed.places", rememberPlaces(getWorkspaceView(all.workspaceId, "closed.places", {}), gone, prev.layout, Date.now()));
+  }, [s.connected, boardOrder, docks, all.workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canReopen = s.closed.some((c) => c.workspaceId === all.workspaceId);
+  /** Reopen a closed window (id: that one, else this workspace's newest), back in its place. */
+  const reopenClosed = (id?: WindowId) => {
+    const closed = getState().closed;
+    const rec = id ? closed.find((c) => c.id === id) : closed.find((c) => c.workspaceId === all.workspaceId);
+    if (!rec) return;
+    const places = getWorkspaceView<Record<string, Place>>(all.workspaceId, "closed.places", {});
+    const place = places[rec.id];
+    if (place && rec.workspaceId === all.workspaceId) {
+      // Before it arrives, so it shows in its place from its first frame.
+      const back = putBack(rec.id, place, layoutNow());
+      if (back.order) setGridOrder(back.order);
+      if (back.docks) setStoredDocks(back.docks);
+      if (back.widths) setStripWidths(back.widths);
+      if (back.rects) setCanvasRects(back.rects);
+      const { [rec.id]: _, ...rest } = places;
+      setWorkspaceView(all.workspaceId, "closed.places", rest);
+    }
+    cmd.call("window.reopen", { id: rec.id }).then(
+      (w) => w && select(w.id),
+      (err: Error) => toast(err.message),
+    );
+  };
+
   // Looking at a window (selected, app focused) counts as seeing it: an agent's
   // finished turn, a terminal's attention marker, its notification in Notification Center.
   const [appFocused, setAppFocused] = useState(() => document.hasFocus());
@@ -456,6 +500,7 @@ export function App() {
       else cmd.closeWindow();
     },
     "file.closeWindow": () => cmd.closeWindow(),
+    "file.reopenClosed": () => reopenClosed(),
     "file.save": () => void windowActions(selected)?.save?.(),
     "file.openSettingsFile": () => cmd.openSettingsFile(getState().settings.path),
     // Terminals copy and select their own buffer; everything else (inputs, text and
@@ -624,6 +669,7 @@ export function App() {
         "workspace.prev": openWorkspaces.length > 1,
         "workspace.moveWindow": hasPane && openWorkspaces.length > 1,
         "workspace.close": !!workspace && !workspace.home,
+        "file.reopenClosed": canReopen,
         "workspace.rename": !!workspace,
         "workspace.icon": !!workspace,
         "widget.remove": selectedIsWidget,
@@ -633,7 +679,7 @@ export function App() {
         "window.undock": !!selectedSide,
       },
     });
-  }, [mode, docks, selectedSide, selected, selectedIsPane, canFind, selectedIsWidget, withPane.length, hasSession, aiReady, attention > 0, openWorkspaces.length, !!workspace, !!workspace?.home, !!currentAgent]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, docks, selectedSide, selected, selectedIsPane, canFind, selectedIsWidget, withPane.length, hasSession, aiReady, attention > 0, openWorkspaces.length, !!workspace, !!workspace?.home, !!currentAgent, canReopen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── context menus ──────────────────────────────────────
 
@@ -880,6 +926,7 @@ export function App() {
     onRowMenu: rowMenu,
     onClose: (r) => windowIdOf(r) && void closePane(windowIdOf(r)!),
     onNewTerminal: () => void newTerminal(),
+    onReopen: (id) => reopenClosed(id),
     search: s.search,
   };
 

@@ -1,15 +1,17 @@
 // Sidebar rows: open windows and agents (SessionRow), past sessions from the
-// transcript index (HistoryRow), and the section headings that group them.
+// transcript index (HistoryRow), closed windows (ClosedRow), and the section
+// headings that group them.
 
 import { Chip, Highlight, IconButton, ListHeading, ListRow, Text, Twisty, TwistySpace } from "@cmd/ui";
 import type { ReactNode } from "react";
-import type { PaneId, SearchHit } from "@cmd/protocol";
+import type { ClosedWindow, PaneId, SearchHit, WindowId } from "@cmd/protocol";
 import { usePersisted, useStoreValue } from "../store.ts";
 import { ICON } from "./Symbol.tsx";
 import { DirtyDot, Slot } from "./Slot.tsx";
 import { useFields } from "./TileTitle.tsx";
 import { ago, labelOf, project, shortPath, whereOf, windowIdOf, type SidebarRow } from "../model.ts";
 import { RemoteBadge } from "./Remote.tsx";
+import { typeFor } from "../windows/registry.ts";
 import { countRender } from "../perf.ts";
 
 /** "2h ago" → "2h": the column is narrow. */
@@ -175,6 +177,35 @@ export function HistoryRow(p: { hit: SearchHit; now: number; onOpen: (h: SearchH
             {shortAgo(h.updatedAt, p.now)}
           </Text>
         )
+      }
+    />
+  );
+}
+
+/** A closed window, reopened where it was on click (⇧⌘T reopens the newest). */
+export function ClosedRow(p: { win: ClosedWindow; now: number; onOpen: (id: WindowId) => void }) {
+  const w = p.win;
+  const title = w.title || "Untitled";
+  return (
+    <ListRow
+      className="history"
+      flipKey={`c-${w.id}`}
+      role="treeitem"
+      aria-label={title}
+      aria-description="Closed"
+      aria-level={1}
+      aria-selected={false}
+      data-tip-side="right"
+      tip={[title, w.cwd ? shortPath(w.cwd) : null, "Click to reopen"].filter(Boolean).join("\n")}
+      onClick={() => p.onOpen(w.id)}
+      icon={w.kind === "terminal" ? "terminal" : (typeFor(w.kind)?.icon ?? "macwindow")}
+      markTone="dim"
+      title={title}
+      place={w.cwd ? project(w.cwd) : undefined}
+      end={
+        <Text size="xs" tone="dim">
+          {shortAgo(w.closedAt, p.now)}
+        </Text>
       }
     />
   );
