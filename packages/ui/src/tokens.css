@@ -138,6 +138,14 @@
   --knob: #ffffff;
   /* Saturation and lightness of a hue-coloured mark, with hsl(var(--hue) var(--mark)): a timeline's dots, a ribbon's bars (a kind's or a project's colour). */
   --mark: 62% 58%;
+  /* Scrollbar thumbs' colour: the theme's dim text with some of its accent, so thumbs belong to the theme rather than reading as plain gray. */
+  --scrollbar-tint: color-mix(in srgb, var(--accent) 25%, var(--text-dim));
+  /* A scrollbar thumb at rest: faint, over any content. */
+  --scrollbar-thumb: color-mix(in srgb, var(--scrollbar-tint) 50%, transparent);
+  /* A scrollbar thumb under the pointer: stronger, leaning to the accent. */
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--accent) 40%, var(--scrollbar-thumb));
+  /* A scrollbar thumb being dragged. */
+  --scrollbar-thumb-active: color-mix(in srgb, var(--accent) 60%, var(--scrollbar-thumb));
 
   /* ── window ── */
   /* A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge). */

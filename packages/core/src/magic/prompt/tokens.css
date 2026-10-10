@@ -129,6 +129,14 @@
   --knob: #ffffff;
   /* Saturation and lightness of a hue-coloured mark, with hsl(var(--hue) var(--mark)): a timeline's dots, a ribbon's bars (a kind's or a project's colour). */
   --mark: 62% 58%;
+  /* Scrollbar thumbs' colour: the theme's dim text with some of its accent, so thumbs belong to the theme rather than reading as plain gray. */
+  --scrollbar-tint: color-mix(in srgb, var(--accent) 25%, var(--text-dim));
+  /* A scrollbar thumb at rest: faint, over any content. */
+  --scrollbar-thumb: color-mix(in srgb, var(--scrollbar-tint) 50%, transparent);
+  /* A scrollbar thumb under the pointer: stronger, leaning to the accent. */
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--accent) 40%, var(--scrollbar-thumb));
+  /* A scrollbar thumb being dragged. */
+  --scrollbar-thumb-active: color-mix(in srgb, var(--accent) 60%, var(--scrollbar-thumb));
   /* A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge). */
   --footer-h: 26px;
   /* Windows (window.tsx) and sheets (Dialog): rounded corners and crisp whole-pixel outlines, the selected one in the highlight with a soft glow, and an elevation shadow. An app maps these to its own settings (cmd: the ui.window* settings, look.ts): --window-radius, --window-outline, --window-edge-mix (the outline's contrast), --window-elevation, --focus-outline, --focus-glow (1 = the default halo). What's built from them is declared again on .ui-window, where an app's per-mode values resolve. */

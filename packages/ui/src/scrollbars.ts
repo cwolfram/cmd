@@ -1,7 +1,8 @@
 // One scrollbar look for every window: lists, editors, Markdown, terminals and the
 // pages inside browser windows. Except in terminals, they float over the content. Minimal: no track, a thin, faint thumb that thickens and brightens
 // under the pointer. The hit area stays 10px wide; a transparent border narrows what's
-// drawn. Gray reads on dark panes and white pages.
+// drawn. In the app the thumb takes the theme's colours (--scrollbar-* tokens); in pages, a
+// gray that reads on dark panes and white pages.
 //
 // Like macOS, the thumb shows while you scroll and fades out about a second later
 // (unless the pointer rests on it), or stays put when the system's "Show scroll bars"
@@ -20,6 +21,8 @@ const THUMB_HOVER = "rgb(128 128 128 / 0.62)";
 const THUMB_ACTIVE = "rgb(128 128 128 / 0.8)";
 /** On dark pages, where the gray barely shows. */
 const THUMB_ON_DARK: Tones = ["rgb(255 255 255 / 0.34)", "rgb(255 255 255 / 0.55)", "rgb(255 255 255 / 0.7)"];
+/** The app's own windows take theirs from the theme (--scrollbar-* tokens); pages keep the grays. */
+const THEMED: Tones = [`var(--scrollbar-thumb, ${THUMB})`, `var(--scrollbar-thumb-hover, ${THUMB_HOVER})`, `var(--scrollbar-thumb-active, ${THUMB_ACTIVE})`];
 
 /** How long after the last scroll the thumb stays, in ms. */
 export const SCROLLBAR_HOLD = 1000;
@@ -27,8 +30,8 @@ export const SCROLLBAR_HOLD = 1000;
 export const SCROLLBAR_CSS = `
 @property --cmd-scrollbar { syntax: "<color>"; inherits: true; initial-value: transparent; }
 * { --cmd-scrollbar: transparent; transition: --cmd-scrollbar 350ms ease-out; }
-.cmd-scrolling { --cmd-scrollbar: ${THUMB}; transition-duration: 100ms; }
-.cmd-scrollbars-always, .cmd-scrollbars-always * { --cmd-scrollbar: ${THUMB}; }
+.cmd-scrolling { --cmd-scrollbar: ${THEMED[0]}; transition-duration: 100ms; }
+.cmd-scrollbars-always, .cmd-scrollbars-always * { --cmd-scrollbar: ${THEMED[0]}; }
 ::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
 ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -38,8 +41,8 @@ export const SCROLLBAR_CSS = `
   border-radius: 5px;
   background: var(--cmd-scrollbar) padding-box;
 }
-.cmd-scrolling::-webkit-scrollbar-thumb:hover, .cmd-scrollbars-always ::-webkit-scrollbar-thumb:hover { border-width: 2px; background-color: ${THUMB_HOVER}; }
-.cmd-scrolling::-webkit-scrollbar-thumb:active, .cmd-scrollbars-always ::-webkit-scrollbar-thumb:active { border-width: 2px; background-color: ${THUMB_ACTIVE}; }
+.cmd-scrolling::-webkit-scrollbar-thumb:hover, .cmd-scrollbars-always ::-webkit-scrollbar-thumb:hover { border-width: 2px; background-color: ${THEMED[1]}; }
+.cmd-scrolling::-webkit-scrollbar-thumb:active, .cmd-scrollbars-always ::-webkit-scrollbar-thumb:active { border-width: 2px; background-color: ${THEMED[2]}; }
 `;
 
 /**
@@ -54,16 +57,16 @@ const XTERM_CSS = `
   right: 3px;
   width: 4px !important;
   border-radius: 2px;
-  background: ${THUMB} !important;
+  background: ${THEMED[0]} !important;
 }
 .xterm .xterm-scrollable-element > .scrollbar.vertical:hover > .slider,
 .xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active {
   right: 2px;
   width: 6px !important;
   border-radius: 3px;
-  background: ${THUMB_HOVER} !important;
+  background: ${THEMED[1]} !important;
 }
-.xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active { background: ${THUMB_ACTIVE} !important; }
+.xterm .xterm-scrollable-element > .scrollbar.vertical > .slider.active { background: ${THEMED[2]} !important; }
 .xterm .xterm-scrollable-element > .scrollbar.vertical { transition: opacity 350ms ease-out !important; }
 .xterm-host.scrollable .xterm .xterm-scrollable-element > .scrollbar.vertical.visible { opacity: 0; }
 .xterm-host.scrollable.cmd-scrolling .xterm .xterm-scrollable-element > .scrollbar.vertical.visible { opacity: 1; transition-duration: 100ms !important; }
@@ -398,5 +401,5 @@ export function installScrollbars(o: ScrollbarsOptions = {}): void {
   style.textContent = PAGE_SCROLLBAR_CSS + XTERM_CSS;
   document.head.appendChild(style);
   if (o.always) document.documentElement.classList.add("cmd-scrollbars-always");
-  pageScrollbars(document, { hold: SCROLLBAR_HOLD, always: !!o.always, light: [THUMB, THUMB_HOVER, THUMB_ACTIVE], dark: THUMB_ON_DARK }, thumbSpan);
+  pageScrollbars(document, { hold: SCROLLBAR_HOLD, always: !!o.always, light: THEMED, dark: THEMED }, thumbSpan);
 }

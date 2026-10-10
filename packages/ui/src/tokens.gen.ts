@@ -681,6 +681,30 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "Saturation and lightness of a hue-coloured mark, with hsl(var(--hue) var(--mark)): a timeline's dots, a ribbon's bars (a kind's or a project's colour)."
   },
   {
+    "name": "--scrollbar-tint",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 25%, var(--text-dim))",
+    "description": "Scrollbar thumbs' colour: the theme's dim text with some of its accent, so thumbs belong to the theme rather than reading as plain gray."
+  },
+  {
+    "name": "--scrollbar-thumb",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--scrollbar-tint) 50%, transparent)",
+    "description": "A scrollbar thumb at rest: faint, over any content."
+  },
+  {
+    "name": "--scrollbar-thumb-hover",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 40%, var(--scrollbar-thumb))",
+    "description": "A scrollbar thumb under the pointer: stronger, leaning to the accent."
+  },
+  {
+    "name": "--scrollbar-thumb-active",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 60%, var(--scrollbar-thumb))",
+    "description": "A scrollbar thumb being dragged."
+  },
+  {
     "name": "--footer-h",
     "type": "dimension",
     "value": "26px",
