@@ -178,10 +178,10 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 /* Rows in a view (ListSection, ListRow): a little room above and below; the sides are the rows' own. */
 .ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--space-md)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
 .ui-list-rows { display: contents; }
-/* Grouped: sections apart, the rows' pills at the window's inset on every side (in a View
-   with `inset`), headings in line with the rows' icons, no boxes: the window is the frame.
-   Rows highlight as pills on hover. */
-.ui-list[data-variant="grouped"] { --list-inset: 0px; gap: var(--space-xl); padding: 0; }
+/* Grouped: sections apart, headings in line with the rows' icons, no boxes: the window is
+   the frame. In a View with `inset`, rows and headings reach out into it by their padding,
+   so their letters sit on the inset like a plain list's and they highlight as pills there. */
+.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--space-md)); gap: var(--space-xl); padding: 0; margin-block: calc(-1 * var(--space-md)); }
 .ui-list[data-variant="grouped"] .ui-list-section + .ui-list-section { margin-top: 0; }
 .ui-list[data-variant="grouped"] .ui-list-heading { height: 20px; margin-bottom: var(--space-xs); padding: 0 var(--space-md); }
 .ui-list[data-variant="grouped"] .ui-list-row { gap: var(--space-md); }

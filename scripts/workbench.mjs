@@ -272,13 +272,13 @@ function AUDIT() {
       }
     }
   }
-  return { inset, rows: out };
+  return { inset, barInset, rows: out };
 }
 
 async function audit(story, variant) {
   const { browser, page } = await connect();
   if (story) console.log(await show(page, { story, variant, theme: flag("theme") }));
-  const { inset, rows } = await page.evaluate(`(${AUDIT.toString()})()`);
+  const { inset, barInset, rows } = await page.evaluate(`(${AUDIT.toString()})()`);
   await browser.close();
   if (!rows.length) {
     console.log("No View in this story: nothing to measure.");
