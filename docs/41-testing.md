@@ -263,6 +263,16 @@ flakiness study. Nothing contradicts the plan; four points sharpen it.
      a permission; Settings opens and one change applies; drag a tile; dock a window;
      switch a workspace; Magic builds a widget; the packaged app boots. About 15
      scenarios, each under 20 s, independent, on a controlled clock.
+   Done so far (Oct 10): **grid** (2.7 → 1.7 s): the bell check went to notifications.test.ts
+   (a mark the core sets reaching the title bar stays, once), the drag-back check to the
+   drop-order tests in layouts.test.ts and grid.test.ts; the flick and the 3-tile drag stay as
+   the real drags. **strip**: the current pagination dot is `currentDot()` in strip.ts with
+   unit tests for ⌥⌘← at the end, a swipe at the end and the selection out of view (CI's
+   strip-dot flakes); the width cap is clampWidth's test; the dot count, a dot click, keys,
+   scrolling, resizes and the drag stay. **magic**: news before a widget's status line, and
+   the status line back once seen, is a fields.test.ts case; the smoke test only checks that
+   looking clears the news. Settings' 31 checks take under 100 ms each: moving them down is
+   for reliability, not speed. What's left in these scenarios is seams.
 10. **Adopt `@playwright/test`.** One `electronApp` fixture (launch, isolated `CMD_HOME`,
     fixture transcripts, background mode, screen preset, cleanup of core and host) shared
     by every spec; `expect(locator)` assertions that retry by themselves; `retries: 1` on
