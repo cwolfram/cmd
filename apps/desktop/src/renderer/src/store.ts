@@ -17,6 +17,7 @@ import { setWindowTypes } from "./windows/registry.ts";
 import { handleMagicEvent } from "./magic.ts";
 import { countEvent, perf } from "./perf.ts";
 import { cleanTitle } from "./model.ts";
+import { PendingViews } from "./pendingViews.ts";
 
 export interface State {
   connected: boolean;
@@ -245,22 +246,21 @@ window.addEventListener("beforeunload", () => (flushUi(), flushWorkspaceViews())
 
 // ── per-workspace view state ─────────────────────────────────
 // Layout and selection live in workspace.view in the core. Writes apply locally at
-// once and reach the core debounced; until the core echoes a value back, it is
-// re-applied over incoming workspace updates so an older echo can't undo it.
+// once and reach the core debounced; until the core has answered the call carrying a
+// write, it is re-applied over incoming workspace updates so an older echo can't undo it
+// (pendingViews.ts).
 
-const pendingView = new Map<WorkspaceId, Map<string, unknown>>();
+const pendingView = new PendingViews();
 const viewTimers = new Map<WorkspaceId, ReturnType<typeof setTimeout>>();
 
 /**
- * A workspace from the core, as the UI should hold it: values still waiting to be
- * echoed stay, and values equal to what we have keep their identity. The core
+ * A workspace from the core, as the UI should hold it: local writes the core hasn't
+ * answered yet stay, and values equal to what we have keep their identity. The core
  * sends the whole view on every change; without this, one key's echo would hand
  * every consumer of every other key a "new" value (re-layout mid-drag).
  */
 const withPending = (s: Workspace, prev?: Workspace): Workspace => {
-  const p = pendingView.get(s.id);
-  if (p) for (const [k, v] of p) if (JSON.stringify(s.view[k] ?? null) === JSON.stringify(v ?? null)) p.delete(k);
-  const view: Record<string, unknown> = { ...s.view, ...(p?.size ? Object.fromEntries(p) : {}) };
+  const view = { ...pendingView.over(s.id, s.view) };
   if (prev) for (const k of Object.keys(view)) if (k in prev.view && JSON.stringify(prev.view[k]) === JSON.stringify(view[k])) view[k] = prev.view[k];
   return { ...s, view };
 };
@@ -277,9 +277,8 @@ function sameWorkspace(a: Workspace, b: Workspace): boolean {
 function sendView(workspaceId: WorkspaceId): void {
   clearTimeout(viewTimers.get(workspaceId));
   viewTimers.delete(workspaceId);
-  const p = pendingView.get(workspaceId);
-  if (!p?.size) return;
-  void cmd.call("workspace.update", { id: workspaceId, view: Object.fromEntries([...p].map(([k, v]) => [k, v ?? null])) }).catch(() => {});
+  const send = pendingView.take(workspaceId);
+  if (send) void cmd.call("workspace.update", { id: workspaceId, view: send.view }).then(send.settle, send.settle);
 }
 
 function flushWorkspaceViews(): void {
@@ -290,8 +289,7 @@ function flushWorkspaceViews(): void {
 export function setWorkspaceView(workspaceId: WorkspaceId, key: string, value: unknown): void {
   const workspace = state.workspaces.get(workspaceId);
   if (!workspace || JSON.stringify(workspace.view[key]) === JSON.stringify(value)) return;
-  if (!pendingView.has(workspaceId)) pendingView.set(workspaceId, new Map());
-  pendingView.get(workspaceId)!.set(key, value);
+  pendingView.set(workspaceId, key, value);
   const workspaces = new Map(state.workspaces);
   workspaces.set(workspaceId, { ...workspace, view: { ...workspace.view, [key]: value } });
   set({ workspaces });
