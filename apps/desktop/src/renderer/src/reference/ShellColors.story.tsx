@@ -44,7 +44,7 @@ const TODAY: Recipe = {
   edgeOverChrome: false,
 };
 /** Backdrop → chrome → content, one step each way: chrome between --bg and --well, one tone for bar and toolbar. */
-const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, barLine: false, tint: "off", dimScope: "content" };
+const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, tint: "off", dimScope: "content" };
 const PRESETS: Record<string, Recipe> = {
   Today: TODAY,
   Ordered: ORDERED,
