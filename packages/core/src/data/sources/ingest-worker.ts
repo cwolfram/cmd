@@ -12,7 +12,7 @@ import { registerBuiltinSources } from "../../search/builtin.ts";
 import { covers, isDir, locateContext, TranscriptSources, type TranscriptRoot } from "../../search/sources.ts";
 import type { StoreEvent } from "../store.ts";
 import { planPass, scanFiles, type FileState, type FoundFile } from "./ingest-pass.ts";
-import { redactEvent } from "../../redact.ts";
+import { redactEvent } from "../../lib/redact.ts";
 import { readTranscript } from "./transcripts.ts";
 
 export interface WorkerInit {

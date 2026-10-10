@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { classify, credentialsFor, credentialsForPrograms, redact, sandboxProfile, execCommand, fastRoute, runTool, sandboxAvailable, widgetHtml } from "../src/magic/index.ts";
 import { lintBody } from "../src/magic/lint.ts";
 import { nonPublic, type Lookup } from "../src/magic/fetch.ts";
-import { magicDenyPaths, magicPrivatePaths, realPathOf } from "../src/paths-deny.ts";
+import { magicDenyPaths, magicPrivatePaths, realPathOf } from "../src/lib/paths-deny.ts";
 import { requestedMedia, widgetCsp } from "@cmd/protocol";
 import { needs } from "../../../test/system.ts";
 

@@ -14,7 +14,7 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import type { JournalData } from "@cmd/protocol";
 import type { NewJournalEvent } from "./store.ts";
-import { checkoutOf } from "../checkout.ts";
+import { checkoutOf } from "../lib/checkout.ts";
 
 export interface RepoInfo {
   /** The main worktree's folder: the project. */

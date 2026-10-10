@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import type { ActivityEvent, GitPlace } from "@cmd/protocol";
 import { nameFromBranch } from "@cmd/protocol";
-import { checkoutOf, placeOf } from "../checkout.ts";
+import { checkoutOf, placeOf } from "../lib/checkout.ts";
 
 const CD = /(?:^|&&|;|\|\||\()\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|)]+)/g;
 const GIT_C = /\bgit\s+-C\s+("[^"]+"|'[^']+'|\S+)/g;

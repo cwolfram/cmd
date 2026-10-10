@@ -6,7 +6,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import type { GitFile, GitStatus } from "@cmd/protocol";
-import { expandHome } from "./windows/builtin.ts";
+import { expandHome } from "../windows/builtin.ts";
 
 /** At most this many changed paths are listed (untracked and ignored folders count once). */
 const MAX_FILES = 20_000;

@@ -3,7 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DATA_FLAGS, HOOK_FORMAT } from "@cmd/protocol";
-import { redact, redactDeep, redactEvent } from "../src/redact.ts";
+import { redact, redactDeep, redactEvent } from "../src/lib/redact.ts";
 import { INLINE_LINE, claudeLine } from "../src/data/sources/transcripts.ts";
 import { ActivityView } from "../src/data/views/activity.ts";
 import { DataService } from "../src/data/service.ts";

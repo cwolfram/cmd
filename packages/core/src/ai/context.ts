@@ -7,7 +7,7 @@
 // the call (ai.call), so a wrong day or summary can be traced to its input.
 
 import { createHash } from "node:crypto";
-import { redact } from "../redact.ts";
+import { redact } from "../lib/redact.ts";
 
 export interface ContextPart {
   /** What it is, for the record ("facts", "session", "day"). */

@@ -33,7 +33,7 @@ import {
 } from "@cmd/protocol";
 import type { Backend } from "../ai/backends.ts";
 import type { AiService } from "../ai/service.ts";
-import { magicDenyPaths } from "../paths-deny.ts";
+import { magicDenyPaths } from "../lib/paths-deny.ts";
 import { buildWidget, type BuildEvent } from "./build.ts";
 import type { Workspace } from "./prompt.ts";
 import { sandboxAvailable, type SandboxMode } from "./sandbox.ts";

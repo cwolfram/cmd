@@ -7,10 +7,10 @@
 
 import os from "node:os";
 import path from "node:path";
-import { isDeniedPath, magicDenyPaths } from "../paths-deny.ts";
+import { isDeniedPath, magicDenyPaths } from "../lib/paths-deny.ts";
 
 // The private paths moved to paths-deny.ts (shared with remote access); kept here for Magic's imports.
-export { DEFAULT_DENY_PATHS, expandPath, isDeniedPath } from "../paths-deny.ts";
+export { DEFAULT_DENY_PATHS, expandPath, isDeniedPath } from "../lib/paths-deny.ts";
 
 export type Verdict = { level: "allow" | "ask" | "deny"; reason: string };
 
@@ -289,7 +289,7 @@ export function credentialsForPrograms(programs: string[]): Credentials {
   return out;
 }
 
-export { redact } from "../redact.ts";
+export { redact } from "../lib/redact.ts";
 
 export interface PolicyOptions {
   deny?: string[];

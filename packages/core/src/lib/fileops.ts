@@ -8,7 +8,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { expandHome } from "./windows/builtin.ts";
+import { expandHome } from "../windows/builtin.ts";
 
 const abs = (p: string) => path.resolve(expandHome(p));
 

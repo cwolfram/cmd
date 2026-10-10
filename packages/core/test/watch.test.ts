@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { WatchService } from "../src/watch.ts";
+import { WatchService } from "../src/lib/watch.ts";
 import { repeating } from "../../../test/system.ts";
 
 /** Resolves true when `svc` reports `p`, false after `ms`. */

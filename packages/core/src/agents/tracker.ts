@@ -20,7 +20,7 @@ import { registerBuiltinSources } from "../search/builtin.ts";
 import { locateContext, TranscriptSources } from "../search/sources.ts";
 import { briefing } from "./peers.ts";
 import { placeFrom, worktreeName } from "./names.ts";
-import { placeOf, samePlace } from "../checkout.ts";
+import { placeOf, samePlace } from "../lib/checkout.ts";
 import { nativeSession, type StateChange } from "./state.ts";
 import { removeStatus, StatusWatcher } from "./statusfiles.ts";
 import { watchTurn, type TurnWatch } from "./activity/fswatch.ts";

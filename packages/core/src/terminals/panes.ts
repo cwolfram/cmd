@@ -12,7 +12,7 @@ import { EventEmitter } from "node:events";
 import { logger } from "@cmd/protocol/node";
 import type { Attention, Pane, PaneId, PaneUsage, Progress, Settings, WorkspaceId } from "@cmd/protocol";
 import { usageChanged } from "./resources.ts";
-import { placeOf, samePlace } from "../checkout.ts";
+import { placeOf, samePlace } from "../lib/checkout.ts";
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { DEVICE_REPLIES, OscScanner, type OscEvent } from "./osc.ts";
 import { agentVersion, classify, displayName, isSpawnHelper, type Classification, type ForegroundInfo } from "../agents/procinfo.ts";

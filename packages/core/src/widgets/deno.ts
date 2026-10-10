@@ -14,7 +14,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { credentialsForPrograms, expandPath, redact } from "../magic/policy.ts";
-import { magicDenyPaths } from "../paths-deny.ts";
+import { magicDenyPaths } from "../lib/paths-deny.ts";
 import { execArgv, type SandboxMode } from "../magic/sandbox.ts";
 import { logger } from "@cmd/protocol/node";
 import type { MagicNotify, MagicStatus } from "@cmd/protocol";

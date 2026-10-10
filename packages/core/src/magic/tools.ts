@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { classify, credentialsFor, expandPath, redact } from "./policy.ts";
-import { privateMatcher } from "../paths-deny.ts";
+import { privateMatcher } from "../lib/paths-deny.ts";
 import { execCommand, type SandboxMode } from "./sandbox.ts";
 import { preview } from "./sources.ts";
 import { FetchRefused, guardedFetch, type Lookup } from "./fetch.ts";

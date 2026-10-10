@@ -23,7 +23,7 @@ import { DataStore, type StoreEvent as NewEvent } from "../../packages/core/src/
 import { hookEvents, journalEvents } from "../../packages/core/src/data/sources/legacy.ts";
 import { FLAG_CUT } from "../../packages/core/src/data/schema.ts";
 import { claudeLine, codexLine, type TranscriptFile } from "../../packages/core/src/data/sources/transcripts.ts";
-import { redact, redactDeep } from "../../packages/core/src/redact.ts";
+import { redact, redactDeep } from "../../packages/core/src/lib/redact.ts";
 
 const args = process.argv.slice(2);
 const opt = (name: string, dflt?: string) => {

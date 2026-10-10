@@ -192,4 +192,4 @@ export function prune(entries: ConversationEntry[], budget: number): Pruned {
 
 // ── secrets ──────────────────────────────────────────────
 
-export { redact } from "../redact.ts";
+export { redact } from "../lib/redact.ts";

@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import type { CoreEvent, Method, Params, RemoteScope } from "@cmd/protocol";
 import { refusedStatement } from "../sqlite/statements.ts";
-import { expandPath, inCmdInstance, isDeniedPath, remotePrivatePaths } from "../paths-deny.ts";
+import { expandPath, inCmdInstance, isDeniedPath, remotePrivatePaths } from "../lib/paths-deny.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
 import type { PaneManager } from "../terminals/panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";

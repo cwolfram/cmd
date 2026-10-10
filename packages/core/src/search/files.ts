@@ -12,7 +12,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import type { FileHit } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { checkoutOf, worktreesOf } from "../checkout.ts";
+import { checkoutOf, worktreesOf } from "../lib/checkout.ts";
 
 const log = logger("files");
 

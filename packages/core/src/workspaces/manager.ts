@@ -9,7 +9,7 @@ import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { HOME_WORKSPACE_ID, ICON_NAME, type Workspace, type WorkspaceId } from "@cmd/protocol";
 import type { Store } from "../kernel/store.ts";
-import { placeOf } from "../checkout.ts";
+import { placeOf } from "../lib/checkout.ts";
 import { canonical, deepest, gitRoot, nameFor } from "./paths.ts";
 
 const VIEW_MAX = 256 * 1024;

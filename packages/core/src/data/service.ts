@@ -11,11 +11,11 @@ import type { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { DATA_CLASSES, DATA_FLAGS, classOf, type DataClass, type DataClassInfo, type DataEvent, type DataQuery, type DataStats, type NewDataEvent, type Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { redact, redactDeep, redactEvent } from "../redact.ts";
+import { redact, redactDeep, redactEvent } from "../lib/redact.ts";
 import { hookEvents, journalEvents, remoteAudit } from "./sources/legacy.ts";
 import { DataStore, type StoreEvent } from "./store.ts";
 import { excludedBy, parseExclude, type ExcludeRules } from "./exclude.ts";
-import { checkoutOf, remoteOf } from "../checkout.ts";
+import { checkoutOf, remoteOf } from "../lib/checkout.ts";
 
 /** A project's attributes from its folder: name, path, and the repository's remote when it has one. */
 function projectAttrs(id: string): Record<string, unknown> {

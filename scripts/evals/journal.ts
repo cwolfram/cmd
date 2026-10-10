@@ -31,7 +31,7 @@ import { gitEvents } from "../../packages/core/src/journal/git.ts";
 import { JournalStore } from "../../packages/core/src/journal/store.ts";
 import { buildThreads } from "../../packages/core/src/journal/threads.ts";
 import { SCHEMA, SYSTEM, type WrittenDay } from "../../packages/core/src/journal/writer.ts";
-import { redact } from "../../packages/core/src/redact.ts";
+import { redact } from "../../packages/core/src/lib/redact.ts";
 import { syntheticDay } from "../../packages/core/test/fixtures/journal-day.ts";
 
 const { values: a, positionals } = parseArgs({

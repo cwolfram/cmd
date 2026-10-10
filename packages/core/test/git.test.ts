@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { gitDiff, gitStatus } from "../src/git.ts";
+import { gitDiff, gitStatus } from "../src/lib/git.ts";
 import { rmTemp } from "./tmp.ts";
 
 // Not realpath'd: on macOS the temp dir is a symlink (/var → /private/var), so this

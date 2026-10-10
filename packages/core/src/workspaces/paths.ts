@@ -7,7 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { HOME_WORKSPACE_ID, type Workspace, type WorkspaceId } from "@cmd/protocol";
-import { checkoutOf } from "../checkout.ts";
+import { checkoutOf } from "../lib/checkout.ts";
 
 /**
  * Canonical absolute path: `~` expanded, relative paths resolved against `base`,

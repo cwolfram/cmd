@@ -14,7 +14,7 @@
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import type { Backend, Usage } from "../ai/backends.ts";
-import { magicDenyPaths } from "../paths-deny.ts";
+import { magicDenyPaths } from "../lib/paths-deny.ts";
 import { buildRequest, buildSystem, type Workspace } from "./prompt.ts";
 import { commandsSupported, type SandboxMode } from "./sandbox.ts";
 import { runTool, toolsFor, type ToolContext, type ToolOutput } from "./tools.ts";
