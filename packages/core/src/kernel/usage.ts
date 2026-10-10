@@ -14,6 +14,10 @@
 // app, see electron.vite.config.ts) so the server can turn away batches that
 // didn't come from a release; it can't prove more than that, since the key is
 // in the app.
+// Crashes are counted against the version that recorded them: a crash counted
+// by another version (a core that died before an update, main's native crash
+// found by the next launch) goes in `earlier`, by version, under this
+// version's signature.
 
 import { createHmac } from "node:crypto";
 import os from "node:os";
@@ -29,6 +33,10 @@ const TIMEOUT_MS = 5_000;
 const BACKOFF_MS = 10 * 60_000;
 /** Crash counts from other processes (crash.<process>, error), checked before they're sent on. */
 const CRASH_NAME = /^(crash\.[a-z]+|error)$/;
+/** An app version, as the server takes it. */
+const VERSION = /^\d{1,3}\.\d{1,3}\.\d{1,4}(-[0-9a-z.]{1,20})?$/i;
+/** Other versions one batch carries counts for. */
+const MAX_EARLIER = 5;
 
 const log = logger("usage");
 
@@ -45,8 +53,8 @@ export interface UsageOptions {
   now?: () => number;
   /** 0: no timer, flush() is called by hand (tests). */
   intervalMs?: number;
-  /** Crash counts recorded since the last call (default: takeUsageCounts). */
-  crashes?: () => Record<string, number>;
+  /** Crash counts recorded since the last call, by the version that recorded them ("": unknown; default: takeUsageCounts). */
+  crashes?: () => Record<string, Record<string, number>>;
 }
 
 export interface UsageBatch {
@@ -56,11 +64,15 @@ export interface UsageBatch {
   os: string;
   arch: string;
   counts: Record<string, number>;
+  /** Crash counts recorded by other versions of this install, by version. */
+  earlier?: Record<string, Record<string, number>>;
 }
 
 export class UsageStats {
   #o: UsageOptions;
   #counts = new Map<string, number>();
+  /** Crash counts of other versions, by version. */
+  #earlier = new Map<string, Map<string, number>>();
   /** UTC day of the last batch sent. */
   #sentDay: string | null = null;
   #sending = false;
@@ -98,18 +110,25 @@ export class UsageStats {
     const crashes = (this.#o.crashes ?? takeUsageCounts)();
     if (!this.#o.enabled()) {
       this.#counts.clear();
+      this.#earlier.clear();
       return false;
     }
-    for (const [k, n] of Object.entries(crashes)) if (CRASH_NAME.test(k)) this.#counts.set(k, (this.#counts.get(k) ?? 0) + n);
+    for (const [version, counts] of Object.entries(crashes)) {
+      const own = version === "" || version === this.#o.version || !VERSION.test(version);
+      for (const [k, n] of Object.entries(counts)) if (CRASH_NAME.test(k)) this.#merge(own ? null : version, k, n);
+    }
     const now = (this.#o.now ?? Date.now)();
     if (now < this.#pausedUntil) return false;
     const day = new Date(now).toISOString().slice(0, 10);
-    if (!this.#counts.size && this.#sentDay === day) return false;
+    if (!this.#counts.size && !this.#earlier.size && this.#sentDay === day) return false;
     const id = this.#o.id();
     if (!id) return false;
     const counts = Object.fromEntries(this.#counts);
     this.#counts.clear();
-    const batch: UsageBatch = { v: 1, id, version: this.#o.version, os: macosVersion(), arch: process.arch, counts };
+    const versions = [...this.#earlier.keys()].slice(0, MAX_EARLIER);
+    const earlier = Object.fromEntries(versions.map((v) => [v, Object.fromEntries(this.#earlier.get(v)!)]));
+    for (const v of versions) this.#earlier.delete(v); // the rest go next minute
+    const batch: UsageBatch = { v: 1, id, version: this.#o.version, os: macosVersion(), arch: process.arch, counts, ...(versions.length ? { earlier } : {}) };
     const body = JSON.stringify(batch);
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.#o.key) headers["x-cmd-signature"] = createHmac("sha256", this.#o.key).update(body).digest("hex");
@@ -125,6 +144,7 @@ export class UsageStats {
         log.info("the usage stats server asked to stop");
         this.#stopped = true;
         this.#counts.clear();
+        this.#earlier.clear();
         return false;
       }
       if (res.status === 429 || res.status === 503) {
@@ -141,7 +161,8 @@ export class UsageStats {
       return true;
     } catch (err) {
       // Offline or the server is down: keep the counts for the next minute.
-      for (const [k, n] of Object.entries(counts)) this.#counts.set(k, (this.#counts.get(k) ?? 0) + n);
+      for (const [k, n] of Object.entries(counts)) this.#merge(null, k, n);
+      for (const [v, c] of Object.entries(earlier)) for (const [k, n] of Object.entries(c)) this.#merge(v, k, n);
       log.debug(`not sent: ${(err as Error).message}`);
       return false;
     } finally {
@@ -151,6 +172,16 @@ export class UsageStats {
 
   close(): void {
     clearInterval(this.#timer);
+  }
+
+  /** Add to this version's counts (null) or another's. */
+  #merge(version: string | null, key: string, n: number): void {
+    let m = this.#counts;
+    if (version !== null) {
+      m = this.#earlier.get(version) ?? new Map();
+      this.#earlier.set(version, m);
+    }
+    m.set(key, (m.get(key) ?? 0) + n);
   }
 
   #add(key: string): void {

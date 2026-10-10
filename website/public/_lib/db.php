@@ -8,6 +8,13 @@
 // version. No raw batches and no IPs are kept; install ids are stored hashed.
 // Only totals are ever shown.
 //
+// `installs` keeps an install's latest version, macOS and arch of the day and
+// `counts` its totals; release health reads `install_versions` and
+// `version_counts`, which keep each version apart, so an install that updates
+// mid-day doesn't charge the morning's crashes to the evening's version.
+// Crashes an install recorded on an older version arrive in a batch's
+// `earlier`. Days from before these tables fall back to `installs`.
+//
 // Against spam, since anyone can post here: release builds sign batches with a
 // key of their version (verify_signature), each sender (an IP, as a hash with
 // a salt that changes every day) gets a few installs a day and a few batches a
@@ -50,6 +57,12 @@ function db(): PDO
         day TEXT NOT NULL, id TEXT NOT NULL, name TEXT NOT NULL, n INTEGER NOT NULL,
         PRIMARY KEY (day, id, name))');
     $pdo->exec('CREATE INDEX IF NOT EXISTS counts_name ON counts (name, day)');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS install_versions (
+        day TEXT NOT NULL, id TEXT NOT NULL, version TEXT NOT NULL,
+        PRIMARY KEY (day, id, version))');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS version_counts (
+        day TEXT NOT NULL, id TEXT NOT NULL, version TEXT NOT NULL, name TEXT NOT NULL, n INTEGER NOT NULL,
+        PRIMARY KEY (day, id, version, name))');
     // Rate limiting, today's rows only (rate_limit).
     $pdo->exec('CREATE TABLE IF NOT EXISTS rate_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL)');
     $pdo->exec('CREATE TABLE IF NOT EXISTS rate_ids (day TEXT NOT NULL, sender TEXT NOT NULL, id TEXT NOT NULL, PRIMARY KEY (day, sender, id))');
@@ -67,13 +80,17 @@ function allowed_names(): array
     return $names;
 }
 
+const VERSION_RE = '/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,4}(-[0-9a-z.]{1,20})?$/i';
+/** Other versions one batch may carry crash counts for (`earlier`). */
+const MAX_EARLIER = 5;
+
 /** A batch as the app sends it, or null when it isn't one. */
 function parse_batch(mixed $b): ?array
 {
     if (!is_array($b) || ($b['v'] ?? null) !== 1) return null;
     $id = $b['id'] ?? null;
     if (!is_string($id) || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id)) return null;
-    $version = is_string($b['version'] ?? null) && preg_match('/^\d{1,3}\.\d{1,3}\.\d{1,4}(-[0-9a-z.]{1,20})?$/i', $b['version']) ? $b['version'] : 'other';
+    $version = is_string($b['version'] ?? null) && preg_match(VERSION_RE, $b['version']) ? $b['version'] : 'other';
     $os = is_string($b['os'] ?? null) && preg_match('/^\d{1,2}$/', $b['os']) ? $b['os'] : 'other';
     $arch = in_array($b['arch'] ?? null, ['arm64', 'x64'], true) ? $b['arch'] : 'other';
     $counts = [];
@@ -81,7 +98,16 @@ function parse_batch(mixed $b): ?array
     foreach (is_array($b['counts'] ?? null) ? $b['counts'] : [] as $name => $n) {
         if (in_array($name, $allowed, true) && is_int($n) && $n > 0) $counts[$name] = min($n, 1000);
     }
-    return ['id' => substr(hash('sha256', strtolower($id)), 0, 24), 'version' => $version, 'os' => $os, 'arch' => $arch, 'counts' => $counts];
+    // Crashes and errors recorded by other versions of this install.
+    $earlier = [];
+    foreach (is_array($b['earlier'] ?? null) ? $b['earlier'] : [] as $v => $c) {
+        if (count($earlier) >= MAX_EARLIER) break;
+        if (!is_string($v) || $v === $version || !preg_match(VERSION_RE, $v) || !is_array($c)) continue;
+        foreach ($c as $name => $n) {
+            if (($name === 'error' || str_starts_with((string) $name, 'crash.')) && in_array($name, $allowed, true) && is_int($n) && $n > 0) $earlier[$v][$name] = min($n, 1000);
+        }
+    }
+    return ['id' => substr(hash('sha256', strtolower($id)), 0, 24), 'version' => $version, 'os' => $os, 'arch' => $arch, 'counts' => $counts, 'earlier' => $earlier];
 }
 
 /** The secret release keys are derived from (`usage-secret` in the data dir); null: signatures aren't checked (local testing). */
@@ -170,9 +196,17 @@ function record_batch(array $b, string $day): void
             ->execute([$day, $b['id'], $b['version'], $b['os'], $b['arch']]);
         $add = $pdo->prepare('INSERT INTO counts (day, id, name, n) VALUES (?, ?, ?, ?)
             ON CONFLICT (day, id, name) DO UPDATE SET n = MIN(n + excluded.n, CAST(? AS INTEGER))');
-        foreach ($b['counts'] as $name => $n) {
-            $cap = daily_cap($name);
-            $add->execute([$day, $b['id'], $name, min($n, $cap), $cap]);
+        $ran = $pdo->prepare('INSERT OR IGNORE INTO install_versions (day, id, version) VALUES (?, ?, ?)');
+        $addVersion = $pdo->prepare('INSERT INTO version_counts (day, id, version, name, n) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (day, id, version, name) DO UPDATE SET n = MIN(n + excluded.n, CAST(? AS INTEGER))');
+        foreach ([$b['version'] => $b['counts']] + $b['earlier'] as $version => $counts) {
+            $version = (string) $version; // PHP turns numeric keys into ints
+            $ran->execute([$day, $b['id'], $version]);
+            foreach ($counts as $name => $n) {
+                $cap = daily_cap($name);
+                $add->execute([$day, $b['id'], $name, min($n, $cap), $cap]);
+                $addVersion->execute([$day, $b['id'], $version, $name, min($n, $cap), $cap]);
+            }
         }
         $pdo->commit();
     } catch (Throwable $e) {
@@ -213,15 +247,22 @@ function summary(int $days = 30): array
         }
         return $out;
     };
-    // Per version: launches, crashes (any process) and errors, by the version the install ran that day.
-    $health = $q("SELECT i.version AS version,
-            COUNT(DISTINCT i.id) AS installs,
-            COALESCE(SUM(CASE WHEN c.name = 'app.launch' THEN c.n END), 0) AS launches,
-            COALESCE(SUM(CASE WHEN c.name LIKE 'crash.%' THEN c.n END), 0) AS crashes,
-            COUNT(DISTINCT CASE WHEN c.name LIKE 'crash.%' THEN i.id END) AS crashedInstalls,
-            COALESCE(SUM(CASE WHEN c.name = 'error' THEN c.n END), 0) AS errors
-        FROM installs i LEFT JOIN counts c ON c.day = i.day AND c.id = i.id
-        WHERE i.day >= ? GROUP BY i.version", [$from]);
+    // Per version: installs that ran it, launches, crashes (any process) and errors, each counted
+    // against the version that recorded it. An install's days from before install_versions: its
+    // counts against the version it ended the day on.
+    $old = 'NOT EXISTS (SELECT 1 FROM install_versions v WHERE v.day = i.day AND v.id = i.id)';
+    $health = $q("SELECT version,
+            COUNT(DISTINCT CASE WHEN name IS NULL THEN id END) AS installs,
+            COALESCE(SUM(CASE WHEN name = 'app.launch' THEN n END), 0) AS launches,
+            COALESCE(SUM(CASE WHEN name LIKE 'crash.%' THEN n END), 0) AS crashes,
+            COUNT(DISTINCT CASE WHEN name LIKE 'crash.%' THEN id END) AS crashedInstalls,
+            COALESCE(SUM(CASE WHEN name = 'error' THEN n END), 0) AS errors
+        FROM (
+            SELECT id, version, NULL AS name, 0 AS n FROM install_versions WHERE day >= ?
+            UNION ALL SELECT id, version, name, n FROM version_counts WHERE day >= ?
+            UNION ALL SELECT i.id, i.version, NULL, 0 FROM installs i WHERE i.day >= ? AND $old
+            UNION ALL SELECT i.id, i.version, c.name, c.n FROM installs i JOIN counts c ON c.day = i.day AND c.id = i.id WHERE i.day >= ? AND $old
+        ) GROUP BY version", [$from, $from, $from, $from]);
     foreach ($health as &$r) {
         foreach (['installs', 'launches', 'crashes', 'crashedInstalls', 'errors'] as $k) $r[$k] = (int) $r[$k];
     }

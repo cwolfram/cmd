@@ -12,13 +12,14 @@
 // electron.vite.config.ts), so the URL isn't in the repository. Development
 // builds keep reports locally unless $CMD_CRASH_WEBHOOK is set when they run.
 // The `diagnostics.crashReports` setting turns sending off. The same crash is
-// sent at most once a day.
+// posted at most once a day; when it comes back within the day, the post it
+// already has is edited to say how often (the Repeats field).
 
 import { app, crashReporter } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import { connect, countForUsage, crashContext, crashDir, logger, machineId, recordCrash, type CrashProcess, type CrashReport } from "@cmd/protocol/node";
-import { payload, scrub, signature } from "./crash-format.ts";
+import { payload, scrub, signature, withRepeats, type Payload } from "./crash-format.ts";
 
 declare const __CRASH_WEBHOOK__: string;
 const BAKED = typeof __CRASH_WEBHOOK__ === "string" ? __CRASH_WEBHOOK__ : "";
@@ -79,15 +80,16 @@ export function startCrashReporting(o: { devBuild: boolean; context: () => Recor
     log.warn("crash reporter didn't start", err);
   }
   machineId(); // made now (also on installs from before it existed), not first inside a crash handler
-  // Present at startup: the previous app didn't get to quit.
+  // Present at startup: the previous app didn't get to quit. It holds that app's pid and version.
   const marker = path.join(crashDir(), "app.running");
   try {
     crashedSince = fs.statSync(marker).mtimeMs;
     log.warn("the previous session didn't quit cleanly");
-    if (dumpsSince(crashedSince).length) countForUsage("crash.native"); // usage stats: main itself crashed
+    const version = fs.readFileSync(marker, "utf8").trim().split(" ")[1];
+    if (dumpsSince(crashedSince).length) countForUsage("crash.native", version); // usage stats: main itself crashed
   } catch {}
   try {
-    fs.writeFileSync(marker, String(process.pid));
+    fs.writeFileSync(marker, `${process.pid} ${app.getVersion()}`);
   } catch {}
   app.on("will-quit", () => fs.rmSync(marker, { force: true }));
   // A previous app that died mid-send left its claims behind.
@@ -154,7 +156,8 @@ function setEnabled(on: boolean): void {
 // ── sending ──────────────────────────────────────────────
 
 interface SentState {
-  reports: Record<string, { last: number; count: number }>;
+  /** By signature: when it was posted, how often it came again since and when last, and the post to edit. */
+  reports: Record<string, { last: number; count: number; seen?: number; message?: string; body?: Payload }>;
   dumps: string[];
 }
 
@@ -167,7 +170,11 @@ function readState(): SentState {
   }
 }
 
-const writeState = (s: SentState) => fs.writeFileSync(statePath(), JSON.stringify(s));
+function writeState(s: SentState): void {
+  // A post older than a day isn't edited again: the next one is a new post.
+  for (const r of Object.values(s.reports)) if (Date.now() - r.last >= DEDUPE_MS) delete r.body, delete r.message;
+  fs.writeFileSync(statePath(), JSON.stringify(s));
+}
 
 async function flush(): Promise<void> {
   if (!webhook || enabled !== true) return;
@@ -177,19 +184,25 @@ async function flush(): Promise<void> {
   try {
     const state = readState();
     const files = fs.readdirSync(crashDir()).filter((f) => f.endsWith(".json") && f !== "sent.json").sort();
-    for (const f of files) {
-      if (!underRate()) break;
-      const ok = await sendReport(path.join(crashDir(), f), state);
-      writeState(state);
-      if (!ok) return void (retry = setTimeout(() => void flush(), RETRY_MS));
+    const repeated = new Set<string>();
+    try {
+      for (const f of files) {
+        const sent = await sendReport(path.join(crashDir(), f), state, repeated);
+        writeState(state);
+        if (sent === "later") return void (retry = setTimeout(() => void flush(), untilUnderRate()));
+        if (!sent) return void (retry = setTimeout(() => void flush(), RETRY_MS));
+      }
+      for (const dump of newDumps(state)) {
+        if (!underRate()) return void (retry = setTimeout(() => void flush(), untilUnderRate()));
+        if (!(await sendDump(dump))) return void (retry = setTimeout(() => void flush(), RETRY_MS));
+        state.dumps.push(path.basename(dump));
+        writeState(state);
+      }
+    } finally {
+      // Once per signature and flush, so a crash loop edits its post a few times, not once per crash.
+      for (const sig of repeated) await editRepeats(state.reports[sig]);
+      pruneSent();
     }
-    for (const dump of newDumps(state)) {
-      if (!underRate()) break;
-      if (!(await sendDump(dump))) return void (retry = setTimeout(() => void flush(), RETRY_MS));
-      state.dumps.push(path.basename(dump));
-      writeState(state);
-    }
-    pruneSent();
   } catch (err) {
     log.warn("sending crash reports failed", err);
   } finally {
@@ -204,8 +217,14 @@ function underRate(): boolean {
   return sentAt.length < MAX_PER_HOUR;
 }
 
-/** Sent, or skipped as a repeat: true. Couldn't send (offline, rejected): false, the report stays. */
-async function sendReport(file: string, state: SentState): Promise<boolean> {
+/** When the oldest post of the last hour stops counting. */
+const untilUnderRate = () => Math.max(1000, (sentAt[0] ?? Date.now()) + 60 * 60_000 - Date.now() + 1000);
+
+/**
+ * Sent, or counted as a repeat (its signature added to `repeated`): true. Couldn't send (offline,
+ * rejected): false; over the hourly limit: "later". The report stays for both.
+ */
+async function sendReport(file: string, state: SentState, repeated: Set<string>): Promise<boolean | "later"> {
   const claimed = `${file}.sending`;
   try {
     fs.renameSync(file, claimed); // another app (or this one) is already on it
@@ -226,17 +245,23 @@ async function sendReport(file: string, state: SentState): Promise<boolean> {
   const seen = state.reports[sig];
   if (seen && Date.now() - seen.last < DEDUPE_MS) {
     seen.count++;
+    seen.seen = Date.parse(report.time) || Date.now();
+    repeated.add(sig);
     log.info(`not sending ${path.basename(file)}: the same crash was sent ${Math.round((Date.now() - seen.last) / 60_000)} min ago`);
     archive(claimed, file);
     return true;
   }
-  const repeats = seen?.count ?? 0;
-  const ok = await post(payload(report, repeats), [{ name: "report.json", data: Buffer.from(scrub(JSON.stringify(report, null, 2))), type: "application/json" }]);
-  if (!ok) {
+  if (!underRate()) {
+    fs.renameSync(claimed, file);
+    return "later";
+  }
+  const body = payload(report);
+  const message = await post(body, [{ name: "report.json", data: Buffer.from(scrub(JSON.stringify(report, null, 2))), type: "application/json" }]);
+  if (message === false) {
     fs.renameSync(claimed, file);
     return false;
   }
-  state.reports[sig] = { last: Date.now(), count: 1 };
+  state.reports[sig] = { last: Date.now(), count: 0, ...(message ? { message, body } : {}) };
   archive(claimed, file);
   return true;
 }
@@ -292,25 +317,51 @@ async function sendDump(file: string): Promise<boolean> {
   };
   const files = st.size <= MAX_DUMP_BYTES ? [{ name: path.basename(file), data: fs.readFileSync(file), type: "application/octet-stream" }] : [];
   if (!files.length) report.context.note = "minidump too large to attach; it's in the crash folder";
-  return post(payload(report, 0), files);
+  return (await post(payload(report), files)) !== false;
 }
 
-async function post(body: unknown, files: { name: string; data: Buffer; type: string }[]): Promise<boolean> {
+/** Edit a post to say how often its crash came again. Best effort: a post that can't be edited stays as it is. */
+async function editRepeats(r: SentState["reports"][string] | undefined): Promise<void> {
+  if (!r?.message || !r.body || !r.count) return;
+  try {
+    const res = await fetch(hookUrl(`/messages/${r.message}`), {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(withRepeats(r.body, r.count, r.seen ?? Date.now())),
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) log.warn(`crash report not updated: HTTP ${res.status}`);
+  } catch (err) {
+    log.warn(`crash report not updated: ${(err as Error).message}`);
+  }
+}
+
+/** The webhook's URL, or one of its messages'. */
+function hookUrl(suffix: string, query: Record<string, string> = {}): string {
+  const u = new URL(webhook);
+  u.pathname += suffix;
+  for (const [k, v] of Object.entries(query)) u.searchParams.set(k, v);
+  return u.toString();
+}
+
+/** The id of the message posted, "" when posted without one, false when it should be tried again. */
+async function post(body: Payload, files: { name: string; data: Buffer; type: string }[]): Promise<string | false> {
   const form = new FormData();
   form.append("payload_json", JSON.stringify(body));
   files.forEach((f, i) => form.append(`files[${i}]`, new Blob([new Uint8Array(f.data)], { type: f.type }), f.name));
   try {
-    const res = await fetch(webhook, { method: "POST", body: form, signal: AbortSignal.timeout(20_000) });
+    const res = await fetch(hookUrl("", { wait: "true" }), { method: "POST", body: form, signal: AbortSignal.timeout(20_000) });
     if (res.status === 429) {
       log.warn("crash report rate limited");
       return false;
     }
     if (!res.ok) {
       log.warn(`crash report rejected: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-      return res.status >= 500 ? false : true; // a 4xx won't get better by retrying
+      return res.status >= 500 ? false : ""; // a 4xx won't get better by retrying
     }
     sentAt.push(Date.now());
-    return true;
+    const sent = (await res.json().catch(() => null)) as { id?: unknown } | null;
+    return typeof sent?.id === "string" ? sent.id : "";
   } catch (err) {
     log.warn(`crash report not sent: ${(err as Error).message}`);
     return false;

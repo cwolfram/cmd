@@ -210,29 +210,36 @@ export function crashContext(extra: Record<string, string> = {}): Record<string,
 // Usage stats (core/usage.ts) count crashes too, whether or not reports are
 // sent: recordCrash appends a line per crash to this file, and the core takes
 // the lines with its next batch (a core that died is counted by the next one).
+// Each line is the counter and the app version that recorded it, so a crash
+// sent on by a newer version still counts against the one that crashed.
 const usageCountsPath = () => path.join(crashDir(), "usage-counts");
 /** Report kinds where the process died or a window went blank; the rest are internal errors. */
 const FATAL_KINDS: ReadonlySet<string> = new Set(["uncaughtException", "exit", "render-process-gone", "child-process-gone", "minidump"]);
 
-/** Count a crash or error for usage stats. Synchronous, for crash handlers. */
-export function countForUsage(name: string): void {
+/** Count a crash or error for usage stats, against `version` (default: this process's app version). Synchronous, for crash handlers. */
+export function countForUsage(name: string, version = process.env.CMD_APP_VERSION ?? ""): void {
   try {
     fs.mkdirSync(crashDir(), { recursive: true });
-    fs.appendFileSync(usageCountsPath(), `${name}\n`);
+    fs.appendFileSync(usageCountsPath(), version ? `${name}\t${version}\n` : `${name}\n`);
   } catch {}
 }
 
-/** The counts recorded since the last call, removed from the file. */
-export function takeUsageCounts(): Record<string, number> {
+/** The counts recorded since the last call, by version ("": unknown, lines from before versions were kept), removed from the file. */
+export function takeUsageCounts(): Record<string, Record<string, number>> {
   const claimed = `${usageCountsPath()}.${process.pid}`;
-  const out: Record<string, number> = {};
+  const out: Record<string, Record<string, number>> = {};
   try {
     fs.renameSync(usageCountsPath(), claimed);
   } catch {
     return out;
   }
   try {
-    for (const name of fs.readFileSync(claimed, "utf8").split("\n")) if (name) out[name] = (out[name] ?? 0) + 1;
+    for (const line of fs.readFileSync(claimed, "utf8").split("\n")) {
+      const [name, version = ""] = line.split("\t");
+      if (!name) continue;
+      const counts = (out[version] ??= {});
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
   } catch {}
   fs.rmSync(claimed, { force: true });
   return out;

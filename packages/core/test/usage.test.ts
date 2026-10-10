@@ -8,7 +8,7 @@ function setup(o: { enabled?: boolean; fail?: boolean; url?: string | null; key?
   let now = Date.parse("2026-10-04T12:00:00Z");
   let fail = o.fail ?? false;
   let answer: Response | null = null;
-  let crashes: Record<string, number> = {};
+  let crashes: Record<string, Record<string, number>> = {};
   const usage = new UsageStats({
     url: o.url === undefined ? "https://example.test/ingest" : o.url,
     key: o.key ?? null,
@@ -33,7 +33,7 @@ function setup(o: { enabled?: boolean; fail?: boolean; url?: string | null; key?
     advance: (ms: number) => (now += ms),
     setFail: (f: boolean) => (fail = f),
     answer: (r: Response | null) => (answer = r),
-    crash: (c: Record<string, number>) => (crashes = c),
+    crash: (c: Record<string, Record<string, number>>) => (crashes = c),
   };
 }
 
@@ -87,9 +87,21 @@ describe("usage stats", () => {
 
   it("adds crash counts from other processes, known names only", async () => {
     const { usage, sent, crash } = setup();
-    crash({ "crash.core": 1, error: 2, "/Users/someone/secret": 1 });
+    crash({ "1.2.3": { "crash.core": 1, error: 2, "/Users/someone/secret": 1 }, "": { error: 1 } });
     expect(await usage.flush()).toBe(true);
-    expect(sent[0]!.counts).toEqual({ "crash.core": 1, error: 2 });
+    expect(sent[0]!.counts).toEqual({ "crash.core": 1, error: 3 });
+    expect(sent[0]!.earlier).toBeUndefined();
+  });
+
+  it("sends crashes other versions recorded under those versions", async () => {
+    const { usage, sent, crash, setFail } = setup();
+    crash({ "1.2.2": { "crash.core": 5, error: 10 }, "1.2.3": { "crash.core": 1 }, "not a version": { error: 1 } });
+    setFail(true);
+    expect(await usage.flush()).toBe(false);
+    setFail(false);
+    expect(await usage.flush()).toBe(true); // kept through the failure
+    expect(sent[0]!.counts).toEqual({ "crash.core": 1, error: 1 });
+    expect(sent[0]!.earlier).toEqual({ "1.2.2": { "crash.core": 5, error: 10 } });
   });
 
   it("waits as long as the server says, keeping the counts", async () => {
