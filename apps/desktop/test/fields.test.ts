@@ -48,6 +48,15 @@ describe("window fields", () => {
     expect(done).toMatchObject({ status: { text: "make finished · 42s" }, tone: "unseen" });
   });
 
+  it("widget: unseen news before its status line, the status line again once seen", () => {
+    const status = { text: "1 failing", tone: "error" };
+    const news = { kind: "notification", text: "Build failed", urgent: true, at: 0 };
+    const withNews = fieldsOf(row({ win: win({ kind: "magic", title: "Builds", state: { status, attention: news } }) }), undefined, 0);
+    expect(withNews.status).toEqual({ text: "Build failed", key: "attention:notification" });
+    const seen = fieldsOf(row({ win: win({ kind: "magic", title: "Builds", state: { status, attention: null } }) }), undefined, 0);
+    expect(seen.status).toEqual({ text: "1 failing", key: "widget-status" });
+  });
+
   it("widget: the icon its build picked, else the type's; news tints it, never a light", () => {
     expect(fieldsOf(row({ win: win({ kind: "magic", title: "Weather" }) }), undefined, 0).icon).toBe("sparkles");
     const f = fieldsOf(row({ win: win({ kind: "magic", title: "Weather", state: { icon: "cloud.sun", attention: { kind: "notification", text: "Rain soon", urgent: true, at: 0 } } }) }), undefined, 0);

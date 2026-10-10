@@ -1521,11 +1521,10 @@ await scenario("magic", async () => {
     const marked = (await bstate()).attention;
     await shot(win, "magic-attention.png");
     check(marked?.text === "Build failed" && (await statusText()).includes("Build failed"), `a widget's notification marks its window until seen (${marked?.text}, ${await statusText()})`);
-    // Looking at it (selected, with the app in front) is seeing it.
+    // Looking at it (selected, with the app in front) is seeing it. (The status line coming
+    // back once the news is seen: fields.test.ts.)
     await win.evaluate((id) => window.__cmdSelect?.(id), b.id);
-    await until(bstate, (st) => !st.attention);
-    await until(statusText, (t) => t.endsWith("1 failing"), 5000);
-    check(!(await bstate()).attention && (await statusText()).endsWith("1 failing"), `looking at the widget clears it, and its status shows again (${await statusText()})`);
+    check(!(await until(bstate, (st) => !st.attention)).attention, "looking at the widget clears its news");
 
     // cmd.terminal: refused at load, typed (not run) into a new terminal after a click.
     const known = new Set((await call("pane.list")).map((p) => p.id));
