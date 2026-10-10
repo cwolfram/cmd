@@ -1,4 +1,4 @@
-// Counters for performance work (docs/14-performance.md): renders of the heavy
+// Counters for performance work (docs/43-performance.md): renders of the heavy
 // components and store events by type, read by e2e/perf.mjs as window.__cmdPerf.
 // Plain integer increments, so they stay in production builds.
 

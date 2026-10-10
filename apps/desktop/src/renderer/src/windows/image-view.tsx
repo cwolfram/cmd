@@ -1,4 +1,4 @@
-// Image window view (docs/38-image-viewer.md): the picture, fit to the window
+// Image window view (docs/45-image-viewer.md): the picture, fit to the window
 // or zoomed, and nothing else. Zoom with a pinch or ⌘+ ⌘− ⌘0 around the
 // cursor; drag to pan; double-click flips between Fit and Actual Size; ← and →
 // walk the folder's other images. Actual Size means one image pixel per device

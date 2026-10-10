@@ -241,7 +241,7 @@ export const magicType: WindowType<{ prompt: string; phase: string; widgetId?: s
 export const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "ico", "svg"];
 
 /**
- * An image (docs/38-image-viewer.md): fit to the window or zoomed, with the
+ * An image (docs/45-image-viewer.md): fit to the window or zoomed, with the
  * folder's other images a key away. `zoom`: "fit", or device pixels per image
  * pixel (1 = actual size).
  */

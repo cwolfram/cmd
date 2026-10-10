@@ -212,7 +212,7 @@ The central files import a list of contributions instead of holding entries. The
 - **Effort:** S (< ½ day)
 - **Where:** `docs/`, `docs/00-overview.md`
 
-**Problem.** Three numbers are used twice: `10-window-titles.md` and `10-windows.md`, `14-magic-v2.md` and `14-performance.md`, `35-checkouts.md` and `35-json-viewer.md`. So "docs/14" in code comments and in this review is ambiguous. `00-overview.md` links 32 of the 43 docs, and no doc says whether it is a proposal, the current design, or superseded. Agents read superseded designs as current.
+**Problem.** Three numbers are used twice: `10-window-titles.md` and `42-windows.md`, `14-magic-v2.md` and `43-performance.md`, `35-checkouts.md` and `44-json-viewer.md`. So "docs/14" in code comments and in this review is ambiguous. `00-overview.md` links 32 of the 43 docs, and no doc says whether it is a proposal, the current design, or superseded. Agents read superseded designs as current.
 
 **Evidence.** `ls docs | awk -F- '{print $1}' | sort | uniq -d` → `10 14 35`.
 

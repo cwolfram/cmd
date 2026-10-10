@@ -1,4 +1,4 @@
-// The Image window's core side (docs/38-image-viewer.md): routing (images
+// The Image window's core side (docs/45-image-viewer.md): routing (images
 // open here, not in the browser, unless open.handlers says so), and its state.
 
 import fs from "node:fs";

@@ -336,7 +336,7 @@ function report() {
 }
 // Overlays and sidebars play out a fade or slide before they leave the DOM: wait for that, not a fixed time.
 const gone = (sel) => win.waitForSelector(sel, { state: "detached", timeout: 5000 }).catch(expired(`${sel} to go`));
-// Shortcut checks: the macOS keymap, or its Windows translation (docs/10-windows.md).
+// Shortcut checks: the macOS keymap, or its Windows translation (docs/42-windows.md).
 const mac = process.platform === "darwin";
 const macOnly = (msg) => console.log(`skip - ${msg} (macOS keymap)`);
 // Synthetic keys bypass the native menu, so trigger menu items directly.

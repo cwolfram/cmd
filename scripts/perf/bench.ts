@@ -4,7 +4,7 @@
 //   node --no-warnings scripts/perf/bench.ts [idle|flood|memory|search|all] [--panes N] [--label NAME]
 //   node --no-warnings scripts/perf/bench.ts search --home DIR   (queries on a copy of a big log, below)
 // Results print as a table and are appended to .cmd-dev/perf/results.jsonl, so
-// runs before and after a change can be compared (docs/14-performance.md).
+// runs before and after a change can be compared (docs/43-performance.md).
 
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";

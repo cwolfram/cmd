@@ -1,4 +1,4 @@
-// Renderer performance run (docs/14-performance.md): launches the built app
+// Renderer performance run (docs/43-performance.md): launches the built app
 // against a throwaway core and measures the app window while it idles, while
 // terminals change their titles like working agents, during a flood of output and
 // while scrolling the scrollback. Main-thread time comes from CDP

@@ -1,4 +1,4 @@
-// Startup timing (docs/14-performance.md): launches the built app repeatedly against
+// Startup timing (docs/43-performance.md): launches the built app repeatedly against
 // six terminals with some output, and reads every boot:* mark of main and the
 // renderer on one clock (epoch ms), relative to the launch call. Three cases:
 //   warm: the core is running (closing the app keeps it)

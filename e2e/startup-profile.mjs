@@ -1,4 +1,4 @@
-// CPU profile of the app window's startup (docs/14-performance.md): run after
+// CPU profile of the app window's startup (docs/43-performance.md): run after
 // e2e/startup.mjs has left its state (6 terminals) in .cmd-dev/startup-e2e, with
 // the core running. Prints the functions with the most self time until the
 // terminals are written.  usage: node e2e/startup-profile.mjs

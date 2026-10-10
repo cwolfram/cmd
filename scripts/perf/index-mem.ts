@@ -1,4 +1,4 @@
-// Memory profile of a cold transcript index (docs/14-performance.md): runs one
+// Memory profile of a cold transcript index (docs/43-performance.md): runs one
 // indexPass over the real transcript folders into a throwaway database and logs
 // RSS and heap as it goes.  node --no-warnings --expose-gc scripts/perf/index-mem.ts
 import fs from "node:fs";
