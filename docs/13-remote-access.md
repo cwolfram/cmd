@@ -489,7 +489,7 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 
 ### Push notifications
 
-> Plan (2026-10-10), being built on branch `push`. Approving from the notification (below) is left for later.
+> Plan (2026-10-10), being built on branch `push`. Built: delivery in the core (`remote/webpush.ts`, `push.subscribe`/`push.unsubscribe`, the VAPID key in `remote.bootstrap`). Approving from the notification (below) is left for later.
 
 **Behaviour:**
 - **When:** one global setting on the Mac, `remote.push.when`: Always · When I'm away (default) · Never. Away is the app closed, the screen locked, or no input on the Mac for `remote.push.awayMinutes` (default 5). Main reports these to the core with `ui.presence` (window focus, `powerMonitor` lock and idle time). Whatever the setting, a device whose client is open in front gets no push: it shows the `notification` event as an in-app banner instead.
@@ -500,7 +500,7 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 **Delivery:**
 - **Keys:** a VAPID key pair (P-256) in `host.json` next to the host key. Its public key reaches the client in `remote.bootstrap`.
 - **Subscription:** the client's service worker subscribes through `PushManager` and sends the subscription (endpoint, `p256dh`, `auth`) to the core with `push.subscribe` over the encrypted channel (view scope; `push.unsubscribe` removes it). The core keeps it on the device's record; revoking or expiring the device drops it.
-- **Sending:** `remote/push.ts` sends Web Push itself over `node:https`, with an RFC 8292 VAPID JWT and an RFC 8291 (`aes128gcm`) payload encrypted to the subscription, so Apple and Google see only that a push happened. No push server of our own, no relay. A 404 or 410 drops the subscription; other failures are logged and the notification is not retried.
+- **Sending:** `remote/push.ts` sends Web Push itself over `node:https`, with an RFC 8292 VAPID JWT and an RFC 8291 (`aes128gcm`) payload encrypted to the subscription, so Apple and Google see only that a push happened. No push server of our own, no relay. A 404 or 410 drops the subscription; other failures are logged and the notification is not retried. A device may only subscribe with an endpoint on the browsers' push services (`*.push.apple.com`, `fcm.googleapis.com`, Mozilla, WNS): it names the URL the Mac posts to, so anything else would let a paired phone make the Mac send requests into its own network.
 - **Several Macs:** the hosted client is one origin with one subscription, shared by every Mac it's paired with. Each payload carries the sending Mac's host key, so a tap opens that pairing. In direct modes each Mac is its own origin.
 - **Payload:** `{ host, id, title, body, paneId, windowId, workspaceId, urgent }`, under the 4 KB limit (bodies are truncated).
 
