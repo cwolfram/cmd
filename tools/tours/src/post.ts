@@ -8,7 +8,7 @@
 //   frame where the log says and in the shape the system showed (arrow,
 //   I-beam, resize…) → 60 fps H.264
 //
-//   node packages/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.0] [--clicks] [--idle 4] [--width 1920] [--follow 1.6] [--auto-camera] [--real-time]
+//   node tools/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.0] [--clicks] [--idle 4] [--width 1920] [--follow 1.6] [--auto-camera] [--real-time]
 //
 // No smoothing: the driver's paths are already human; a real recording has none.
 
@@ -472,7 +472,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const args = process.argv.slice(2);
   const dir = args.find((a) => !a.startsWith("--"));
   if (!dir) {
-    console.log("usage: node packages/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.0] [--clicks] [--idle 4] [--width 1920] [--follow 1.6] [--auto-camera] [--real-time]");
+    console.log("usage: node tools/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.0] [--clicks] [--idle 4] [--width 1920] [--follow 1.6] [--auto-camera] [--real-time]");
     process.exit(2);
   }
   const opt = (k: string) => {

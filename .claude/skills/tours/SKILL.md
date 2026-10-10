@@ -1,11 +1,11 @@
 ---
 name: tours
-description: Record scripted demo videos ("tours") of cmd that look like a real screen recording: a TypeScript tour drives the real app with real mouse, trackpad and keyboard input, ScreenCaptureKit records the window, and the pointer is drawn in afterwards from an exact event log, so videos regenerate after UI changes. Use when the user wants a demo, marketing or product video, a screen recording, a GIF of a feature, a tour, or to re-record, fix or extend one, and when working on packages/tours.
+description: Record scripted demo videos ("tours") of cmd that look like a real screen recording: a TypeScript tour drives the real app with real mouse, trackpad and keyboard input, ScreenCaptureKit records the window, and the pointer is drawn in afterwards from an exact event log, so videos regenerate after UI changes. Use when the user wants a demo, marketing or product video, a screen recording, a GIF of a feature, a tour, or to re-record, fix or extend one, and when working on tools/tours.
 ---
 
 # Recording tours
 
-A tour is a short TypeScript file that says what a person does in cmd: click New…, type a command, open a file. `pnpm tour <file>` launches the built app in a throwaway fixture, records its window while the tour plays with **real input** (the pointer really moves), and renders a video with the pointer drawn in. Change the UI, run it again, get a new video. Each file in `packages/tours` says its role at the top; the research behind the approach is in `~/src/cmd-research/reports/Scripted app tour video recording.md` (outside the repo, may be gone).
+A tour is a short TypeScript file that says what a person does in cmd: click New…, type a command, open a file. `pnpm tour <file>` launches the built app in a throwaway fixture, records its window while the tour plays with **real input** (the pointer really moves), and renders a video with the pointer drawn in. Change the UI, run it again, get a new video. Each file in `tools/tours` says its role at the top; the research behind the approach is in `~/src/cmd-research/reports/Scripted app tour video recording.md` (outside the repo, may be gone).
 
 ## How it works
 
@@ -37,7 +37,7 @@ the camera's view, Lanczos-scaled → H.264 at a constant 60 fps (VideoToolbox)
 - `--follow 1.6`: follow the pointer the whole video (a quick look at a run).
 Zoom upscales the recording: 1.5–1.6× at a 1920 output stays sharp; much more gets soft.
 
-**Dead time is cut by default**: stretches with no input and a frozen screen (ffmpeg `freezedetect` on the recording, so a blinking caret or a spinner doesn't count as change) shrink to 0.3 s, keeping 0.15 s around inputs (`--real-time` keeps everything). **`t.pause(ms)` is a deliberate pause and is never cut or sped up** (it logs a hold): use it where viewers should read or watch, and nowhere else; waiting on the app (`waitFor`, `waitForText`) is cut. Pause lengths: ~0.3–0.6 s after something appears, ~0.8–1.5 s to read. Check a video with `node packages/tours/experiments/dead-time.mjs <run dir>` (dead seconds, as the viewer sees them).
+**Dead time is cut by default**: stretches with no input and a frozen screen (ffmpeg `freezedetect` on the recording, so a blinking caret or a spinner doesn't count as change) shrink to 0.3 s, keeping 0.15 s around inputs (`--real-time` keeps everything). **`t.pause(ms)` is a deliberate pause and is never cut or sped up** (it logs a hold): use it where viewers should read or watch, and nowhere else; waiting on the app (`waitFor`, `waitForText`) is cut. Pause lengths: ~0.3–0.6 s after something appears, ~0.8–1.5 s to read. Check a video with `node tools/tours/experiments/dead-time.mjs <run dir>` (dead seconds, as the viewer sees them).
 
 Waiting (an agent working, a build) can play faster: `meta.post: { idle: 4 }` (or `--idle 4`) speeds up input-free stretches over 3 s, keeping ~0.9 s real-time at each end, so output visibly streams in fast.
 - **Motion** (`src/motion.ts`): one gently bent Bezier per move, Fitts' law duration ×1.3 (±10%, at least 160 ms), speed peaking at ~36–44% then tapering (a symmetric minimum-jerk peak at 50% looked mechanical), and moves over 250 pt land a little short or long and correct (Meyer's submovements). No jitter. **Scroll** (`src/scroll.ts`): a finger phase, then Apple-like momentum, sized to the exact distance. **Typing** (`src/typing.ts`): log-normal gaps, `TYPING.terminal` (~45 ms) or `TYPING.field` (~65 ms), `TYPING.exact` (no typos). Seeded: the same tour and `--seed` move the same way.
@@ -47,10 +47,10 @@ Waiting (an agent working, a build) can play faster: `meta.post: { idle: 4 }` (o
 Recording and posting input need macOS permissions and, in Agent Safehouse, sandbox rules. Check with the probe; every line must say `ok`:
 
 ```sh
-swiftc -O packages/tours/helper/probe.swift -o $TMPDIR/probe && $TMPDIR/probe
+swiftc -O tools/tours/helper/probe.swift -o $TMPDIR/probe && $TMPDIR/probe
 ```
 
-If it fails, the user (not you: it runs outside the sandbox) runs `packages/tours/scripts/safehouse-screen.sh`:
+If it fails, the user (not you: it runs outside the sandbox) runs `tools/tours/scripts/safehouse-screen.sh`:
 
 1. `check`: asks macOS for the permissions. Grant **cmd** (the app the session runs in) Screen Recording and Accessibility in System Settings, then quit and reopen cmd.
 2. `learn`: runs the probe in the sandbox and turns its denials into `~/.config/safehouse/screen.sb` (so far: `replayd`, `coremedia.videoencoder`, `PowerManagement.control`, per-pid `axserver`). Read what it adds before installing.
@@ -126,12 +126,12 @@ The app runs from its build, so build first after app changes:
 
 ```sh
 pnpm build
-pnpm tour packages/tours/tours/first.tour.ts            # → .cmd-dev/tours/out/first/
-pnpm tour packages/tours/tours/first.tour.ts --seed 2 --out /some/dir
-pnpm tour all          # every tour in packages/tours/tours (not *-probe); with --ai also the ones that need a model
+pnpm tour tools/tours/tours/first.tour.ts            # → .cmd-dev/tours/out/first/
+pnpm tour tools/tours/tours/first.tour.ts --seed 2 --out /some/dir
+pnpm tour all          # every tour in tools/tours/tours (not *-probe); with --ai also the ones that need a model
 ```
 
-The tours (`packages/tours/tours/`), each one kind of story:
+The tours (`tools/tours/tours/`), each one kind of story:
 
 | Tour | Shows | Model |
 |---|---|---|
@@ -148,7 +148,7 @@ The tours (`packages/tours/tours/`), each one kind of story:
 
 **Tell the user before every run** and wait for their go (and only record when they've said the Mac is free; while they work, do post, driver and tests): for the length of the tour their real mouse and keyboard are taken over, a cmd dev window opens on their screen, and they must not touch anything. Moving the mouse stops the run ("the mouse moved…"); a key press would go into the tour. A run that fails mid-way still records up to there.
 
-Output in the run's folder: `raw.mov` (no cursor, square corners), `events.json`, `meta.json` (window rect on screen, scale, `t0`/`t1`), `window.png`, `cursors/`, and `tour.mp4`. Re-render without recording again (another wallpaper, a bigger cursor, a camera): `node packages/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.5] [--clicks] [--idle 4] [--auto-camera] [--follow 1.6] [--width 1920]` (about 20 s for a minute of video). The plan is `post/plan.json`: one row per output frame, handy for checking camera motion numerically (second differences of the view: how much its speed changes per frame).
+Output in the run's folder: `raw.mov` (no cursor, square corners), `events.json`, `meta.json` (window rect on screen, scale, `t0`/`t1`), `window.png`, `cursors/`, and `tour.mp4`. Re-render without recording again (another wallpaper, a bigger cursor, a camera): `node tools/tours/src/post.ts <run dir> [--wallpaper img] [--cursor 1.5] [--clicks] [--idle 4] [--auto-camera] [--follow 1.6] [--width 1920]` (about 20 s for a minute of video). The plan is `post/plan.json`: one row per output frame, handy for checking camera motion numerically (second differences of the view: how much its speed changes per frame).
 
 **Check your work by looking**, not by the exit code: pull frames at the moments that matter and read them.
 
@@ -163,7 +163,7 @@ When a run stops mid-way, the error says where (`no open menu item "Open"`, a lo
 
 ## Tips and tricks
 
-- **Iterate on post without recording.** Rendering is about 20 s for a minute of video and needs neither the Mac nor permissions: change post, camera or shot code and re-render the runs in `.cmd-dev/tours/out/` (`node packages/tours/src/post.ts <run dir> …`). Record again only when the tour itself or the app changed.
+- **Iterate on post without recording.** Rendering is about 20 s for a minute of video and needs neither the Mac nor permissions: change post, camera or shot code and re-render the runs in `.cmd-dev/tours/out/` (`node tools/tours/src/post.ts <run dir> …`). Record again only when the tour itself or the app changed.
 - **Prototype marks on an old run.** Copy a run folder, add marks to its `events.json` (a `shot` start/end with a `shot-box`, `camera` marks, `hold`s, timed off the existing `key`/`down` events), and render the copy. That's how shots were first tested, on the showcase recording's ⌘K.
 - **Measure, don't eyeball motion.** Single frames hide judder, dead time and frozen video. The tools: `experiments/dead-time.mjs` (pacing), `experiments/scroll-smooth.mjs` (scroll position per rendered frame and the recording's frame gaps during a real swipe), `post/plan.json` (camera views per frame: their second differences show kicks), and a raw-vs-output frame comparison (content).
 - **Pace with the app, not the clock.** Wait for what's on screen: `.waitFor()` on a locator, `t.waitForText(terminalWindow, /…/)` for terminal and agent output (the core reads the pane; terminals draw on a canvas). Keep `t.pause` for what viewers should see, at the lengths above; post cuts the rest.
@@ -196,11 +196,11 @@ When a run stops mid-way, the error says where (`no open menu item "Open"`, a lo
 
 ## Files
 
-- `packages/tours/src/`: `driver.ts` (Tour API, shots, camera marks), `run.ts` (runner, `pnpm tour`), `post.ts` (plans every frame: time cuts and speed-ups, cursor, camera, shots), `camera.ts` (camera springs, auto camera), `helper.ts` (builds and talks to the Swift tools when their source is newer), `fixture.ts` (the fixture, AI keys, Claude Code setup), `persona.ts` and `sessions.ts` (Kai), `motion.ts`, `scroll.ts`, `typing.ts`, `random.ts`.
-- `packages/tours/helper/`: `tour-helper.swift` (recording, input, cursor shapes, native menus, the log), `render.swift` (draws the video from post's plan), `probe.swift` (permissions check), `still.swift` (one-off stills).
-- `packages/tours/tours/`: the tours. `experiments/`: the experiments that settled the approach.
-- `packages/tours/scripts/safehouse-screen.sh`: the sandbox setup above.
-- Tests: `packages/tours/test/` (the planners; anything that needs real input or recording is checked by running a tour and looking at frames).
+- `tools/tours/src/`: `driver.ts` (Tour API, shots, camera marks), `run.ts` (runner, `pnpm tour`), `post.ts` (plans every frame: time cuts and speed-ups, cursor, camera, shots), `camera.ts` (camera springs, auto camera), `helper.ts` (builds and talks to the Swift tools when their source is newer), `fixture.ts` (the fixture, AI keys, Claude Code setup), `persona.ts` and `sessions.ts` (Kai), `motion.ts`, `scroll.ts`, `typing.ts`, `random.ts`.
+- `tools/tours/helper/`: `tour-helper.swift` (recording, input, cursor shapes, native menus, the log), `render.swift` (draws the video from post's plan), `probe.swift` (permissions check), `still.swift` (one-off stills).
+- `tools/tours/tours/`: the tours. `experiments/`: the experiments that settled the approach.
+- `tools/tours/scripts/safehouse-screen.sh`: the sandbox setup above.
+- Tests: `tools/tours/test/` (the planners; anything that needs real input or recording is checked by running a tour and looking at frames).
 
 ## Not done yet
 

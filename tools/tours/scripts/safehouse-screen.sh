@@ -1,6 +1,6 @@
 #!/bin/bash
 # Lets a Safehouse-sandboxed agent record the screen and post input, for cmd's
-# scripted tours (packages/tours). Run it yourself, outside the sandbox, from
+# scripted tours (tools/tours). Run it yourself, outside the sandbox, from
 # the app your agents run in (cmd): macOS grants these permissions to that app.
 #
 #   safehouse-screen.sh check     the probe outside and inside the sandbox
@@ -81,7 +81,7 @@ learn() {
   build_probe
   mkdir -p "$(dirname "$profile")"
   # From scratch each time, so a run never builds on a bad earlier profile.
-  printf ';; Safehouse: screen recording and input for cmd tours (packages/tours/scripts/safehouse-screen.sh).\n;; Learned from the sandbox denials of a probe that records a frame and posts an event.\n' >"$profile"
+  printf ';; Safehouse: screen recording and input for cmd tours (tools/tours/scripts/safehouse-screen.sh).\n;; Learned from the sandbox denials of a probe that records a frame and posts an event.\n' >"$profile"
   for round in 1 2 3 4 5 6; do
     local since
     since="$(date '+%Y-%m-%d %H:%M:%S')"

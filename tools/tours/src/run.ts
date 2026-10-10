@@ -1,5 +1,5 @@
-// Runs a tour: node packages/tours/src/run.ts <file.tour.ts> [--out dir] [--seed n]
-//   or every tour in packages/tours/tours: … all [--ai] (tours that need a model only with
+// Runs a tour: node tools/tours/src/run.ts <file.tour.ts> [--out dir] [--seed n]
+//   or every tour in tools/tours/tours: … all [--ai] (tours that need a model only with
 //   --ai: they cost a little; *-probe tours are experiments and never run with all)
 // Launches the built app (pnpm build) in a fixture, places its window, runs the
 // tour's unrecorded setup, then records the window while the tour plays.
@@ -121,7 +121,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   };
   const file = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
   if (!file) {
-    console.log("usage: node packages/tours/src/run.ts <file.tour.ts | all> [--ai] [--out dir] [--seed n]");
+    console.log("usage: node tools/tours/src/run.ts <file.tour.ts | all> [--ai] [--out dir] [--seed n]");
     process.exit(2);
   }
   if (file === "all") {

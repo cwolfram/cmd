@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - tools/*
 allowBuilds:
   node-pty: true
   electron: true

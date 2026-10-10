@@ -31,7 +31,7 @@ function sources(dir: string): string[] {
 }
 const lines = (file: string) => fs.readFileSync(path.join(root, file), "utf8").split("\n").length;
 
-const packages = ["packages", "apps"].flatMap((d) => entries(d).map((p) => `${d}/${p}`)).filter((p) => fs.existsSync(path.join(root, p, "package.json")));
+const packages = ["packages", "apps", "tools"].flatMap((d) => entries(d).map((p) => `${d}/${p}`)).filter((p) => fs.existsSync(path.join(root, p, "package.json")));
 
 /** What each count is made of, so a failure names the files. */
 const now: Record<string, string[]> = {
