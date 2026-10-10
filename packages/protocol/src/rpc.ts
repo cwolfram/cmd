@@ -358,6 +358,8 @@ export interface Methods extends JournalMethods, ActionsMethods {
   "fs.rename": { params: { path: string; name: string }; result: string };
   /** Copy a file or folder next to itself as "name copy", "name copy 2"…; returns the copy's path. */
   "fs.duplicate": { params: { path: string }; result: string };
+  /** Copies a range of a video (s) into a new file beside it; its path. */
+  "video.trim": { params: { path: string; start: number; end: number }; result: string };
   /** New empty file or folder in `dir`, named "untitled" / "untitled folder" (then " 2"…); returns its path. */
   "fs.create": { params: { dir: string; kind: "file" | "dir" }; result: string };
   /**

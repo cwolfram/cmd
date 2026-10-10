@@ -1,8 +1,9 @@
-// The windows' methods (window.*): open, change, move, close and reopen them, and which ones a
+// The windows' methods (window.*, and video.trim for the Video window): open, change, move, close and reopen them, and which ones a
 // client shows (window.follow, so a remote session gets output only for those).
 
 import type { CoreContext } from "../kernel/context.ts";
 import { IN_CORE, slice } from "../kernel/handlers.ts";
+import { trimVideo } from "./video.ts";
 
 export const windowHandlers = (core: CoreContext) =>
   slice({
@@ -19,6 +20,7 @@ export const windowHandlers = (core: CoreContext) =>
     },
     "window.list": () => core.windows.list(),
     "window.openTarget": (p) => core.opened(core.windows.openTarget(p.target, core.place(p, { path: /^[a-z][\w+.-]+:/i.test(p.target) ? undefined : p.target }))),
+    "video.trim": (p) => trimVideo(p.path, p.start, p.end),
     "window.move": (p) => core.windowOps.move(p.id, p.workspaceId),
     "window.follow": (p, { conn } = IN_CORE) => {
       if (!conn) return null;

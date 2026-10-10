@@ -139,6 +139,7 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "fs.duplicate": "control",
   "fs.create": "control",
   "fs.transfer": "control",
+  "video.trim": "never", // runs avconvert on a file
   "git.status": "view",
   "git.diff": "view",
   "actions.list": "never", // Workspace Actions are the Mac's for now (docs/39)

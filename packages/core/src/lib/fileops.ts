@@ -19,7 +19,7 @@ function splitName(name: string, isDir: boolean): [string, string] {
 }
 
 /** `base` + `ext` in `dir`, or with " 2", " 3"… before the extension until it is free. */
-function freeName(dir: string, base: string, ext: string): string {
+export function freeName(dir: string, base: string, ext: string): string {
   for (let n = 1; ; n++) {
     const p = path.join(dir, `${base}${n === 1 ? "" : ` ${n}`}${ext}`);
     if (!fs.existsSync(p)) return p;

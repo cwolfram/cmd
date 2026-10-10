@@ -1,12 +1,14 @@
 // Video window view: the video on the stage, the controls under it in a bar with
 // the scrubber, as players have them. Space plays and pauses, ← → step 5 s (⇧: a frame), ⌘T trims: the
 // scrubber turns into a strip of frames with a handle at each end, I and O set
-// them at the playhead, Return saves the kept part as a new file, Esc leaves.
+// them at the playhead, Return saves the kept part as a new file beside it (the
+// core's video.trim, macOS's avconvert: MP4, M4V and MOV), Esc leaves.
 // Drawn with the kit: a View, a Stage and a Scrubber (the window-design skill).
 
-import { formatTime, Scrubber, Stage, ToolbarButton, ToolbarGroup, ToolbarMenu, ToolbarSpacer, ToolbarText, View, WindowToolbar, toast, type TrimRange } from "@cmd/ui";
+import { Button, formatTime, Scrubber, Stage, ToolbarButton, ToolbarGroup, ToolbarMenu, ToolbarSpacer, ToolbarText, View, WindowToolbar, toast, type TrimRange } from "@cmd/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cmd } from "../../lib/bridge.ts";
+import { openPath } from "../../lib/actions.ts";
 import { showContextMenu } from "../../lib/context.ts";
 import { fileUrl } from "../../pdf/lib.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
@@ -21,11 +23,9 @@ export interface VideoApi {
   saveTrim: (path: string, range: TrimRange) => Promise<string>;
 }
 
-const realApi: VideoApi = {
-  saveTrim: async () => {
-    throw new Error("Trimming isn't wired up yet.");
-  },
-};
+const realApi: VideoApi = { saveTrim: (path, r) => cmd.call("video.trim", { path, start: r.start, end: r.end }) };
+/** What macOS's avconvert reads (the core trims with it); WebM plays but can't be trimmed. */
+const TRIMMABLE = /\.(mp4|m4v|mov)$/i;
 
 /** `count` frames spread over the video, small, as data URLs; from a second, hidden element so playback isn't disturbed. */
 function useFrames(src: string, duration: number, on: boolean, count = FRAMES): string[] | null {
@@ -123,9 +123,10 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
     return () => cancelAnimationFrame(raf);
   }, [playing, trim, loop]);
 
+  const trimmable = TRIMMABLE.test(file);
   const startTrim = () => {
     const d = duration;
-    if (!d) return;
+    if (!d || !trimmable) return;
     setTrim({ start: 0, end: d });
   };
   const doneTrim = async () => {
@@ -134,7 +135,7 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
     try {
       const out = await api.saveTrim(file, trim);
       setTrim(null);
-      toast(`Saved ${out.split("/").pop()}`);
+      toast(`Saved “${out.split("/").pop()}”`, { action: { label: "Open", run: () => void openPath(out, "user") } });
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't save the trimmed video.", { tone: "danger" });
     } finally {
@@ -185,7 +186,7 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
             <ToolbarButton icon="repeat" label="Loop" pressed={loop} onClick={() => (setLoop(!loop), save({ loop: !loop }))} priority={1} />
             <ToolbarButton icon={muted ? "speaker.slash" : "speaker.wave.2"} label={muted ? "Unmute" : "Mute"} pressed={muted} onClick={() => (setMuted(!muted), save({ muted: !muted }))} priority={1} />
           </ToolbarGroup>
-          <ToolbarButton icon="scissors" label="Trim" shortcut="⌘T" disabled={!duration} onClick={startTrim} priority={3} />
+          <ToolbarButton icon="scissors" label="Trim" shortcut="⌘T" disabled={!duration || !trimmable} tip={trimmable ? undefined : "WebM videos can't be trimmed"} onClick={startTrim} priority={3} />
         </>
       )}
     </WindowToolbar>
@@ -198,7 +199,7 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
         scroll={false}
         focusable
         bodyRef={body}
-        state={error ? { kind: "error", title: "Can't play this video", text: "It may be in a format cmd can't play. Open it with the default app instead.", action: undefined } : null}
+        state={error ? { kind: "error", title: "Can't play this video", text: "It may be in a format cmd can't play. Your default video app may manage.", action: <Button onClick={() => cmd.openPath(file, { from: "user" })}>Open with Default App</Button> } : null}
       >
         <Stage>
           <video
