@@ -408,6 +408,9 @@ export function shortPath(p: string): string {
   return home ? "~" + p.slice(home.length) : p;
 }
 
+/** The folder a path is in, short ("~/src" for ~/src/cmd). */
+export const parentOf = (p: string) => shortPath(p.split("/").slice(0, -1).join("/") || "/");
+
 export function ago(ts: number, now: number): string {
   const s = Math.max(0, Math.round((now - ts) / 1000));
   if (s < 60) return "just now";

@@ -4,7 +4,7 @@
 // no header of their own: the title bar names them and its menu has their options.
 
 import { useEffect } from "react";
-import type { WorkspaceId, WindowId } from "@cmd/protocol";
+import type { AppWindow, WorkspaceId, WindowId } from "@cmd/protocol";
 import { setWindowStatus } from "./windowActions.ts";
 import type { MenuEntry } from "./context.ts";
 import { selectPane } from "./actions.ts";
@@ -26,6 +26,11 @@ export function scopeMenu(id: WindowId, scope: Scope): MenuEntry[] {
     { label: "All Workspaces", checked: scope === "all", run: () => setWidgetState(id, { scope: "all" }) },
   ];
 }
+
+// List widgets: the title bar's menu (titleMenu) switches their scope and has their
+// options; the same entries are on right-click. Their summary is the title bar's status.
+export const scopeLabel = (w: AppWindow) => (scopeOf(w.state.scope) === "all" ? "All Workspaces" : "This Workspace");
+export const scoped = (extra: (w: AppWindow) => MenuEntry[]) => (w: AppWindow) => [...scopeMenu(w.id, scopeOf(w.state.scope)), "-" as const, ...extra(w)];
 
 /** Show a terminal or window: here, or in its own workspace. */
 export function goTo(id: WindowId, workspaceId: WorkspaceId | undefined): void {
