@@ -146,6 +146,10 @@
   --scrollbar-thumb-hover: color-mix(in srgb, var(--accent) 40%, var(--scrollbar-thumb));
   /* A scrollbar thumb being dragged. */
   --scrollbar-thumb-active: color-mix(in srgb, var(--accent) 60%, var(--scrollbar-thumb));
+  /* Drawn over a picture or a video (a scrubber's playhead over its frames): white in every theme, light or dark. */
+  --media-ink: #ffffff;
+  /* Darkens part of a picture or a video (the frames a trim cuts): neutral black in every theme, never tinted like --scrim. */
+  --media-shade: rgb(0 0 0 / 0.6);
 
   /* ── window ── */
   /* A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge). */

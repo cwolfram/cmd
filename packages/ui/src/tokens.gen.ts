@@ -705,6 +705,18 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "A scrollbar thumb being dragged."
   },
   {
+    "name": "--media-ink",
+    "type": "color",
+    "value": "#ffffff",
+    "description": "Drawn over a picture or a video (a scrubber's playhead over its frames): white in every theme, light or dark."
+  },
+  {
+    "name": "--media-shade",
+    "type": "color",
+    "value": "rgb(0 0 0 / 0.6)",
+    "description": "Darkens part of a picture or a video (the frames a trim cuts): neutral black in every theme, never tinted like --scrim."
+  },
+  {
     "name": "--footer-h",
     "type": "dimension",
     "value": "26px",

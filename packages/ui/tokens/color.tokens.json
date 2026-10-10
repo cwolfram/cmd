@@ -435,5 +435,33 @@
         }
       }
     }
+  },
+  "media": {
+    "ink": {
+      "$description": "Drawn over a picture or a video (a scrubber's playhead over its frames): white in every theme, light or dark.",
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1,
+          1,
+          1
+        ],
+        "hex": "#ffffff"
+      }
+    },
+    "shade": {
+      "$description": "Darkens part of a picture or a video (the frames a trim cuts): neutral black in every theme, never tinted like --scrim.",
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "alpha": 0.6
+      }
+    }
   }
 }
