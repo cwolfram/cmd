@@ -9,7 +9,7 @@
 //   v0.14.4", "Investigated a corrupt search index"), written by a model from a
 //   digest of a day's threads. Each entry names the threads it was made from.
 
-import type { AgentKind, WorkspaceId } from "./model.ts";
+import type { AgentKind, PaneId, WorkspaceId } from "./model.ts";
 
 /**
  * Versions of the journal's layers (docs/24-journal-versions.md). Each says
@@ -204,4 +204,27 @@ export interface JournalWeek {
   format: number;
   /** What its days said, hashed: written again when it changes. */
   daysHash: string;
+}
+
+/** The journal's RPC methods, part of `Methods` (rpc.ts). */
+export interface JournalMethods {
+  /**
+   * The journal (docs/23-journal.md). A scope is a workspace (workspaceId), "repo:<path>" or "all" (the default).
+   * `write`: "stale" writes days whose events changed (the default), "never" only reads, "force" writes again.
+   */
+  "journal.days": { params: { workspaceId?: WorkspaceId; scope?: string; count?: number; write?: "never" | "stale" | "force" }; result: JournalDay[] };
+  /** One work day by its local midnight (a work day runs 04:00 to 04:00); null when nothing happened. */
+  "journal.day": { params: { workspaceId?: WorkspaceId; scope?: string; date: number; write?: "never" | "stale" | "force" }; result: JournalDay | null };
+  /** The week a date falls in, rolled up from its days (written if they need to be, by `write`); null when nothing happened. */
+  "journal.week": { params: { workspaceId?: WorkspaceId; scope?: string; date: number; write?: "never" | "stale" | "force" }; result: JournalWeek | null };
+  /** A day as each earlier version wrote it, newest first (kept when a day is written again): for comparing revisions. */
+  "journal.history": { params: { workspaceId?: WorkspaceId; scope?: string; date: number }; result: JournalDay[] };
+  /** The recorded events, oldest first. */
+  "journal.events": { params: { since?: number; until?: number; workspaceId?: WorkspaceId; repo?: string; kinds?: JournalEventKind[]; limit?: number }; result: JournalEvent[] };
+  /** A day's threads and the digest a model would get: how the journal sees it, before any model. */
+  "journal.threads": { params: { workspaceId?: WorkspaceId; scope?: string; date: number }; result: { threads: JournalThread[]; digest: string } };
+  /** Writes something down: from an agent's terminal (paneId), it joins that agent's session. */
+  "journal.note": { params: { text: string; paneId?: PaneId; workspaceId?: WorkspaceId }; result: { id: number } };
+  /** Reads new turns, sessions and git now (it does every few minutes). */
+  "journal.sync": { params: {}; result: null };
 }

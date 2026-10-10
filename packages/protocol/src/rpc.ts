@@ -8,7 +8,7 @@ import type { AiModel, AiStatus } from "./ai.ts";
 import type { MagicPreviewRequest, MagicPreviewShot, MagicProgress, MagicRuntime, MagicWidgetInfo } from "./magic.ts";
 import type { SecretsStatus } from "./secrets.ts";
 import type { ActivityEvent, ActivityExportHeader, AgentCoverage, AgentHome, AgentTurn } from "./activity.ts";
-import type { JournalDay, JournalEvent, JournalEventKind, JournalThread, JournalWeek } from "./journal.ts";
+import type { JournalMethods } from "./journal.ts";
 import type { SqliteQuery, SqliteResult, SqliteRowsQuery, SqliteSchema } from "./sqlite.ts";
 import type { ActionsList } from "./actions.ts";
 
@@ -71,7 +71,8 @@ export interface Placement {
   callerPaneId?: PaneId;
 }
 
-export interface Methods {
+/** Every method: the core's own, plus each feature's (declared in its own file, merged here). */
+export interface Methods extends JournalMethods {
   /**
    * stateDir: the core's $CMD_HOME, so an app can tell its own core from another instance's (older cores omit it).
    * root: the code folder it runs from, so an app restarts a core of another checkout even when the code is the same.
@@ -165,25 +166,6 @@ export interface Methods {
   };
   /** What each agent's events actually carried over the last `days` (default 7). */
   "agents.coverage": { params: { days?: number }; result: AgentCoverage[] };
-  /**
-   * The journal (docs/23-journal.md). A scope is a workspace (workspaceId), "repo:<path>" or "all" (the default).
-   * `write`: "stale" writes days whose events changed (the default), "never" only reads, "force" writes again.
-   */
-  "journal.days": { params: { workspaceId?: WorkspaceId; scope?: string; count?: number; write?: "never" | "stale" | "force" }; result: JournalDay[] };
-  /** One work day by its local midnight (a work day runs 04:00 to 04:00); null when nothing happened. */
-  "journal.day": { params: { workspaceId?: WorkspaceId; scope?: string; date: number; write?: "never" | "stale" | "force" }; result: JournalDay | null };
-  /** The week a date falls in, rolled up from its days (written if they need to be, by `write`); null when nothing happened. */
-  "journal.week": { params: { workspaceId?: WorkspaceId; scope?: string; date: number; write?: "never" | "stale" | "force" }; result: JournalWeek | null };
-  /** A day as each earlier version wrote it, newest first (kept when a day is written again): for comparing revisions. */
-  "journal.history": { params: { workspaceId?: WorkspaceId; scope?: string; date: number }; result: JournalDay[] };
-  /** The recorded events, oldest first. */
-  "journal.events": { params: { since?: number; until?: number; workspaceId?: WorkspaceId; repo?: string; kinds?: JournalEventKind[]; limit?: number }; result: JournalEvent[] };
-  /** A day's threads and the digest a model would get: how the journal sees it, before any model. */
-  "journal.threads": { params: { workspaceId?: WorkspaceId; scope?: string; date: number }; result: { threads: JournalThread[]; digest: string } };
-  /** Writes something down: from an agent's terminal (paneId), it joins that agent's session. */
-  "journal.note": { params: { text: string; paneId?: PaneId; workspaceId?: WorkspaceId }; result: { id: number } };
-  /** Reads new turns, sessions and git now (it does every few minutes). */
-  "journal.sync": { params: {}; result: null };
   /** The event log (docs/28): events and views by one query shape. Prefix types end in a dot ("git."). */
   "data.query": { params: { query: DataQuery }; result: DataEvent[] };
   /** Size and counts of the events file. */

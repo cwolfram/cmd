@@ -7,6 +7,8 @@ import { pathToFileURL } from "node:url";
 import { ACTIONS_TITLE } from "@cmd/protocol";
 import type { WindowType, WindowTypes } from "./types.ts";
 import { databaseOf, isSqliteFile } from "../sqlite/service.ts";
+import { scopedWidget } from "./scoped.ts";
+import { journalType } from "../journal/feature.ts";
 
 export const expandHome = (p: string) => p.replace(/^~(?=$|\/)/, os.homedir());
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
@@ -323,31 +325,8 @@ export const agentsType: WindowType<{ scope: "workspace" | "all" }> = {
   },
 };
 
-type Scope = "workspace" | "all";
-const scopeOf = (v: unknown, fallback: Scope = "workspace"): Scope => (v === "all" || v === "workspace" ? v : fallback);
-
-/** A built-in widget showing its workspace's things or every workspace's, plus on/off `flags` (e.g. Failed Only). */
-function scopedWidget(kind: string, title: string, icon: string, description: string, flags: string[] = []): WindowType<{ scope: Scope } & Record<string, unknown>> {
-  return {
-    kind,
-    title,
-    icon,
-    role: "widget",
-    description,
-    create(input) {
-      return { state: { scope: scopeOf(input.scope) }, title };
-    },
-    update(state, patch) {
-      const next: { scope: Scope } & Record<string, unknown> = { ...state, scope: scopeOf(patch.scope, state.scope) };
-      for (const f of flags) if (typeof patch[f] === "boolean") next[f] = patch[f];
-      return { state: next };
-    },
-  };
-}
-
 export const commandsType = scopedWidget("commands", "Commands", "terminal", "Every command your terminals ran: how long it took and whether it worked.", ["failedOnly"]);
 export const notificationsType = scopedWidget("notifications", "Notifications", "bell", "The notifications cmd sent, including the ones you missed.");
-export const journalType = scopedWidget("journal", "Journal", "book", "What happened, a few lines a day: releases, features, fixes and investigations, from your agents, terminals and git.");
 export const resourcesType = scopedWidget("resources", "Resources", "gauge.with.dots.needle.33percent", "What each terminal uses: CPU and memory of everything running in it.");
 
 /**

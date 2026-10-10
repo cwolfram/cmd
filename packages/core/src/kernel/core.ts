@@ -10,8 +10,10 @@ import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvid
 import { EXPORT_FORMAT, lineSplitter, TURN_FORMAT } from "@cmd/protocol";
 import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
 import { AgentTracker, sessionIdOf } from "../agents/tracker.ts";
-import { JournalService, SYNC_FRESH_MS } from "../journal/service.ts";
-import { JournalStore } from "../journal/store.ts";
+import type { JournalService } from "../journal/service.ts";
+import { createJournal } from "../journal/feature.ts";
+import { FEATURES, featureHandlers } from "./features.ts";
+import type { Handlers } from "./handlers.ts";
 import { recordNames, recordNotifications, recordWorkspaces, recordWindows } from "../data/recorders.ts";
 import { removeOldBackups } from "../data/migrations.ts";
 import { DataService } from "../data/service.ts";
@@ -145,8 +147,6 @@ const DECLINED_KEY = "core.hooks.declined";
 
 /** A comma-separated setting as a list. */
 const splitList = (v: string) => v.split(",").map((d) => d.trim()).filter(Boolean);
-
-type Handlers = { [M in Method]: (params: Params<M>) => Result<M> | Promise<Result<M>> };
 
 /** Whether a view row answers a view query. */
 function viewMatches(q: ViewQuery, r: TurnRow | SessionInfo, workspaceOf: (cwd: string | null) => string): boolean {
@@ -428,19 +428,7 @@ export class Core {
       },
       notify: (id, title, body) => this.notifications.window(id, "summary", title, body),
     });
-    this.journal = new JournalService({
-      store: new JournalStore(this.store.db, { recordedBy: this.agents.activity.recordedBy, data: this.data, turns: (since) => this.agents.activity.turnsSince(since), sessions: (since) => this.sessions.sessionsSince(since), workspaces: () => this.workspaces.list() }),
-      workspaces: () => this.workspaces.list(),
-      agentWorkspace: (id) => this.agents.get(id)?.workspaceId ?? null,
-      ai: {
-        object: (o) => this.ai.object(o),
-        modelName: () => {
-          const p = this.ai.provider();
-          return p ? (this.ai.status().providers[p].models?.smart.name ?? null) : null;
-        },
-      },
-      pace: this.scheduler,
-    });
+    this.journal = createJournal(this);
     recordWindows(this.data, this.windows);
     recordWorkspaces(this.data, this.workspaces);
     recordNotifications(this.data, this.notifications);
@@ -586,12 +574,7 @@ export class Core {
     // Commands from before their output was searchable: once, from what they printed.
     if (o.stateDir) s.startup("command-output", "Indexing command output", () => void indexCommandOutput(this.data, s).then((n) => n && log.info("command output indexed", { commands: n })));
     if (o.stateDir && o.statusRoot) s.startup("homes", "Looking for agents", () => this.#discoverHomes());
-    if (o.stateDir)
-      s.startup("journal", "Starting the journal", () => {
-        this.journal.start();
-        // A workspace opened on a folder: what git and imports recorded there before belongs to it too.
-        this.workspaces.on("updated", () => void this.journal.assignWorkspaces());
-      });
+    if (o.stateDir) for (const f of FEATURES) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this));
     if (o.stateDir) s.startup("retention", "Scheduling retention", () => this.data.start());
     // The event log's copy aside from a migration is the way back for a week (migrations.ts), then it goes.
     if (o.stateDir) s.startup("log-backups", "Removing old event log copies", () => void removeOldBackups(path.join(o.stateDir!, "data", "events.sqlite")));
@@ -708,23 +691,7 @@ export class Core {
       return { path: s.path, windowId: s.windowId, markdown: p.wait ? await s.done : null };
     },
     "agents.coverage": (p) => this.agents.activity.coverage(p.days),
-    "journal.days": (p) => this.journal.days(journalScope(p), Math.min(p.count ?? 7, 60), p.write),
-    "journal.day": async (p) => (await this.journal.sync(p.write === "force" ? 0 : SYNC_FRESH_MS), this.journal.day(journalScope(p), this.journal.dayOf(p.date), p.write)),
-    "journal.week": (p) => this.journal.week(journalScope(p), p.date, p.write),
-    "journal.history": (p) => this.journal.store.history(journalScope(p), this.journal.dayOf(p.date)),
-    "journal.events": (p) => this.journal.store.events(p),
-    "journal.threads": async (p) => {
-      await this.journal.sync(SYNC_FRESH_MS);
-      const t = this.journal.threads(journalScope(p), this.journal.dayOf(p.date));
-      return { threads: t.threads, digest: t.digest.text };
-    },
-    "journal.note": (p) => {
-      const pane = p.paneId ? this.panes.get(p.paneId) : undefined;
-      const agent = pane?.agentId ? this.agents.get(pane.agentId) : null;
-      const session = agent ? (agent.native.claudeSessionId ?? agent.native.codexThreadId ?? null) : null;
-      return { id: this.journal.note(p.text, { by: agent ? "agent" : "user", agentSession: session, workspaceId: p.workspaceId ?? pane?.workspaceId ?? null, cwd: pane?.cwd ?? null }) };
-    },
-    "journal.sync": async () => (await this.journal.sync(), null),
+    ...featureHandlers(this),
     "data.query": (p) => this.data.query(p.query),
     "data.stats": () => this.data.stats(),
     "data.explain": () => this.data.explain(),
@@ -1704,7 +1671,7 @@ export class Core {
     this.agents.close();
     this.usage.close();
     this.ai.dispose();
-    this.journal.dispose();
+    for (const f of FEATURES) f.dispose?.(this);
     // The transcript reader first: its worker's last batches must not land on closed stores.
     this.#closed = true;
     this.#searchView.close();
@@ -1778,7 +1745,3 @@ function magicRef(ref: string): string {
   return r.widgetId;
 }
 
-/** A journal method's scope: a workspace, else the one asked for, else everything. */
-function journalScope(p: { workspaceId?: WorkspaceId; scope?: string }): string {
-  return p.workspaceId ? `workspace:${p.workspaceId}` : (p.scope ?? "all");
-}
