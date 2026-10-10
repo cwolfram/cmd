@@ -30,7 +30,7 @@ The core is a detached Node process (`packages/core/src/main.ts` constructs it, 
 
 ### AR1-03-01 · Split `Core` into per-feature handler modules registered into one `Handlers` map
 
-- **Status:** open
+- **Status:** done (704764ff)
 - **Severity:** high
 - **Effort:** L
 - **Where:** `packages/core/src/core.ts:167-1596`, `packages/core/src/core.ts:591-888` (handlers), `packages/core/src/core.ts:1556-1595` (close)
@@ -63,15 +63,18 @@ A missing method fails the assignment to `Handlers`; a method registered twice i
 
 **Success criteria.**
 
-- [ ] `core.ts` is under 500 lines and contains no `"<method>":` handler bodies except `core.hello`, `core.info` and `events.subscribe`
-- [ ] Every feature folder that owns methods (`panes`, `agents`, `windows`, `workspaces`, `data`, `journal`, `magic`, `actions`, `remote`, `settings`, `fs`/`git`/`sqlite`) has a `handlers.ts` exporting a `slice(...)`
-- [ ] `pnpm typecheck` fails when a method of `Methods` has no handler (demonstrated by removing one), and a test fails when two slices register the same method
-- [ ] A test in `apps/*/test` or `packages/core/test` asserts `core.ts` line count ≤ the number in a checked-in ratchet file
-- [ ] `agents.close()` is called once in `close()`
+- [x] `core.ts` is under 500 lines and contains no `"<method>":` handler bodies except `core.hello`, `core.info` and `events.subscribe`
+- [x] Every feature folder that owns methods (`panes`, `agents`, `windows`, `workspaces`, `data`, `journal`, `magic`, `actions`, `remote`, `settings`, `fs`/`git`/`sqlite`) has a `handlers.ts` exporting a `slice(...)`
+- [x] `pnpm typecheck` fails when a method of `Methods` has no handler (demonstrated by removing one), and a test fails when two slices register the same method
+- [x] A test in `apps/*/test` or `packages/core/test` asserts `core.ts` line count ≤ the number in a checked-in ratchet file
+- [x] `agents.close()` is called once in `close()`
+
+**Done (2026-10-10).** `core.ts` is the composition root, 462 lines (from 1,640), with `core.hello`, `core.info` and `events.subscribe` as its own handlers. Every folder that owns methods has a `handlers.ts` exporting a `slice({...})` (`slice` infers the methods from the keys and types each handler's params), listed in `kernel/slices.ts`; `settings`/`secrets`/`ui`/`usage` are `kernel/methods.ts`, `fs`/`git` are `lib/handlers.ts`. Core's private logic moved to its folders: `kernel/server.ts` (sockets, connections, events out), `data/subscriptions.ts`, `agents/setup.ts` (homes and hooks), `search/search.ts`, `windows/ops.ts` (open, reopen, move, close a workspace, focus), `widgets/library.ts`, `widgets/previews.ts`. Removing a handler fails tsc (checked with `sqlite.export`); `packages/core/test/handlers.test.ts` fails on a method in two slices; `core.ts`'s lines are an entry in `test/layout-debt.json`. Listeners that tell clients about terminals and agents (`watchPanes`, `watchAgents`, `WindowOps.watchTerminals`) still register after the services' own, as before, so clients hear a change once the core has taken it in.
+
 
 ### AR1-03-02 · Replace the lambda option bags with a typed `CoreContext`
 
-- **Status:** open · mostly done (core-context branch, see Progress)
+- **Status:** done (704764ff)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:252-527`, `packages/core/src/core.ts:308`, `packages/core/src/core.ts:356`, `packages/core/src/core.ts:466-470`, `packages/core/src/core.ts:405-411`
@@ -120,7 +123,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 **Success criteria.**
 
 - [x] `packages/core/src/context.ts` exists and every service in the graph above takes `Pick<CoreContext, …>` (or nothing) instead of a bag of closures into `Core`
-- [ ] `grep -c "=>" core.ts` constructor region under 25, and `grep -n "workspaceOf =" core.ts` returns nothing
+- [x] `grep -c "=>" core.ts` constructor region under 25, and `grep -n "workspaceOf =" core.ts` returns nothing
 - [x] No lambda in the constructor reads a `this.*` field assigned on a later line (a test constructs `Core` with `usage` stubbed to throw and calls `actions.run`/`agent.summarize` paths)
 - [x] `dependency-cruiser` (00-research §9) or a small script lists services → context slices with no edge into `core.ts`
 - [x] `SummaryService`, `ActionsService`, `AgentNaming` and `JournalService` each have a test that constructs them with a fake context and no `Core`
@@ -133,10 +136,12 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 - Then every other service the same way: `createRemote` (the audit log, serving sessions, and the theme phones draw in, which was Core's `#remoteTheme`), `createPanes` (shell rules, output to clients), `createAgents`, `createHomes`, `createPaneOutput`, `createWindows`, `createWorkspaces`, `createSecrets`, `createClosed`, `createWatches`, `createScheduler`, `createSettings`, `createUsage`. Each forwards its own events to clients. `serve` joined the context's Core actions.
 - Not yet: the constructor has 29 `=>` (from 84; the target is 25), `core.ts` 1,581 lines (from 1,747). What's left is Core's own work, not wiring: the subscriptions behind `#dataChanged`/`#viewChanged`/`#viewReset`, closed windows and panes on close, agent homes and hooks (`#newHome`, `#discoverHomes`, `#autoHooks`), counting agents. Those move out with AR1-03-01, which closes this issue's last box.
 
+**Done (2026-10-10)** with AR1-03-01: the constructor has 6 `=>` (from 84).
+
 
 ### AR1-03-03 · Give handlers the connection and delete `#afterCall`
 
-- **Status:** open
+- **Status:** done (704764ff)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1375-1422`, `packages/core/src/core.ts:631`, `packages/core/src/core.ts:801`, `packages/core/src/core.ts:835-836`, `packages/core/src/core.ts:878`, `packages/core/src/core.ts:1334-1337`
@@ -149,11 +154,14 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 **Success criteria.**
 
-- [ ] `grep -n "afterCall\|method === \"" packages/core/src/core.ts` returns nothing
-- [ ] No handler in the map has the body `() => null` as a placeholder for connection-aware work
-- [ ] `packages/core/src/subscriptions.ts` exists with its own test covering `data.subscribe` fan-out, `view.changed` reset and cleanup on close (today `data-subscriptions.test.ts` drives these through a `Core`)
-- [ ] `core.call("fs.watch", …)` in-process and over the socket behave the same (watch released on close)
-- [ ] `grep -c 'method: "event"' packages/core/src/core.ts` ≤ 1
+- [x] `grep -n "afterCall\|method === \"" packages/core/src/core.ts` returns nothing
+- [x] No handler in the map has the body `() => null` as a placeholder for connection-aware work
+- [x] `packages/core/src/subscriptions.ts` exists with its own test covering `data.subscribe` fan-out, `view.changed` reset and cleanup on close (today `data-subscriptions.test.ts` drives these through a `Core`)
+- [x] `core.call("fs.watch", …)` in-process and over the socket behave the same (watch released on close)
+- [x] `grep -c 'method: "event"' packages/core/src/core.ts` ≤ 1
+
+**Done (2026-10-10)** with AR1-03-01. A handler's second argument is its call (`{ conn }`, null inside the core), so `#afterCall` is gone: `data.subscribe`, `fs.watch`, `window.follow`, `magic.previewer`, `events.subscribe`, `remote.bootstrap`, `pane.write`, `agent.send` and `pane.fitOverride` do their per-connection work themselves. The subscriptions are `data/subscriptions.ts` (not `src/subscriptions.ts`: the core's root keeps only its entry points), tested on their own in `packages/core/test/subscriptions.test.ts`, with the watch released when its client closes.
+
 
 ### AR1-03-04 · Let services declare their own startup jobs
 
