@@ -51,6 +51,7 @@ Each was settled by measuring in the Workbench; keep them unless the user change
 
 - **One inset, on every side, to the letters.** Content sits `--inset` (12px) from the window's edges: padded bodies, a table's first and last column, list rows' content, the footer's text. Top as well as sides: a body that opens with a line of text trims its leading (`text-box: trim-start`, done by `View` and padded `Stack`s), so the letters, not the line box, sit at the inset.
 - **A row that holds controls is a toolbar.** Filters, ranges, view switches and actions go in the `WindowToolbar`, not in a line inside the content. The body opens with content.
+- **Players put their controls under the media.** A video's (or a sound's) transport is a `WindowToolbar bottom` with an inline `Scrubber` between its times, where people look for it in every player; its other controls (speed, loop, trim) share that bar, and there is no toolbar on top (Jan, 2026-10-10).
 - **Footers are quiet.** One line in `--text-faint`, the same top line as the toolbar (`--window-edge`), centred between that line and the window's outline.
 - **Bars share their lines.** Toolbar and footer use `--window-edge`, like the title bar and the outline.
 - **Toolbar items sit tighter than the content** (the `WindowToolbar` pads 6px: fields and pressed buttons 6–8px from the edge, icons ~10px), unlike everything else at `--inset`. Left as it is for now (2026-10-09); the audit reports it without flagging it. If it changes, it changes in the kit's toolbar, for every window.
