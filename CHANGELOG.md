@@ -2,6 +2,28 @@
 
 What changed in each cmd release, newest first. cmd shows the releases since your last update in What's New. Written at release time by the changelog skill (`.claude/skills/changelog/SKILL.md`).
 
+## 0.25.0 — 2026-10-11
+
+Reopen closed windows, play and trim videos, and render a jam to audio.
+
+### New
+
+- **Reopen closed windows.** ⇧⌘T brings back the last window you closed, in its place. The Navigator lists recently closed windows too.
+- **Video window.** Videos play in their own window with speed, loop and a scrubber. Trim one and save the kept part as a copy.
+- **Render a jam to audio.** Jam saves the first cycles of your pattern as a WAV file while the music keeps playing.
+
+### Improved
+
+- The text editor has Go to Line (⌃G), Toggle Comment, code folding and word wrap, which ⌥Z turns off.
+- Window title bars and toolbars stand apart more clearly from their content, in every theme.
+- Scrollbars take the colours of your theme.
+- Your phone can add cmd to its Home Screen and shows it in your Mac's theme.
+- Files show an icon for the window they open in, such as a film for videos.
+
+### Fixed
+
+- Closing a terminal that just opened no longer asks about a process called spawn-helper.
+
 ## 0.24.2 — 2026-10-10
 
 ### Fixed
