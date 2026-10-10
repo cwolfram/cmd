@@ -10,7 +10,7 @@ import { DatabaseSync, type StatementSync } from "node:sqlite";
 import type { DataEvent, DataEventType, DataQuery, DataStats, NewDataEvent } from "@cmd/protocol";
 import { DATA_FLAGS, EVENT_V } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import type { Pacer } from "../scheduler.ts";
+import type { Pacer } from "../kernel/scheduler.ts";
 import { bodyOf as ftsBodyOf, FTS_VERSION, ftsKind, ftsSql, VOCAB_SQL, wordsOnly } from "./fts.ts";
 import { EVENTS_SCHEMA, PRAGMA_SQL, SCHEMA_SQL } from "./schema.ts";
 import { migrate, schemaOf } from "./migrations.ts";

@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { decodeAgent, decodeDoc, decodeRows, decodeTurn, decoder } from "../src/stored.ts";
+import { decodeAgent, decodeDoc, decodeRows, decodeTurn, decoder } from "../src/kernel/stored.ts";
 
 describe("decoder", () => {
   const decode = decoder<{ id: string; tags: string[]; note: string | null; n: number; extra?: string }>({ id: "", tags: [], note: null, n: 0 }, ["id"]);
@@ -47,7 +47,7 @@ describe("stored types", () => {
 
 describe("reading stored state", () => {
   // Saved documents are decoded (stored.ts); a cast trusts whatever an older cmd wrote.
-  const files = ["store.ts", "data/views/activity.ts", "data/views/sessions.ts", "data/store.ts", "agents/homes.ts"];
+  const files = ["kernel/store.ts", "data/views/activity.ts", "data/views/sessions.ts", "data/store.ts", "agents/homes.ts"];
   for (const f of files) {
     it(`${f} doesn't cast parsed documents to their type`, () => {
       const src = fs.readFileSync(path.join(import.meta.dirname, "../src", f), "utf8");

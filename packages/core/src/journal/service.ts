@@ -29,7 +29,7 @@ import type { CallOptions } from "../ai/service.ts";
 import { digest, eventsHash, type Digest } from "./digest.ts";
 import { gitEvents, gitStamp } from "./git.ts";
 import { JournalStore, type NewJournalEvent } from "./store.ts";
-import { inlinePacer, type Pacer } from "../scheduler.ts";
+import { inlinePacer, type Pacer } from "../kernel/scheduler.ts";
 import { buildThreads } from "./threads.ts";
 import { SCHEMA, SYSTEM, toDay, type WrittenDay } from "./writer.ts";
 import { workspaceAt } from "../workspaces/paths.ts";

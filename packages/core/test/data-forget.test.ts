@@ -107,7 +107,7 @@ describe("agent events in the log", () => {
 
 describe("the notification log", () => {
   it("records Clear as a marker after the notifications, which stay in the log", async () => {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const core = new Core({ socketPath: "", dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0 });
     try {

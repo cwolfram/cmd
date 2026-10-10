@@ -30,7 +30,7 @@ import { logger } from "@cmd/protocol/node";
 import { sessionIdOf, type AgentTracker } from "../agents/tracker.ts";
 import type { PaneManager } from "./panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
-import type { Store } from "../store.ts";
+import type { Store } from "../kernel/store.ts";
 
 const log = logger("restore");
 

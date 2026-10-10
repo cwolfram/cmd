@@ -10,10 +10,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connect } from "@cmd/protocol/node";
 import type { AgentTurn, DataEvent, Workspace } from "@cmd/protocol";
 import type { SessionRow } from "../src/data/views/sessions.ts";
-import { Core, widgetsSocketPath } from "../src/core.ts";
+import { Core, widgetsSocketPath } from "../src/kernel/core.ts";
 import { JournalService } from "../src/journal/service.ts";
 import { JournalStore, type NewJournalEvent } from "../src/journal/store.ts";
-import { inlinePacer, type Pacer } from "../src/scheduler.ts";
+import { inlinePacer, type Pacer } from "../src/kernel/scheduler.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 

@@ -6,7 +6,7 @@
 
 import type { CoreEvent, RemoteScope } from "@cmd/protocol";
 import { fingerprint, frame, Handshake, LineOpener, PROLOGUE, sealLine, unframe, utf8, Wire, type Bytes, type KeyPair, type Transport } from "@cmd/remote-crypto";
-import type { Connection, Served } from "../connection.ts";
+import type { Connection, Served } from "../kernel/connection.ts";
 
 /** Merge a pane's output for this long before sending it. */
 const COALESCE_MS = 30;

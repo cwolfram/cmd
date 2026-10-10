@@ -16,7 +16,7 @@ import { placeOf, samePlace } from "../checkout.ts";
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { DEVICE_REPLIES, OscScanner, type OscEvent } from "./osc.ts";
 import { agentVersion, classify, displayName, isSpawnHelper, type Classification, type ForegroundInfo } from "../agents/procinfo.ts";
-import type { Store } from "../store.ts";
+import type { Store } from "../kernel/store.ts";
 import { integrate, shellName } from "./shells.ts";
 import { ptysExhausted } from "./ptys.ts";
 import { LocalBackend } from "./local.ts";

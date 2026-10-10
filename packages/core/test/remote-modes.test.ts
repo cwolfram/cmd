@@ -6,8 +6,8 @@
 import net from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, type Settings } from "@cmd/protocol";
-import { SettingsService } from "../src/settings.ts";
-import { Store } from "../src/store.ts";
+import { SettingsService } from "../src/kernel/settings.ts";
+import { Store } from "../src/kernel/store.ts";
 import type { AccessAdapter } from "../src/remote/access/adapter.ts";
 import { registerBuiltinModes } from "../src/remote/access/builtin.ts";
 import { AccessModes, type ModeContext } from "../src/remote/access/mode.ts";

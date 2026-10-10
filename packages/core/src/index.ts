@@ -1,4 +1,4 @@
-export { Core, VERSION, type CoreOptions } from "./core.ts";
+export { Core, VERSION, type CoreOptions } from "./kernel/core.ts";
 export { PaneManager, nodePtyFactory, type Pty, type PtyFactory } from "./terminals/panes.ts";
 export { AgentTracker, launchCommand } from "./agents/tracker.ts";
 export { shq, envPrefix } from "./terminals/shell.ts";
@@ -12,7 +12,7 @@ export { ActivityReducer } from "./agents/activity/reduce.ts";
 export { AgentHomes } from "./agents/homes.ts";
 export { classify, ProcInfo } from "./agents/procinfo.ts";
 export { statusRoot } from "./agents/statusfiles.ts";
-export { SettingsService } from "./settings.ts";
+export { SettingsService } from "./kernel/settings.ts";
 export * from "./windows/index.ts";
 export { TranscriptIngest } from "./data/sources/ingest.ts";
 export { SessionsView } from "./data/views/sessions.ts";

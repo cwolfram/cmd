@@ -8,7 +8,7 @@ import { EVENT_V } from "@cmd/protocol";
 import { DataStore } from "../src/data/store.ts";
 import { EVENTS_SCHEMA } from "../src/data/schema.ts";
 import { EventsLogTooNew, MIGRATIONS, migrate, prepareEventsLog, schemaOf } from "../src/data/migrations.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { UPCASTERS, upcast } from "../src/data/upcast.ts";
 import { ftsSql } from "../src/data/fts.ts";

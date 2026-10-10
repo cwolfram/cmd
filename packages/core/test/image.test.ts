@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { IMAGE_EXTENSIONS, imageType, registerBuiltins, targetFor, WindowManager, WindowTypes } from "../src/windows/index.ts";
 import { PaneManager } from "../src/terminals/panes.ts";
-import { Store } from "../src/store.ts";
+import { Store } from "../src/kernel/store.ts";
 import { WorkspaceManager } from "../src/workspaces/manager.ts";
 import { fakeFactory } from "./fake-pty.ts";
 

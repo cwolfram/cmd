@@ -7,7 +7,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RemoteStatus } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
-import { Core } from "../../core/src/core.ts";
+import { Core } from "../../core/src/kernel/core.ts";
 import { fakeFactory } from "../../core/test/fake-pty.ts";
 import { AccessModes } from "../../core/src/remote/access/mode.ts";
 import { registerBuiltinModes } from "../../core/src/remote/access/builtin.ts";

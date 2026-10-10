@@ -8,7 +8,7 @@
 import { ACTIVITY_SCHEMA, TURN_FORMAT, type ActivityEvent, type ActivityKind, type AgentCoverage, type AgentId, type AgentKind, type AgentTurn, type DataEvent, type PaneId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
-import { inlinePacer, type Pacer } from "../../scheduler.ts";
+import { inlinePacer, type Pacer } from "../../kernel/scheduler.ts";
 import { capPayload, normalize, type RawEvent } from "../../agents/activity/normalize.ts";
 import { ActivityReducer, type Reduction } from "../../agents/activity/reduce.ts";
 
@@ -16,7 +16,7 @@ import { ActivityReducer, type Reduction } from "../../agents/activity/reduce.ts
 const TICK_MS = 2000;
 /** How far back a tool call's PreToolUse is looked for: bounds the lookup to recent rows of the (type, at) index. */
 const TOOL_CALL_MS = 86400_000;
-import { decodeDoc, decodeRows, decodeTurn } from "../../stored.ts";
+import { decodeDoc, decodeRows, decodeTurn } from "../../kernel/stored.ts";
 import type { DataService } from "../service.ts";
 import type { ViewsStore } from "./views.ts";
 import { projectIdOf } from "../project.ts";

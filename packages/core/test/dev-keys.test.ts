@@ -5,8 +5,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { checkouts, devKeys, parseEnv } from "../src/dev-keys.ts";
-import { SecretsService } from "../src/secrets.ts";
+import { checkouts, devKeys, parseEnv } from "../src/kernel/dev-keys.ts";
+import { SecretsService } from "../src/kernel/secrets.ts";
 
 let dir: string;
 beforeEach(() => void (dir = fs.mkdtempSync(path.join(os.tmpdir(), "cmd-devkeys-"))));

@@ -14,7 +14,7 @@ import { matchAction, rank, scriptOf } from "../src/actions/history.ts";
 import { applyDescribed, describe as describeActions, docCommands, type Described } from "../src/actions/describe.ts";
 import { packageManager, parseJsonc, workspacePackages } from "../src/actions/sources.ts";
 import { findUrl } from "../src/actions/service.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { SYSTEM_TIMEOUT } from "../../../test/system.ts";

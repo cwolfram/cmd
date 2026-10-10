@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { RpcClient, RpcError, type CoreEvent, type RemotePairRequest } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type DeviceSession, type KeyPair } from "@cmd/remote-crypto";
 import { startRelay, type Relay } from "../../../apps/relay/src/relay.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until } from "../../../test/system.ts";

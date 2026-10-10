@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { connect, type Connection } from "@cmd/protocol/node";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { hookCommand, hookFiles, hookState, hookTargets, installHooks, removeHooks } from "../src/agents/hooks.ts";
 import { statusRoot } from "../src/agents/statusfiles.ts";
 import { drainSpool } from "../src/agents/activity/spool.ts";

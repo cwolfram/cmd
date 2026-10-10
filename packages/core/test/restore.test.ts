@@ -6,7 +6,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import headless from "@xterm/headless";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until } from "../../../test/system.ts";
@@ -334,7 +334,7 @@ describe("records another cmd version saved", () => {
 
 describe("agents in the store", () => {
   it("keep their identity and state, not a copy of their turn; restore takes the turn from the turns view", async () => {
-    const { Store } = await import("../src/store.ts");
+    const { Store } = await import("../src/kernel/store.ts");
     const { AgentTracker } = await import("../src/agents/tracker.ts");
     const { PaneManager } = await import("../src/terminals/panes.ts");
     const store = new Store(":memory:");

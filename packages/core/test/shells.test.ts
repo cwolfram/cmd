@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { OscEvent } from "../src/terminals/osc.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { nodePtyFactory } from "../src/terminals/panes.ts";
 import { BASH_INTEGRATION_SCRIPT, FISH_INTEGRATION_DATA_DIR, ZSH_INTEGRATION_DIR, integrate } from "../src/terminals/shells.ts";
 import { rmTemp } from "./tmp.ts";

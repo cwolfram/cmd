@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveSettings } from "@cmd/protocol";
-import { SecretsService, readSecrets } from "../src/secrets.ts";
+import { SecretsService, readSecrets } from "../src/kernel/secrets.ts";
 import { AiService, isOpenAIChatModel, KeyRejected, listModels, pickModel } from "../src/magic/index.ts";
 import type { AiModel, Settings } from "@cmd/protocol";
 
@@ -50,7 +50,7 @@ describe("secrets", () => {
   });
 
   it("are served by the core without ever being sent", async () => {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const core = new Core({ socketPath: "", dbPath: null, terminals: fakeFactory().factory, pollMs: 0 });
     core.handlers["secrets.set"]({ key: "ai.anthropic.apiKey", value: "sk-ant-secretsecret" });
@@ -106,7 +106,7 @@ describe("model lists", () => {
   });
 
   it("are listed by the core with the stored key, and need one", async () => {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const core = new Core({ socketPath: "", dbPath: null, terminals: fakeFactory().factory, pollMs: 0 });
     await expect(core.handlers["ai.models"]({ provider: "openai" })).rejects.toThrow(/No OpenAI API key/);
@@ -232,7 +232,7 @@ describe("the AI service", () => {
   });
 
   it("a Magic widget without a key says where to add one", async () => {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const core = new Core({ socketPath: "", dbPath: null, terminals: fakeFactory().factory, pollMs: 0 });
     const w = core.handlers["window.open"]({ kind: "magic", input: {} }) as unknown as { id: string };
@@ -266,7 +266,7 @@ describe("the window's workspace", () => {
   });
 
   it("is the window's workspace, not Home", async () => {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const home = fs.realpathSync(tmp());
     const proj = path.join(home, "shop");

@@ -13,11 +13,11 @@ import { RpcClient, type CoreEvent, type RemotePairRequest } from "@cmd/protocol
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import { publicOrigin } from "../src/remote/access/url.ts";
 import { defaultDirectPort, DirectListener, type DirectListenerOptions } from "../src/remote/direct.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import type { ModeContext } from "../src/remote/access/mode.ts";
 import { RemoteService } from "../src/remote/service.ts";
-import { SettingsService } from "../src/settings.ts";
-import { Store } from "../src/store.ts";
+import { SettingsService } from "../src/kernel/settings.ts";
+import { Store } from "../src/kernel/store.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 

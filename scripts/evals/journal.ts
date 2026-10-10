@@ -24,7 +24,7 @@ import { DataService } from "../../packages/core/src/data/service.ts";
 import { ActivityView } from "../../packages/core/src/data/views/activity.ts";
 import { SessionsView } from "../../packages/core/src/data/views/sessions.ts";
 import { ViewsStore } from "../../packages/core/src/data/views/views.ts";
-import { SecretsService } from "../../packages/core/src/secrets.ts";
+import { SecretsService } from "../../packages/core/src/kernel/secrets.ts";
 import { digest } from "../../packages/core/src/journal/digest.ts";
 import { scoreDay, type JournalCase } from "../../packages/core/src/journal/eval.ts";
 import { gitEvents } from "../../packages/core/src/journal/git.ts";

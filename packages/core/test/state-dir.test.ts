@@ -10,7 +10,7 @@ import { prepareStateDir, StateDirRefused } from "../src/data/state-dir.ts";
 import { DataStore } from "../src/data/store.ts";
 import { EVENTS_SCHEMA } from "../src/data/schema.ts";
 import { schemaOf } from "../src/data/migrations.ts";
-import { Store, STORE_SCHEMA, StoreTooNew } from "../src/store.ts";
+import { Store, STORE_SCHEMA, StoreTooNew } from "../src/kernel/store.ts";
 import { eventsV1, insertV1 } from "./events-v1.ts";
 import { rmTemp } from "./tmp.ts";
 

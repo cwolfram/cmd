@@ -14,7 +14,7 @@ import type { ActivityEvent, Agent, AgentId, AgentKind, AgentState, AgentTurn, G
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { Foreground, PaneManager } from "../terminals/panes.ts";
-import type { Store } from "../store.ts";
+import type { Store } from "../kernel/store.ts";
 import { shq } from "../terminals/shell.ts";
 import { registerBuiltinSources } from "../search/builtin.ts";
 import { locateContext, TranscriptSources } from "../search/sources.ts";

@@ -11,7 +11,7 @@ import { RpcClient, type CoreEvent } from "@cmd/protocol";
 import { OutputGate } from "@cmd/protocol/replay";
 import { decodePairing, generateKeyPair, openDeviceSession } from "@cmd/remote-crypto";
 import { startRelay, type Relay } from "../../../apps/relay/src/relay.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { PtyHost } from "../src/terminals/host.ts";
 import { RemoteBackend } from "../src/terminals/remote.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";

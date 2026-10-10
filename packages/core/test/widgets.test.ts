@@ -210,7 +210,7 @@ describe.skipIf(noDeno)("data.ts in Deno", () => {
   // Also the regression test for Deno.connect's panic: macOS reports the address of
   // a socket that libuv 1.53 (Node 24.21) binds at 255 bytes, more than sun_path.
   it("lets data.ts read cmd's event log through the widgets socket, with the run's token", async () => {
-    const { Core, widgetsSocketPath } = await import("../src/core.ts");
+    const { Core, widgetsSocketPath } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     // With a long TMPDIR the socket path would be past what macOS connects to, so use /tmp then (the long path has its own test).
     const sockDir = fs.mkdtempSync(path.join(os.tmpdir().length > 60 ? "/tmp" : os.tmpdir(), "cmd-widgets-"));
@@ -445,7 +445,7 @@ describe.skipIf(noDeno)("Magic widgets in the core", () => {
   };
 
   async function setup(backend: Backend, stateDir?: string) {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const core = new Core({ socketPath: "", dbPath: null, terminals: fakeFactory().factory, pollMs: 0, magicBackend: () => backend, magicPreviewer: fakePreviewer, magicDeno: DENO, stateDir });
     const events: { type: string; id?: string; data?: unknown; error?: string }[] = [];

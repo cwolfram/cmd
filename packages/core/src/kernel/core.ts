@@ -9,65 +9,65 @@ import path from "node:path";
 import type { ActivityExportHeader, Agent, AgentHome, AgentId, AiModel, AiProvider, AppWindow, HookTarget, CoreEvent, Method, Methods, Params, Placement, RemoteScope, RemoteTheme, Result, Settings, Workspace, WorkspaceId, WidgetEntry, WindowId, DataEvent, DataQuery, AppNotification, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { EXPORT_FORMAT, lineSplitter, TURN_FORMAT } from "@cmd/protocol";
 import { ipcPath, logger, machineId, recordCrash } from "@cmd/protocol/node";
-import { AgentTracker, sessionIdOf } from "./agents/tracker.ts";
-import { JournalService, SYNC_FRESH_MS } from "./journal/service.ts";
-import { JournalStore } from "./journal/store.ts";
-import { recordNames, recordNotifications, recordWorkspaces, recordWindows } from "./data/recorders.ts";
-import { removeOldBackups } from "./data/migrations.ts";
-import { DataService } from "./data/service.ts";
-import { buildContext } from "./ai/context.ts";
-import { describeAgent, describePane } from "./data/describe.ts";
-import { PaneOutputRecorder } from "./data/sources/pane-output.ts";
-import { projectIdOf } from "./data/project.ts";
-import { matchesQuery } from "./data/match.ts";
-import { WidgetTokens, widgetRead, type WidgetIdentity } from "./data/widgets.ts";
-import { ViewsStore } from "./data/views/views.ts";
-import { ActivityView } from "./data/views/activity.ts";
-import { SessionsView } from "./data/views/sessions.ts";
+import { AgentTracker, sessionIdOf } from "../agents/tracker.ts";
+import { JournalService, SYNC_FRESH_MS } from "../journal/service.ts";
+import { JournalStore } from "../journal/store.ts";
+import { recordNames, recordNotifications, recordWorkspaces, recordWindows } from "../data/recorders.ts";
+import { removeOldBackups } from "../data/migrations.ts";
+import { DataService } from "../data/service.ts";
+import { buildContext } from "../ai/context.ts";
+import { describeAgent, describePane } from "../data/describe.ts";
+import { PaneOutputRecorder } from "../data/sources/pane-output.ts";
+import { projectIdOf } from "../data/project.ts";
+import { matchesQuery } from "../data/match.ts";
+import { WidgetTokens, widgetRead, type WidgetIdentity } from "../data/widgets.ts";
+import { ViewsStore } from "../data/views/views.ts";
+import { ActivityView } from "../data/views/activity.ts";
+import { SessionsView } from "../data/views/sessions.ts";
 import { Scheduler } from "./scheduler.ts";
-import { SearchView } from "./data/views/search.ts";
-import { TranscriptIngest } from "./data/sources/ingest.ts";
-import { conversationOf } from "./data/views/conversation.ts";
-import { rewrite } from "./agents/activity/fixture.ts";
-import { AgentHomes } from "./agents/homes.ts";
-import { cleanAiBody, NOTICE_SYSTEM, noticeContext, type NoticeKind } from "./agents/notice.ts";
-import { AgentNaming } from "./agents/naming.ts";
-import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefingFlag, writeHookFiles, type HookFiles } from "./agents/hooks.ts";
-import { hookEventName } from "./agents/state.ts";
-import { NotificationCenter } from "./notifications.ts";
-import { CommandLog, indexCommandOutput } from "./terminals/commands.ts";
-import { TimerAlarms } from "./timers.ts";
-import { PaneManager, type Inspector, type PtyFactory } from "./terminals/panes.ts";
-import { isDir, restoredText, restoreSession } from "./terminals/restore.ts";
-import type { TermBackend } from "./terminals/types.ts";
-import { ProcessSampler, ResourceMonitor, type ProcSampler, type TreeSampler } from "./terminals/resources.ts";
-import { registerBuiltinSources } from "./search/builtin.ts";
-import { FileSearch } from "./search/files.ts";
-import { checkoutOf } from "./checkout.ts";
-import { locateContext, TranscriptSources, type LocateContext, type TranscriptRoot } from "./search/sources.ts";
-import { listDir, parseOverrides, readText, resolvePaths, registerBuiltins, shellOpenEnv, terminalWindow, WindowManager, WindowTypes, writeText, ClosedWindows } from "./windows/index.ts";
-import { WatchService } from "./watch.ts";
-import { gitDiff, gitStatus } from "./git.ts";
-import { SqliteService } from "./sqlite/service.ts";
-import { createPath, duplicatePath, renamePath, transferPaths } from "./fileops.ts";
+import { SearchView } from "../data/views/search.ts";
+import { TranscriptIngest } from "../data/sources/ingest.ts";
+import { conversationOf } from "../data/views/conversation.ts";
+import { rewrite } from "../agents/activity/fixture.ts";
+import { AgentHomes } from "../agents/homes.ts";
+import { cleanAiBody, NOTICE_SYSTEM, noticeContext, type NoticeKind } from "../agents/notice.ts";
+import { AgentNaming } from "../agents/naming.ts";
+import { hookFiles, hookState, hookTargets, installHooks, removeHooks, setBriefingFlag, writeHookFiles, type HookFiles } from "../agents/hooks.ts";
+import { hookEventName } from "../agents/state.ts";
+import { NotificationCenter } from "../notifications.ts";
+import { CommandLog, indexCommandOutput } from "../terminals/commands.ts";
+import { TimerAlarms } from "../timers.ts";
+import { PaneManager, type Inspector, type PtyFactory } from "../terminals/panes.ts";
+import { isDir, restoredText, restoreSession } from "../terminals/restore.ts";
+import type { TermBackend } from "../terminals/types.ts";
+import { ProcessSampler, ResourceMonitor, type ProcSampler, type TreeSampler } from "../terminals/resources.ts";
+import { registerBuiltinSources } from "../search/builtin.ts";
+import { FileSearch } from "../search/files.ts";
+import { checkoutOf } from "../checkout.ts";
+import { locateContext, TranscriptSources, type LocateContext, type TranscriptRoot } from "../search/sources.ts";
+import { listDir, parseOverrides, readText, resolvePaths, registerBuiltins, shellOpenEnv, terminalWindow, WindowManager, WindowTypes, writeText, ClosedWindows } from "../windows/index.ts";
+import { WatchService } from "../watch.ts";
+import { gitDiff, gitStatus } from "../git.ts";
+import { SqliteService } from "../sqlite/service.ts";
+import { createPath, duplicatePath, renamePath, transferPaths } from "../fileops.ts";
 import { Store } from "./store.ts";
 import { SettingsService } from "./settings.ts";
-import { WorkspaceManager } from "./workspaces/manager.ts";
-import { MagicService } from "./magic/service.ts";
+import { WorkspaceManager } from "../workspaces/manager.ts";
+import { MagicService } from "../magic/service.ts";
 import { SecretsService } from "./secrets.ts";
-import type { Backend } from "./ai/backends.ts";
-import { AiService } from "./ai/service.ts";
-import { playwrightPreviewer, type Previewer } from "./widgets/preview.ts";
+import type { Backend } from "../ai/backends.ts";
+import { AiService } from "../ai/service.ts";
+import { playwrightPreviewer, type Previewer } from "../widgets/preview.ts";
 import type { MagicPreviewRequest, MagicPreviewShot } from "@cmd/protocol";
 import type { Connection, Served } from "./connection.ts";
-import { checkRemoteCall, RemoteDenied, remoteEventVisible, type PolicyContext } from "./remote/policy.ts";
-import { RemoteService } from "./remote/service.ts";
-import { SummaryService } from "./summaries/service.ts";
+import { checkRemoteCall, RemoteDenied, remoteEventVisible, type PolicyContext } from "../remote/policy.ts";
+import { RemoteService } from "../remote/service.ts";
+import { SummaryService } from "../summaries/service.ts";
 import { UsageStats } from "./usage.ts";
-import { changeCode } from "./jam/change.ts";
+import { changeCode } from "../jam/change.ts";
 import type { DevKeys } from "./secrets.ts";
-import { ActionsService } from "./actions/service.ts";
-import { expandHome } from "./windows/builtin.ts";
+import { ActionsService } from "../actions/service.ts";
+import { expandHome } from "../windows/builtin.ts";
 
 export const VERSION = "0.0.1";
 
@@ -636,14 +636,14 @@ export class Core {
   }
 
   readonly handlers: Handlers = {
-    "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../..") }),
+    "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") }),
     "core.info": async () => {
       const mem = process.memoryUsage();
       const cpu = process.cpuUsage();
       return {
         pid: process.pid,
         build: this.#opts.build ?? "",
-        root: path.resolve(import.meta.dirname, "../../.."),
+        root: path.resolve(import.meta.dirname, "../../../.."),
         node: process.versions.node,
         startedAt: Date.now() - process.uptime() * 1000,
         rssBytes: mem.rss,

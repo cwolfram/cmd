@@ -6,7 +6,7 @@ import inspector from "node:inspector";
 import { DataService } from "../../packages/core/src/data/service.ts";
 import { JournalStore } from "../../packages/core/src/journal/store.ts";
 import { JournalService } from "../../packages/core/src/journal/service.ts";
-import { Scheduler } from "../../packages/core/src/scheduler.ts";
+import { Scheduler } from "../../packages/core/src/kernel/scheduler.ts";
 import { DEFAULT_SETTINGS } from "../../packages/protocol/src/index.ts";
 import { initLog } from "../../packages/protocol/src/log.ts";
 

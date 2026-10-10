@@ -85,7 +85,7 @@ describe("a build on a Mac without Deno", () => {
   };
 
   async function setup() {
-    const { Core } = await import("../src/core.ts");
+    const { Core } = await import("../src/kernel/core.ts");
     const { fakeFactory } = await import("./fake-pty.ts");
     const installs: string[] = [];
     let finish = () => {};

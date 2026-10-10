@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { connect, type Connection } from "@cmd/protocol/node";
-import { Core } from "../../core/src/core.ts";
+import { Core } from "../../core/src/kernel/core.ts";
 import { fakeFactory } from "../../core/test/fake-pty.ts";
 import { agentsCommand } from "../src/agents.ts";
 

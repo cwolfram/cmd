@@ -18,7 +18,7 @@ import { foreignHome, foreignHomeText, instanceName, type CoreRefusalReason, typ
 import { EventsLogTooNew, prepareEventsLog, schemaOf } from "./migrations.ts";
 import { EVENTS_SCHEMA } from "./schema.ts";
 import { peek } from "./peek.ts";
-import { checkStoreSchema, StoreTooNew } from "../store.ts";
+import { checkStoreSchema, StoreTooNew } from "../kernel/store.ts";
 
 /** Why a core won't start on a state dir: `message` for core.log, `forPeople` for the app's dialog (coreRefusalLine). */
 export class StateDirRefused extends Error {

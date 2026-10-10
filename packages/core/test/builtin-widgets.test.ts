@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commandRunOf, notificationOf, type AppNotification } from "@cmd/protocol";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { durationLabel, timerType, visualizerType, type TimerState } from "../src/windows/builtin.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 

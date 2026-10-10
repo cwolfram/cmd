@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import type { CoreEvent, Method } from "@cmd/protocol";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { checkRemoteCall, REMOTE_ACCESS, RemoteDenied, remoteEventVisible, scopeAllows, type PolicyContext } from "../src/remote/policy.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";

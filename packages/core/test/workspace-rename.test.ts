@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Store } from "../src/store.ts";
+import { Store } from "../src/kernel/store.ts";
 import { DataStore } from "../src/data/store.ts";
 import { eventsV1 } from "./events-v1.ts";
 import { JournalStore } from "../src/journal/store.ts";

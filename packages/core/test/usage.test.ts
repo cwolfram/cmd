@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { macosVersion, UsageStats, type UsageBatch } from "../src/usage.ts";
+import { macosVersion, UsageStats, type UsageBatch } from "../src/kernel/usage.ts";
 
 function setup(o: { enabled?: boolean; fail?: boolean; url?: string | null; key?: string } = {}) {
   const sent: UsageBatch[] = [];

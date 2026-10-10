@@ -6,7 +6,7 @@
 
 import { EventEmitter } from "node:events";
 import type { AppWindow, ClosedWindow, WindowId, WorkspaceId } from "@cmd/protocol";
-import type { Store } from "../store.ts";
+import type { Store } from "../kernel/store.ts";
 
 /** Closed windows kept per workspace; older ones are forgotten. */
 export const CLOSED_PER_WORKSPACE = 20;

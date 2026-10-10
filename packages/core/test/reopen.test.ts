@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { CLOSED_PER_WORKSPACE } from "../src/windows/index.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";

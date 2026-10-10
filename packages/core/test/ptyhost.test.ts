@@ -6,7 +6,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { HOST_PROTOCOL, PtyHost } from "../src/terminals/host.ts";
 import { HostMismatch, RemoteBackend } from "../src/terminals/remote.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";

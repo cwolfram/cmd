@@ -27,7 +27,7 @@ import { DataService } from "../../packages/core/src/data/service.ts";
 import { conversationOf } from "../../packages/core/src/data/views/conversation.ts";
 import { SessionsView } from "../../packages/core/src/data/views/sessions.ts";
 import { ViewsStore } from "../../packages/core/src/data/views/views.ts";
-import { SecretsService } from "../../packages/core/src/secrets.ts";
+import { SecretsService } from "../../packages/core/src/kernel/secrets.ts";
 import { cleanClaudePrompt } from "../../packages/core/src/search/parser.ts";
 import { redact } from "../../packages/core/src/redact.ts";
 import { NAME_SCHEMA, nameSystem, type NamerAnswer, type NamerTurn } from "../../packages/core/src/agents/namer.ts";

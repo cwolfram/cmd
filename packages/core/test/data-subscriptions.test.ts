@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { connect, type Connection } from "@cmd/protocol/node";
 import type { CoreEvent, DataEvent } from "@cmd/protocol";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 
@@ -82,7 +82,7 @@ describe("data subscriptions", () => {
 
 describe("the widgets socket", () => {
   it("lets a widget that says who it is read events, and nothing else", async () => {
-    const { widgetsSocketPath } = await import("../src/core.ts");
+    const { widgetsSocketPath } = await import("../src/kernel/core.ts");
     const w = await connect(widgetsSocketPath(socketPath));
     await expect(w.client.call("data.query", { query: {} })).rejects.toThrow(/widget.hello/);
     await expect(w.client.call("widget.hello", { token: "nope" })).rejects.toThrow(/unknown or expired/);

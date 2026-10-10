@@ -8,5 +8,5 @@ export { TOOL_SPECS, toolsFor, runTool } from "./tools.ts";
 export { WIDGET_TOOL_SPECS, runWidgetTool } from "./widget-tools.ts";
 export { buildSystem, buildRequest, PROMPT_DIR, type Workspace } from "./prompt.ts";
 export { widgetHtml, widgetTokens, SIZES, type ThemeLike } from "./host.ts";
-export { readSecrets, SecretsService } from "../secrets.ts";
+export { readSecrets, SecretsService } from "../kernel/secrets.ts";
 export * from "../widgets/index.ts";

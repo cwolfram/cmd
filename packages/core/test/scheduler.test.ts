@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Scheduler, STALL_MS } from "../src/scheduler.ts";
+import { Scheduler, STALL_MS } from "../src/kernel/scheduler.ts";
 
 const burn = (ms: number) => {
   const end = performance.now() + ms;

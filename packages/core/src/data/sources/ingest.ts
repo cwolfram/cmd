@@ -20,7 +20,7 @@ import { planPass, scanFiles, type FileState } from "./ingest-pass.ts";
 import type { IngestMessage, IngestRequest, WorkerInit } from "./ingest-worker.ts";
 import { readTranscript } from "./transcripts.ts";
 import { describeSession } from "../describe.ts";
-import { inlinePacer, type Pacer } from "../../scheduler.ts";
+import { inlinePacer, type Pacer } from "../../kernel/scheduler.ts";
 
 const log = logger("transcripts");
 

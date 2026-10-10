@@ -18,7 +18,7 @@ import { DatabaseSync } from "node:sqlite";
 import { ActivityReducer } from "../../packages/core/src/agents/activity/reduce.ts";
 import { normalize, type RawEvent } from "../../packages/core/src/agents/activity/normalize.ts";
 import type { AgentTurn } from "@cmd/protocol";
-import { decodeRows, decodeTurn } from "../../packages/core/src/stored.ts";
+import { decodeRows, decodeTurn } from "../../packages/core/src/kernel/stored.ts";
 import { DataStore, type StoreEvent as NewEvent } from "../../packages/core/src/data/store.ts";
 import { hookEvents, journalEvents } from "../../packages/core/src/data/sources/legacy.ts";
 import { FLAG_CUT } from "../../packages/core/src/data/schema.ts";

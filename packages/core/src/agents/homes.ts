@@ -12,7 +12,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { AgentHome, AgentKind } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { LocateContext } from "../search/sources.ts";
-import { decodeDoc, decodeHome } from "../stored.ts";
+import { decodeDoc, decodeHome } from "../kernel/stored.ts";
 
 const log = logger("homes");
 

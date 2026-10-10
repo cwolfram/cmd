@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { PANE_ENV, cmdHome, configDir, coreSocketPath, defaultSocketPath, enterInstance, isOwnCore, logDir, worktreeHome } from "@cmd/protocol/node";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 
 const env = { ...process.env };

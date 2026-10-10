@@ -28,7 +28,7 @@ import {
   type AiTier,
   type Settings,
 } from "@cmd/protocol";
-import type { SecretsService } from "../secrets.ts";
+import type { SecretsService } from "../kernel/secrets.ts";
 import { aiBackend, completeObject, completeText, type AiBackendOptions, type Backend, type CompleteRequest, type CompleteResult, type ObjectRequest, type Usage } from "./backends.ts";
 import { FALLBACK_MODELS, KeyRejected, listModels, pickModel } from "./models.ts";
 

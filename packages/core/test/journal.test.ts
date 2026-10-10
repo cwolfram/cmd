@@ -5,7 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentTurn, JournalEvent, Workspace } from "@cmd/protocol";
 import type { SessionRow } from "../src/data/views/sessions.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { digest, eventsHash } from "../src/journal/digest.ts";
 import { gitEvents, gitStamp, parseReflog } from "../src/journal/git.ts";
 import { JournalService, SYNC_FRESH_MS, type JournalAi } from "../src/journal/service.ts";

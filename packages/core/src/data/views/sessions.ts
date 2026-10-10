@@ -5,7 +5,7 @@
 
 import type { AgentKind, DataEvent, SessionInfo } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { inlinePacer, type Pacer } from "../../scheduler.ts";
+import { inlinePacer, type Pacer } from "../../kernel/scheduler.ts";
 import type { DataService } from "../service.ts";
 import type { ViewsStore } from "./views.ts";
 

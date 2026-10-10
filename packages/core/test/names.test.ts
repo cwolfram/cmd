@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { matchAgents, nameFromBranch, type Agent } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
 import { foldersOf, worktreeName } from "../src/agents/names.ts";
-import { Core } from "../src/core.ts";
+import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 

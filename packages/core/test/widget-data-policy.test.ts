@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { connect } from "@cmd/protocol/node";
 import type { DataEvent, NewDataEvent } from "@cmd/protocol";
-import { Core, widgetsSocketPath } from "../src/core.ts";
+import { Core, widgetsSocketPath } from "../src/kernel/core.ts";
 import { POLICY, clampQuery } from "../src/data/policy.ts";
 import { widgetQuery } from "../src/data/widgets.ts";
 import { fakeFactory } from "./fake-pty.ts";

@@ -33,7 +33,7 @@ export interface CoreInfo {
   ptyHost: { pid: number; startedAt: number; root: string } | null;
   /** What the core is still doing after it began answering (view rebuilds, the first transcript read). */
   startup: StartupStatus;
-  /** The last times the core's thread was blocked for a while, newest last (core/src/scheduler.ts). */
+  /** The last times the core's thread was blocked for a while, newest last (core/src/kernel/scheduler.ts). */
   stalls: Stall[];
 }
 
