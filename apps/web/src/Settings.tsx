@@ -1,13 +1,22 @@
 // The settings sheet: which Mac this is, how it's reached, what this device may
-// do, and Forget This Mac (the Mac keeps listing it until unpaired there).
+// do, the paired Macs to switch between, Add a Mac, and Forget This Mac (the
+// Mac keeps listing it until unpaired there). MacsSheet is the list alone, for
+// when the Mac isn't connected.
 
-import { useState } from "react";
-import { Button, Callout, Dialog, KeyValue } from "@cmd/ui";
+import { useEffect, useState } from "react";
+import { Button, Callout, Dialog, Icon, KeyValue, ListRow, ListSection } from "@cmd/ui";
 import type { Connection, Phase } from "./connection.ts";
-import { deviceName, forgetIdentity } from "./identity.ts";
+import { deviceName, listMacs, type Mac } from "./identity.ts";
 import type { Model } from "./model.ts";
+import { ago } from "./ui.tsx";
 
-export function Settings({ open, conn, phase, model, onClose }: { open: boolean; conn: Connection; phase: Phase; model: Model; onClose: () => void }) {
+interface MacActions {
+  onAdd: () => void;
+  onSwitch: (key: string) => void;
+  onForget: () => void;
+}
+
+export function Settings({ open, conn, phase, model, onClose, onAdd, onSwitch, onForget }: { open: boolean; conn: Connection; phase: Phase; model: Model; onClose: () => void } & MacActions) {
   const [confirm, setConfirm] = useState(false);
   const address = conn.identity.socket.replace(/^wss?:\/\//, "");
   const status = phase.kind === "online" ? "Connected" : phase.kind === "offline" ? "Offline" : "Connecting…";
@@ -23,14 +32,14 @@ export function Settings({ open, conn, phase, model, onClose }: { open: boolean;
         ]}
       />
       <Callout icon="lock">End-to-end encrypted. Anything in between sees only scrambled bytes; your Mac decides who gets in.</Callout>
+      {open && <MacList current={conn.key} currentName={model.host} onAdd={onAdd} onSwitch={onSwitch} />}
       <Button
         size="lg"
         variant="danger"
         icon="xmark"
         onClick={() => {
           if (!confirm) return setConfirm(true);
-          conn.close();
-          void forgetIdentity().then(() => location.reload());
+          onForget();
         }}
       >
         {confirm ? "Tap Again to Forget" : "Forget This Mac"}
@@ -39,3 +48,48 @@ export function Settings({ open, conn, phase, model, onClose }: { open: boolean;
     </Dialog>
   );
 }
+
+/** The paired Macs, for when this one isn't connected (offline, unpaired). */
+export function MacsSheet({ open, current, currentName, onAdd, onSwitch, onClose }: { open: boolean; current: string; currentName?: string; onClose: () => void } & Omit<MacActions, "onForget">) {
+  return (
+    <Dialog open={open} onClose={onClose} title="Macs" label="Macs">
+      {open && <MacList current={current} currentName={currentName} onAdd={onAdd} onSwitch={onSwitch} />}
+    </Dialog>
+  );
+}
+
+/** Every paired Mac, the current one ticked; tap another to switch. Then Add a Mac. */
+function MacList({ current, currentName, onAdd, onSwitch }: { current: string; currentName?: string; onAdd: () => void; onSwitch: (key: string) => void }) {
+  const [macs, setMacs] = useState<Mac[]>([]);
+  useEffect(() => {
+    void listMacs().then(setMacs, () => {});
+  }, []);
+  return (
+    <div className="macs">
+      <ListSection title="Macs" count={macs.length}>
+        {macs.map((m) => {
+          const here = m.key === current;
+          return (
+            <ListRow
+              key={m.key}
+              icon="laptopcomputer"
+              title={here ? (currentName ?? m.name) : m.name}
+              detail={here ? "Open now" : used(m.lastUsed)}
+              selected={here}
+              aria-current={here || undefined}
+              end={here ? <Icon name="checkmark" /> : undefined}
+              onClick={() => onSwitch(m.key)}
+            />
+          );
+        })}
+        <ListRow icon="plus" title="Add a Mac" onClick={onAdd} />
+      </ListSection>
+    </div>
+  );
+}
+
+const used = (t: number) => {
+  if (!t) return "Not opened yet";
+  const a = ago(t);
+  return a === "now" ? "Opened just now" : `Opened ${a} ago`;
+};

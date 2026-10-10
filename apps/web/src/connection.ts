@@ -5,7 +5,7 @@
 
 import { RpcClient, type CoreEvent, type Result } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type KeyPair } from "@cmd/remote-crypto";
-import { deviceName, loadIdentity, saveIdentity, type Identity } from "./identity.ts";
+import { deviceName, loadIdentity, macKey, saveIdentity, touchIdentity, type Identity } from "./identity.ts";
 
 export type Phase =
   | { kind: "connecting" }
@@ -29,17 +29,22 @@ export class Connection {
   #retry = 0;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #closed = false;
+  #wake = () => document.visibilityState === "visible" && this.#ws === null && this.#connectNow();
 
   constructor(id: Identity) {
     this.#id = id;
-    const wake = () => document.visibilityState === "visible" && this.#ws === null && this.#connectNow();
-    document.addEventListener("visibilitychange", wake);
-    window.addEventListener("pageshow", wake);
-    window.addEventListener("online", wake);
+    document.addEventListener("visibilitychange", this.#wake);
+    window.addEventListener("pageshow", this.#wake);
+    window.addEventListener("online", this.#wake);
   }
 
   get identity(): Identity {
     return this.#id;
+  }
+
+  /** The Mac's host key in base64url, as the identity store keys it. */
+  get key(): string {
+    return macKey(this.#id.hostKey);
   }
 
   onChange(fn: () => void): () => void {
@@ -63,6 +68,10 @@ export class Connection {
 
   close(): void {
     this.#closed = true;
+    if (this.#timer) clearTimeout(this.#timer);
+    document.removeEventListener("visibilitychange", this.#wake);
+    window.removeEventListener("pageshow", this.#wake);
+    window.removeEventListener("online", this.#wake);
     this.#ws?.close();
   }
 
@@ -97,7 +106,11 @@ export class Connection {
       client.onEvent((e) => this.#events.forEach((fn) => fn(e)));
       this.client = client;
       this.#retry = 0;
-      this.#set({ kind: "online", boot: await client.call("remote.bootstrap", {}) });
+      const boot = await client.call("remote.bootstrap", {});
+      this.#set({ kind: "online", boot });
+      // The name a list of Macs shows; it follows a renamed Mac.
+      const name = boot.host?.name;
+      if (name && name !== this.#id.name) void touchIdentity(this.key, { name }).then(() => (this.#id = { ...this.#id, name }), () => {});
     } catch {
       // the close handler says why
     }
@@ -133,7 +146,8 @@ function open(socket: string, route: string, o: { hostKey: Bytes; device: KeyPai
 /**
  * Pair from the link's fragment: a new device key, the IKpsk1 handshake, the
  * four words while the Mac decides. Saves the identity once the Mac allowed it
- * and returns it as loaded back, so a browser that can't keep it says so now.
+ * (replacing an earlier pairing with the same Mac) and returns it as loaded
+ * back, so a browser that can't keep it says so now.
  */
 export async function pair(fragment: string, onWords: (w: string[]) => void): Promise<Identity> {
   const link = decodePairing(fragment);
@@ -145,7 +159,9 @@ export async function pair(fragment: string, onWords: (w: string[]) => void): Pr
   ws.close();
   const id: Identity = { device, hostKey: link.hostKey, socket: link.socket, route: link.route, deviceId: String(s.host.deviceId) };
   await saveIdentity(id);
-  const saved = await loadIdentity();
+  const saved = await loadIdentity(macKey(id.hostKey));
   if (!saved) throw new Error("This browser couldn't save the pairing. Make a new code on your Mac and try again.");
+  // Best effort: ask the browser not to clear it under storage pressure.
+  void navigator.storage?.persist?.().catch(() => {});
   return saved;
 }

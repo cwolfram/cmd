@@ -1,9 +1,13 @@
 // The phone's side of remote access (docs/13-remote-access.md): the web client
 // (apps/web, Vite dev server) in an emulated iPhone (WebKit), a local relay and a core on
 // a throwaway CMD_HOME; the Mac's approval comes over the core's socket, as
-// `cmd remote pair` does. Pairs, opens a terminal from Now, types from the key
-// row and the compose bar, checks the text reached the PTY and that the Mac's
-// terminal is sized for the phone while it shows it, then has the Mac unpair it. Screenshots in .cmd-dev/shots/web-*.png. `pnpm e2e:web`;
+// `cmd remote pair` does. Opens the pairing link in a browser tab (iOS asks to
+// pair from the Home Screen app, and pairs only when told to), opens a terminal
+// from Now, types from the key row and the compose bar, checks the text reached
+// the PTY and that the Mac's terminal is sized for the phone while it shows it,
+// pairs a second Mac (a second core) from a pasted link and switches between
+// them (direct: the link opens at that Mac's own address), then has the first
+// Mac unpair it. Screenshots in .cmd-dev/shots/web-*.png. `pnpm e2e:web`;
 // E2E_HOSTED=1 runs it against the deployed relay and client instead;
 // E2E_DIRECT=1 has the core serve the built client and take the phone's socket
 // itself (docs/38, "Your own URL" on loopback, which browsers treat as secure).
@@ -24,10 +28,14 @@ const root = path.resolve(import.meta.dirname, "..");
 // vite is apps/web's dependency, not the root's.
 const { createServer } = await import(pathToFileURL(path.join(root, "apps/web/node_modules/vite/dist/node/index.js")).href);
 const home = path.join(root, ".cmd-dev", "e2e-web");
+// The second Mac: another core, so another host key and route.
+const home2 = path.join(root, ".cmd-dev", "e2e-web-2");
 const shots = path.join(root, ".cmd-dev", "shots");
-await stopCore(home, { terminals: true });
-fs.rmSync(home, { recursive: true, force: true });
-fs.mkdirSync(home, { recursive: true });
+for (const h of [home, home2]) {
+  await stopCore(h, { terminals: true });
+  fs.rmSync(h, { recursive: true, force: true });
+  fs.mkdirSync(h, { recursive: true });
+}
 fs.mkdirSync(shots, { recursive: true });
 
 const check = (cond, msg) => {
@@ -48,22 +56,27 @@ const hosted = !!process.env.E2E_HOSTED;
 const direct = !hosted && !!process.env.E2E_DIRECT;
 const freePort = () => new Promise((resolve) => { const s = net.createServer().listen(0, "127.0.0.1", () => { const p = s.address().port; s.close(() => resolve(p)); }); });
 const port = direct ? await freePort() : 0;
+const port2 = direct ? await freePort() : 0;
 // Direct: the client as it ships, so build it (Vite is quick).
 if (direct) execFileSync(process.execPath, [path.join(root, "scripts/build-web.mjs")], { stdio: "ignore" });
 const relay = hosted || direct ? null : await startRelay({ log: () => {} });
 const web = hosted || direct ? null : await createServer({ root: path.join(root, "apps/web"), configFile: path.join(root, "apps/web/vite.config.ts"), server: { port: 0 }, logLevel: "error" });
 await web?.listen();
 const client = hosted ? "https://cmd.endtime-instruments.org" : direct ? `http://127.0.0.1:${port}` : web.resolvedUrls.local[0].replace(/\/$/, "");
-const settings = hosted
-  ? { "remote.enabled": true }
-  : direct
-    ? { "remote.enabled": true, "remote.access": "url", "remote.url": client, "remote.port": port }
-    : { "remote.enabled": true, "remote.relay": relay.url, "remote.client": client };
-fs.writeFileSync(path.join(home, "settings.json"), JSON.stringify(settings));
-const core = spawn(process.execPath, ["--no-warnings", path.join(root, "packages/core/src/main.ts"), "--instance=dev"], { env: { ...process.env, CMD_HOME: home }, stdio: "ignore", detached: true });
-core.unref();
+const settingsFor = (p) =>
+  hosted
+    ? { "remote.enabled": true }
+    : direct
+      ? { "remote.enabled": true, "remote.access": "url", "remote.url": `http://127.0.0.1:${p}`, "remote.port": p }
+      : { "remote.enabled": true, "remote.relay": relay.url, "remote.client": client };
+const startCore = (h, p) => {
+  fs.writeFileSync(path.join(h, "settings.json"), JSON.stringify(settingsFor(p)));
+  spawn(process.execPath, ["--no-warnings", path.join(root, "packages/core/src/main.ts"), "--instance=dev"], { env: { ...process.env, CMD_HOME: h }, stdio: "ignore", detached: true }).unref();
+};
+startCore(home, port);
+startCore(home2, port2);
 
-let mac;
+let mac, mac2;
 // WebKit, as on an iPhone: it differs where it matters (an X25519 CryptoKey in IndexedDB reads back as null).
 const browser = await (process.env.E2E_BROWSER === "chromium" ? chromium : webkit).launch();
 try {
@@ -82,13 +95,21 @@ try {
   const shot = (name) => page.screenshot({ path: path.join(shots, `web${direct ? "-direct" : ""}-${name}.png`) });
 
   await page.goto(client);
-  await page.getByText("Not paired yet").waitFor();
+  await page.getByText("Pair with Your Mac").waitFor();
+  await page.getByRole("button", { name: "Scan Code" }).waitFor();
   check(true, "an unpaired browser says how to pair");
 
+  // A link never pairs on load: it asks, and on iOS says how to pair the Home Screen app instead.
   const { url } = await call("remote.pair", { scope: "control" });
   await page.goto(url);
-  await page.getByText("Approve on your Mac").waitFor();
+  await page.getByText("Where do you want to use cmd?").waitFor();
   check(!page.url().includes("#"), "the one-time key leaves the address bar at once");
+  check(requests.length === 0 && (await call("remote.status")).requests.length === 0, "a pairing link asks before pairing");
+  check(await page.getByText("Add to Home Screen").isVisible(), "on iOS it says how to pair from the Home Screen");
+  await shot("0-link");
+  // The code is still good: pairing starts only now.
+  await page.getByRole("button", { name: "Pair This Browser" }).click();
+  await page.getByText("Approve on your Mac").waitFor();
   const words = await page.locator(".words span").allInnerTexts();
   await until(async () => requests.length === 1, "the Mac is asked");
   check(requests[0].words.join(" ") === words.join(" "), `both screens show the same words (${words.join(" ")})`);
@@ -208,21 +229,80 @@ try {
   await page.locator(".now .ui-list-row").first().waitFor();
   check(true, "a reload reconnects without pairing again");
 
+  // A second Mac, from its link pasted into Add a Mac: no terminals there, so Now is empty.
+  const sock2 = path.join(home2, "core.sock");
+  await until(async () => fs.existsSync(sock2), "the second Mac's core starts");
+  mac2 = await connect(sock2);
+  const call2 = (m, p = {}) => mac2.client.call(m, p);
+  await until(async () => (await call2("remote.status")).state === "online", "the second Mac is ready");
+  const requests2 = [];
+  mac2.client.onEvent((e) => e.type === "remote.pairRequest" && requests2.push(e.request));
+  await call2("events.subscribe", { types: ["remote.pairRequest"] });
+  const { url: url2 } = await call2("remote.pair", { scope: "view" });
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("dialog").locator(".ui-list-row", { hasText: "Add a Mac" }).click();
+  await page.getByText("Add a Mac").first().waitFor();
+  await page.getByRole("button", { name: "Paste Link" }).click();
+  await page.getByLabel("Pairing link").fill("https://example.com/not-a-code");
+  await page.getByRole("button", { name: "Pair", exact: true }).click();
+  await page.getByText("That isn't a cmd pairing link.").waitFor();
+  check(true, "a pasted link that isn't cmd's says so");
+  await page.getByLabel("Pairing link").fill(url2);
+  await page.getByRole("button", { name: "Pair", exact: true }).click();
+  if (direct) {
+    // Direct: the second Mac serves its own client and takes sockets only from it, so the code opens there.
+    await page.getByText("This code is for cmd at").waitFor();
+    check(requests2.length === 0, "a code for another Mac's address says so instead of pairing here");
+    await page.getByRole("button", { name: "Open There" }).click();
+    await page.getByRole("button", { name: "Pair This Browser" }).click();
+  }
+  await page.getByText("Approve on your Mac").waitFor();
+  await until(async () => requests2.length === 1, "the second Mac is asked");
+  await call2("remote.approve", { requestId: requests2[0].requestId, allow: true, scope: "view" });
+  await page.locator(".now .ui-empty").waitFor();
+  check((await page.locator(".now .ui-list-row").count()) === 0, "a pasted link pairs a second Mac and switches to it");
+  await page.reload();
+  await page.locator(".now .ui-empty").waitFor();
+  check((await page.locator(".now .ui-list-row").count()) === 0, "a reload opens the Mac used last");
+  if (direct) {
+    // Each address keeps its own pairings: back to the first Mac's.
+    await page.goto(client);
+    await page.locator(".now .ui-list-row").first().waitFor();
+    check(true, "the first Mac's address still opens the first Mac");
+  } else {
+    await page.getByRole("button", { name: "Settings" }).click();
+    await until(async () => (await page.locator(".macs .ui-list-row.sel").count()) === 1 && (await page.locator(".macs .ui-list-row").count()) === 3, "Settings lists both Macs, this one ticked");
+    await shot("5-macs");
+    await page.locator(".macs .ui-list-row:not(.sel)").first().click();
+    await page.locator(".now .ui-list-row").first().waitFor();
+    check(true, "switching Macs in Settings opens the other");
+  }
+
   const [device] = await call("remote.devices");
   await call("remote.revoke", { id: device.id });
   await page.reload();
   await page.getByText("Not paired anymore").waitFor();
   check(true, "an unpaired phone says so");
   await shot("4-revoked");
+  await page.getByRole("button", { name: "Forget This Mac" }).click();
+  if (direct) {
+    await page.getByText("Pair with Your Mac").waitFor();
+    check(true, "forgetting the only Mac at this address asks to pair again");
+  } else {
+    await page.locator(".now .ui-empty").waitFor();
+    check((await page.locator(".now .ui-list-row").count()) === 0, "forgetting it opens the other Mac");
+  }
   console.log(`screenshots: ${shots}/web${direct ? "-direct" : ""}-*.png`);
 } catch (err) {
   console.log(err.message);
   process.exitCode = 1;
 } finally {
   mac?.close();
+  mac2?.close();
   await browser.close();
   await web?.close();
   await stopCore(home, { terminals: true });
+  await stopCore(home2, { terminals: true });
   await relay?.close();
 }
 process.exit(process.exitCode ?? 0);

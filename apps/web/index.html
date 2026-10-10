@@ -6,7 +6,18 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="theme-color" content="#1e1e1e" />
     <meta name="referrer" content="no-referrer" />
+    <!-- Installable from the home screen; the bar colours match .bar in src/styles.css. -->
+    <meta name="theme-color" content="#252527" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ebebee" media="(prefers-color-scheme: light)" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="cmd" />
+    <!-- default, not black-translucent: that one draws white status-bar text, unreadable on the light theme's bar. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>cmd</title>
   </head>
   <body>

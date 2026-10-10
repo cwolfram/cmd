@@ -233,6 +233,9 @@ describe("DirectListener", () => {
     fs.mkdirSync(path.join(site, ".hidden"), { recursive: true });
     fs.writeFileSync(path.join(site, "index.html"), "<!doctype html><title>app</title>");
     fs.writeFileSync(path.join(site, "assets", "a.js"), "a()");
+    fs.writeFileSync(path.join(site, "manifest.webmanifest"), '{"name":"cmd"}');
+    fs.writeFileSync(path.join(site, "apple-touch-icon.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    fs.writeFileSync(path.join(site, "favicon.svg"), "<svg/>");
     fs.writeFileSync(path.join(site, ".hidden", "b.js"), "hidden");
     fs.writeFileSync(path.join(root, "outside.txt"), "outside");
   });
@@ -303,6 +306,31 @@ describe("DirectListener", () => {
     const head = await fetch(`http://${url}/assets/a.js`, { method: "HEAD" });
     expect(head.headers.get("content-length")).toBe("3");
     expect(await head.text()).toBe("");
+  });
+
+  it("serves the manifest and icons as themselves, revalidated since their names never change", async () => {
+    const { url } = await listen();
+    for (const [p, type] of [
+      ["/manifest.webmanifest", "application/manifest+json"],
+      ["/apple-touch-icon.png", "image/png"],
+      ["/favicon.svg", "image/svg+xml"],
+    ]) {
+      const res = await fetch(`http://${url}${p}`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe(type);
+      expect(res.headers.get("cache-control")).toBe("no-cache");
+      expect(await res.text()).not.toContain("<title>app</title>");
+    }
+  });
+
+  it("lets the page install, show its icons and read its camera, and nothing more", async () => {
+    const { url } = await listen();
+    const res = await fetch(`http://${url}/`);
+    const csp = Object.fromEntries(res.headers.get("content-security-policy")!.split(";").map((d) => d.trim().split(/\s+(.*)/).slice(0, 2)));
+    expect(csp).toMatchObject({ "default-src": "'none'", "manifest-src": "'self'", "img-src": "'self' data:", "script-src": "'self'", "connect-src": "'self'" });
+    // srcObject loads no URL, so media-src stays 'none'; and no Permissions-Policy turns the camera off.
+    expect(csp["media-src"]).toBeUndefined();
+    expect(res.headers.get("permissions-policy")).toBeNull();
   });
 
   it("never leaves the build or serves dot folders", async () => {

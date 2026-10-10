@@ -62,7 +62,7 @@ interface Transport extends EventEmitter<{ state; open: [channel, ip, user?]; da
 - `RelayLink` (relay mode) implements it as is; `endpoint()` is `remote.relay` + `remote.client`.
 - `DirectListener` (direct modes):
   - `node:http` + `ws` on `127.0.0.1:remote.port` (a fixed default per instance, so release and dev don't collide and a persisted Serve config stays valid).
-  - Serves the web client's static build with the headers from `apps/web/public/.htaccess`, `connect-src 'self'`; every non-file path is `index.html`.
+  - Serves the web client's static build with the headers from `apps/web/public/.htaccess`, `connect-src 'self'`; every non-file path is `index.html`. Hashed `/assets/` are immutable; the page, manifest and icons are `no-cache` with an ETag.
   - Upgrades `/r/<route>` only, only with `Origin` equal to the adapter's public origin; same limits as the relay (`RELAY_LIMITS`: frame size, channels, connects per minute, pings, idle close).
   - IP from the rightmost `X-Forwarded-For` entry; who's connecting from the adapter's `identify(req)` (Tailscale: `Tailscale-User-Login`, which Serve sets and strips from clients), kept as a hint on the session (`RemoteSession.user`), never auth.
   - Its route is a random id kept in `HostKeys` like a relay's; `endpoint()` comes from the adapter.

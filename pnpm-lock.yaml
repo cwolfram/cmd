@@ -172,6 +172,9 @@ importers:
       '@xterm/xterm':
         specifier: ^6.0.0
         version: 6.0.0
+      jsqr:
+        specifier: ^1.4.0
+        version: 1.4.0
       react:
         specifier: ^19.3.0
         version: 19.3.0
@@ -188,6 +191,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.2.0(vite@7.3.6(@types/node@24.19.0)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1))
+      uqr:
+        specifier: ^0.1.3
+        version: 0.1.3
       vite:
         specifier: ^7.0.0
         version: 7.3.6(@types/node@24.19.0)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
@@ -2296,6 +2302,9 @@ packages:
 
   jsonfile@6.2.1:
     resolution: {integrity: sha512-zwOTdL3rFQ/lRdBnntKVOX6k5cKJwEc1HdilT71BWEu7J41gXIB2MRp+vxduPSwZJPWBxEzv4yH1wYLJGUHX4Q==}
+
+  jsqr@1.4.0:
+    resolution: {integrity: sha512-dxLob7q65Xg2DvstYkRpkYtmKm2sPJ9oFhrhmudT1dZvNFFTlroai3AWSpLey/w5vMcLBXRgOJsbXpdN9HzU/A==}
 
   jzz@1.9.6:
     resolution: {integrity: sha512-J7ENLhXwfm2BNDKRUrL8eKtPhUS/CtMBpiafxQHDBcOWSocLhearDKEdh+ylnZFcr5OXWTed0gj6l/txeQA9vg==}
@@ -5330,6 +5339,8 @@ snapshots:
       universalify: 2.0.1
     optionalDependencies:
       graceful-fs: 4.2.11
+
+  jsqr@1.4.0: {}
 
   jzz@1.9.6:
     dependencies:

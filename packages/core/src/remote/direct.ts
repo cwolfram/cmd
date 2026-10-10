@@ -36,7 +36,12 @@ const MAX_TRACKED_IPS = 10_000;
 /** Most bytes of web client held in memory; files past it are left out (and answered with the app). */
 const MAX_WEB_BYTES = 64 * 1024 * 1024;
 
-/** apps/web/public/.htaccess, with WebSockets to this origin only. */
+/**
+ * apps/web/public/.htaccess, with WebSockets to this origin only. No media-src
+ * (so 'none'): the QR scanner's <video> plays its camera through srcObject,
+ * which loads no URL, and a canvas reads its frames (both checked in Chromium).
+ * No Permissions-Policy either, so the camera stays the page's to ask for.
+ */
 const HEADERS: Record<string, string> = {
   "content-security-policy":
     "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; font-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
@@ -71,6 +76,7 @@ export interface DirectListenerOptions {
 }
 
 interface WebFile {
+  path: string;
   body: Buffer;
   type: string;
   etag: string;
@@ -268,7 +274,9 @@ export class DirectListener extends EventEmitter<TransportEvents> implements Tra
     } catch {
       // a malformed path: the app
     }
-    const headers = { ...HEADERS, etag: file.etag, "cache-control": file === index ? "no-cache" : "public, max-age=31536000, immutable" };
+    // Only Vite's hashed /assets/ never change; the page, manifest and icons keep their names, so they revalidate.
+    const immutable = file !== index && file.path.startsWith("/assets/");
+    const headers = { ...HEADERS, etag: file.etag, "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache" };
     if (req.headers["if-none-match"]?.split(",").some((t) => t.trim() === file.etag)) return void res.writeHead(304, headers).end();
     res.writeHead(200, { ...headers, "content-type": file.type, "content-length": file.body.length });
     res.end(req.method === "HEAD" ? undefined : file.body);
@@ -297,7 +305,7 @@ async function loadWebRoot(dir: string): Promise<WebRoot> {
       }
       total += body.length;
       const etag = `"${createHash("sha1").update(body).digest("base64url")}"`;
-      files.set(`/${r}`, { body, type: TYPES[path.extname(e.name)] ?? "application/octet-stream", etag });
+      files.set(`/${r}`, { path: `/${r}`, body, type: TYPES[path.extname(e.name)] ?? "application/octet-stream", etag });
     }
   };
   await walk("");

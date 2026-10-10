@@ -25,6 +25,27 @@ body { background: var(--bg); color: var(--text); font: var(--text-base) / 1.35 
 .note { margin: 0; font-size: var(--text-sm); color: var(--text-dim); }
 .note.padded { padding: var(--space-lg) var(--inset) var(--space-xl); }
 
+/* Pairing (Pairing.tsx): Add a Mac's buttons and paste field in a column; a
+   pairing link's choices (this browser, or the app) as cards. */
+.pair-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-md); width: min(100%, calc(var(--control-h-lg) * 8)); }
+.paste { display: flex; gap: var(--space-sm); }
+.paste > .ui-field { flex: 1; min-width: 0; }
+.choices { display: flex; flex-direction: column; gap: var(--space-lg); width: min(100%, calc(var(--control-h-lg) * 9)); text-align: left; }
+.choice { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--bg-sidebar); }
+.choice h2 { margin: 0; font-size: var(--text-md); font-weight: 600; color: var(--text); }
+.choice p { margin: 0; color: var(--text-dim); }
+.choice > .ui-button { margin-top: var(--space-xs); }
+.steps { margin: 0; padding-left: var(--space-xl); display: flex; flex-direction: column; gap: var(--space-xs); color: var(--text); }
+.steps .sf { vertical-align: text-bottom; color: var(--accent); }
+
+/* The camera, full screen, with a square to aim at and the hint under it. */
+.scanner { position: fixed; inset: 0; z-index: 30; background: var(--bg); }
+.scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scanner-frame { position: absolute; left: 50%; top: 42%; width: 68vw; max-width: calc(var(--control-h-lg) * 7); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: var(--radius-xl); box-shadow: 0 0 0 100vmax var(--scrim); outline: 2px solid var(--on-accent); }
+.scanner-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); padding: var(--space-lg) var(--space-2xl) calc(env(safe-area-inset-bottom) + var(--space-xl)); text-align: center; }
+.scanner-hint { color: var(--on-accent); font-size: var(--text-md); }
+.scanner-hint.wrong { color: var(--warning); }
+
 /* ── Now ─────────────────────────────────────────── */
 
 .filters { flex: none; display: flex; gap: var(--space-md); padding: var(--space-md) var(--inset) var(--space-2xs); overflow-x: auto; scrollbar-width: none; }

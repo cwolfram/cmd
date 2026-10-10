@@ -81,8 +81,11 @@ import {
   ArrowUp,
   ClipboardPaste,
   CornerDownLeft,
+  Laptop,
   Lock,
   Maximize2,
+  ScanQrCode,
+  Share,
   WifiOff,
   Zap,
 } from "lucide-static";
@@ -171,8 +174,11 @@ const LUCIDE: Record<string, string> = {
   "arrow.up.left.and.arrow.down.right": Maximize2,
   bolt: Zap,
   "doc.on.clipboard": ClipboardPaste,
+  laptopcomputer: Laptop,
   lock: Lock,
+  "qrcode.viewfinder": ScanQrCode,
   return: CornerDownLeft,
+  "square.and.arrow.up": Share,
   "wifi.slash": WifiOff,
 };
 
