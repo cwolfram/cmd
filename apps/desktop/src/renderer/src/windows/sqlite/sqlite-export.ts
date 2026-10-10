@@ -3,7 +3,7 @@
 // Shared by the window's menu (sqlite.tsx) and the view's table menu.
 
 import { toast } from "@cmd/ui";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 
 const dirOf = (p: string) => p.split("/").slice(0, -1).join("/") || "/";
 

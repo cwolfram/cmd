@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { AI_PROVIDER_IDS, AI_PROVIDERS, type AiProvider, type AiProviderStatus, type AiStatus } from "@cmd/protocol";
 import { FormRow, LinkButton, Segmented, SecretField, type SecretStatus } from "@cmd/ui";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 import { useAiStatus } from "./status.ts";
 
 /** What a provider's key gets you, or what is wrong with it. */

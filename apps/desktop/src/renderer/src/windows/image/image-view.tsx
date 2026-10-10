@@ -10,13 +10,13 @@
 import { Button, Picture, ToolbarButton, ToolbarMenu, ToolbarSeparator, ToolbarSpacer, ToolbarText, View, ViewState, Viewport, WindowToolbar } from "@cmd/ui";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { FileEntry } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { formatBytes } from "../../model.ts";
-import { onFsChanged } from "../../store.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { formatBytes } from "../../lib/model.ts";
+import { onFsChanged } from "../../lib/store.ts";
 import { fileUrl } from "../../pdf/lib.ts";
-import { registerWindowActions, setWindowStatus } from "../../windowActions.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
 import { copyImageFile } from "./register.tsx";
 

@@ -3,7 +3,7 @@
 // terminals change their titles like working agents, during a flood of output and
 // while scrolling the scrollback. Main-thread time comes from CDP
 // Performance.getMetrics, CPU from app.getAppMetrics(), renders and store events
-// from window.__cmdPerf (renderer/src/perf.ts), frame times from a rAF probe.
+// from window.__cmdPerf (renderer/src/lib/perf.ts), frame times from a rAF probe.
 // usage: pnpm build && node e2e/perf.mjs [--label NAME]
 // Results are appended to .cmd-dev/perf/results.jsonl.
 import fs from "node:fs";

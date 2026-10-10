@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropOrder, focusLayout, gridLayout, stripLayout } from "../src/renderer/src/layouts.ts";
+import { dropOrder, focusLayout, gridLayout, stripLayout } from "../src/renderer/src/shell/board/layouts.ts";
 
 const vp = { w: 1000, h: 600 };
 const even = { x: 8, y: 8, gap: 8 };

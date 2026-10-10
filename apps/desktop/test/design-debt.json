@@ -3,7 +3,7 @@
     "radius": 1,
     "spacing": 1
   },
-  "apps/desktop/src/renderer/src/components/library.css": {
+  "apps/desktop/src/renderer/src/shell/library.css": {
     "color": 2,
     "fontSize": 1
   },

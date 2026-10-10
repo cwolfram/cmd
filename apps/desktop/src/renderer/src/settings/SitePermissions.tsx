@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { Button, Callout, EmptyState, FormActions, FormRow, FormSection, LinkButton } from "@cmd/ui";
 import { ASKED, type SiteDecisions, type SitePermission } from "../../../main/web-policy.ts";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 const NAMES: Record<SitePermission, string> = {
   media: "Camera and microphone",

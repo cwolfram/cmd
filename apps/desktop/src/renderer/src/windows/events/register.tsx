@@ -1,9 +1,9 @@
 // Event Stream (renderer half): pause, clear, and which classes of events show.
 
 import type { AppWindow } from "@cmd/protocol";
-import type { MenuEntry } from "../../context.ts";
+import type { MenuEntry } from "../../lib/context.ts";
 import { clearEventStream, eventClasses, EventsView } from "./EventsView.tsx";
-import { setWidgetState } from "../../widgets.ts";
+import { setWidgetState } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 // Event Stream: pause, clear, and which classes of events show (the core's classes, data.explain).

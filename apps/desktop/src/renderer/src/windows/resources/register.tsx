@@ -1,8 +1,8 @@
 // Resources (renderer half): a list widget of what terminals use, scoped, with Open Task Manager.
 
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { ResourcesView } from "./ResourcesView.tsx";
-import { scopeLabel, scoped } from "../../widgets.ts";
+import { scopeLabel, scoped } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 const resourcesMenu = scoped(() => [{ label: "Open Task Manager", run: () => cmd.openTaskManager() }]);

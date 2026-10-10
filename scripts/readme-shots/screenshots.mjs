@@ -135,7 +135,7 @@ for (const name of ["working", "ask", "done"]) {
   agents[name] = pane.id;
 }
 const shell = await call("pane.create", { cwd: root, command: "htop" });
-const editor = await call("window.open", { kind: "text", input: { path: path.join(root, "apps/desktop/src/renderer/src/canvas.ts") } });
+const editor = await call("window.open", { kind: "text", input: { path: path.join(root, "apps/desktop/src/renderer/src/shell/board/canvas.ts") } });
 const browserWin = await call("window.open", { kind: "browser", input: { url: pageUrl } });
 
 await until(async () => {

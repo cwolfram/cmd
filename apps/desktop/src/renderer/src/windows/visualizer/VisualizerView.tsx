@@ -7,11 +7,11 @@
 
 import { useEffect, useRef } from "react";
 import type { AppWindow } from "@cmd/protocol";
-import { audioContext, publishedSources, tap } from "../../audio.ts";
-import type { MenuEntry } from "../../context.ts";
-import { handleEmbedMessage } from "../../embed.ts";
-import { setWidgetState } from "../../widgets.ts";
-import { setWindowStatus } from "../../windowActions.ts";
+import { audioContext, publishedSources, tap } from "../../lib/audio.ts";
+import type { MenuEntry } from "../../lib/context.ts";
+import { handleEmbedMessage } from "../../lib/embed.ts";
+import { setWidgetState } from "../../lib/widgets.ts";
+import { setWindowStatus } from "../../lib/windowActions.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { Stage } from "@cmd/ui";
 

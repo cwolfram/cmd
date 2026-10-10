@@ -3,10 +3,10 @@
 // each runs in the same terminal the same way and the last one is remembered.
 
 import type { ActionsList, AppWindow, GitPlace, WorkspaceId, WindowId, WorkspaceAction } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { addWidget, selectPane } from "../../actions.ts";
-import { getWorkspaceView, getState } from "../../store.ts";
-import { goTo } from "../../widgets.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { addWidget, selectPane } from "../../lib/actions.ts";
+import { getWorkspaceView, getState } from "../../lib/store.ts";
+import { goTo } from "../../lib/widgets.ts";
 
 /** The last action run, for Run Last Action Again; never a risky one (that asks each time). */
 let last: { root: string; action: WorkspaceAction; workspaceId: WorkspaceId } | null = null;

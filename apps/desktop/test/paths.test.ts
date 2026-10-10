@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { homeOf, shortPath } from "../src/renderer/src/model.ts";
+import { homeOf, shortPath } from "../src/renderer/src/lib/model.ts";
 
 describe("shortPath", () => {
   afterEach(() => delete (globalThis as { cmd?: unknown }).cmd);

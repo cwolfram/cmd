@@ -5,7 +5,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { AiStatus } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 let status: AiStatus | null = null;
 const listeners = new Set<() => void>();

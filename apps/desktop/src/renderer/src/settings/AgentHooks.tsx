@@ -5,8 +5,8 @@
 import { useEffect, useState } from "react";
 import type { HookTarget } from "@cmd/protocol";
 import { Button, FormRow, FormSection } from "@cmd/ui";
-import { cmd } from "../bridge.ts";
-import { shortPath } from "../model.ts";
+import { cmd } from "../lib/bridge.ts";
+import { shortPath } from "../lib/model.ts";
 
 const STATE: Record<HookTarget["state"], { text: string; tone: "accent" | "warning" | "dim" }> = {
   installed: { text: "Installed.", tone: "dim" },

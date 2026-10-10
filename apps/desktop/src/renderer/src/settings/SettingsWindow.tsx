@@ -30,8 +30,8 @@ import {
 } from "@cmd/protocol";
 import { COMMANDS, COMMAND_BY_ID, DEFAULT_KEYBINDINGS, norm, prettyAccelerator, type CommandSpec } from "../../../shared/commands.ts";
 import { IndexRing } from "../components/IndexRing.tsx";
-import { acceleratorOf, usableShortcut, useKeybindings } from "../keybindings.ts";
-import { cmd } from "../bridge.ts";
+import { acceleratorOf, usableShortcut, useKeybindings } from "../lib/keybindings.ts";
+import { cmd } from "../lib/bridge.ts";
 import { Button, Callout, EmptyState, FormActions, FormRow, FormSection, IconButton, Inline, List, ListRow, NumberField, Page, ResetButton, SearchField, SecretField, Segmented, Select, ShortcutField, Spinner, Split, Stack, StatusLine, Switch, TextField, TitleBand, View } from "@cmd/ui";
 import { useSettings } from "./useSettings.ts";
 import { AiKeyRow, AiProviderChoice } from "../ai/Providers.tsx";

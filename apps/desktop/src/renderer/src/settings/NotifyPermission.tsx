@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Button, FormRow, FormSection } from "@cmd/ui";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 type Permission = Awaited<ReturnType<typeof cmd.notifyPermission>>;
 

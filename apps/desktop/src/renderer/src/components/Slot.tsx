@@ -12,7 +12,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { StatusDot, type DotState, MOTION } from "@cmd/ui";
 import { ICON, Symbol } from "./Symbol.tsx";
-import { countRender } from "../perf.ts";
+import { countRender } from "../lib/perf.ts";
 
 const DWELL = 600;
 const DELAY = 200;

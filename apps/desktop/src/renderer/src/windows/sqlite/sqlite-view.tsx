@@ -10,12 +10,12 @@ import { Button, Callout, CodeBlock, DataGrid, Hide, KeyValue, List, ListRow, Li
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SqliteResult, SqliteSchema, SqliteTable, SqliteValue } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { formatBytes } from "../../model.ts";
-import { onFsChanged } from "../../store.ts";
-import { registerWindowActions, setWindowStatus } from "../../windowActions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { formatBytes } from "../../lib/model.ts";
+import { onFsChanged } from "../../lib/store.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
 import { exportTableCsv } from "./sqlite-export.ts";
 

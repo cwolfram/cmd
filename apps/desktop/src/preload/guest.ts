@@ -2,7 +2,7 @@
 // process (will-attach-webview). It runs in an isolated world, so the page can
 // neither see nor tamper with it, and has no Node or app API: it only reports,
 // through Electron's host channel, the input the app can't see for an embedded
-// page (renderer/src/embed.ts): presses, so the window gets selected. Sideways
+// page (renderer/src/lib/embed.ts): presses, so the window gets selected. Sideways
 // scrolls need nothing: Chromium bubbles what the page doesn't use into the
 // strip. No wheel listener here, so the page scrolls on its compositor thread.
 

@@ -2,7 +2,7 @@
 
 import type { AppWindow } from "@cmd/protocol";
 import { JournalView } from "./JournalView.tsx";
-import { scopeMenu, scopeOf, scopeLabel } from "../../widgets.ts";
+import { scopeMenu, scopeOf, scopeLabel } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 const journalMenu = (w: AppWindow) => scopeMenu(w.id, scopeOf(w.state.scope));

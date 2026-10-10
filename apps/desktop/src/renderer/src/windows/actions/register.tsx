@@ -1,13 +1,13 @@
 // Workspace Actions (renderer half): the title bar names the folder or worktree they're for, its menu picks which.
 
 import { ACTIONS_TITLE, type AppWindow } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import type { MenuEntry } from "../../context.ts";
-import { shortPath } from "../../model.ts";
+import { cmd } from "../../lib/bridge.ts";
+import type { MenuEntry } from "../../lib/context.ts";
+import { shortPath } from "../../lib/model.ts";
 import { ActionsView } from "./ActionsView.tsx";
 import { actionsRootOf, lastLists } from "./workspaceActions.ts";
-import { getState } from "../../store.ts";
-import { setWidgetState } from "../../widgets.ts";
+import { getState } from "../../lib/store.ts";
+import { setWidgetState } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 // Workspace Actions: the title bar names the folder (or worktree) they're for; its

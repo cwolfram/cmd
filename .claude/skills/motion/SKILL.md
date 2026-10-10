@@ -14,8 +14,8 @@ The rules, the engine and the harness are written up in `docs/37-motion.md`; rea
 | The vocabulary: the glide's spring and clock (`glide`, `glideNow`, `spring`, `tween`), the named timings (`MOTION`: exit, change, slow, glide; `timing()` for Web Animations), `reducedMotion`, `slide`, `usePresence`/`usePresentValue`, `useFlip` | `packages/ui/src/motion.ts` (`@cmd/ui`) |
 | The same timings for CSS | `--dur-fast`, `--dur`, `--dur-slow`, `--glide-dur`, `--ease`, `--ease-exit`, `--glide` in `packages/ui/src/tokens.css`; `packages/ui/test/motion.test.ts` keeps them equal to `MOTION` |
 | Coming and going in CSS | `[data-motion="pop" \| "fade" \| "reveal" \| "rise"]` and `[data-closing]` in `packages/ui/src/components.css` |
-| Windows: position and size on one spring, content held at its final size, remaps when the track jumps, ghosts on close, moves to and from sidebars | `apps/desktop/src/renderer/src/motion.ts` (`TileMotion`, `departed`/`arrived`, `ghost`) |
-| Where windows go each render, the strip's scroll, the canvas camera | `components/WindowsView.tsx` (the motion layout effect; `jumpScroll`/`jumpCamera` for any instant move of the track) |
+| Windows: position and size on one spring, content held at its final size, remaps when the track jumps, ghosts on close, moves to and from sidebars | `apps/desktop/src/renderer/src/shell/board/motion.ts` (`TileMotion`, `departed`/`arrived`, `ghost`) |
+| Where windows go each render, the strip's scroll, the canvas camera | `shell/board/WindowsView.tsx` (the motion layout effect; `jumpScroll`/`jumpCamera` for any instant move of the track) |
 | The rules, enforced | `apps/desktop/test/motion-css.test.ts`: durations from tokens, no layout transitions but the listed ones, no transition on a window's geometry |
 | Workspace switches | `store.ts` `switchWorkspace` (a View Transition scoped to `.stage`) and its CSS in `styles.css` |
 | The harness | `e2e/motion.mjs` (`pnpm e2e:motion`) |

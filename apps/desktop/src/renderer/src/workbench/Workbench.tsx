@@ -7,13 +7,13 @@ import { useEffect, useState, type ComponentType } from "react";
 import { ErrorBoundary, Segmented, Select, Spacer, Toolbar } from "@cmd/ui";
 import { allThemes, themeFor } from "@cmd/ui/themes";
 import type { SettingsSnapshot } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
-import { applyThemeSettings, pinTheme } from "../theme.ts";
-import { applyLookSettings } from "../look.ts";
+import { cmd } from "../lib/bridge.ts";
+import { applyThemeSettings, pinTheme } from "../lib/theme.ts";
+import { applyLookSettings } from "../lib/look.ts";
 
 type Variants = Record<string, ComponentType>;
 const files = import.meta.glob<Variants>("../**/*.story.tsx");
-/** "components/Feedback.story.tsx" → "feedback". */
+/** "shell/Feedback.story.tsx" → "feedback". */
 const STORIES = Object.keys(files)
   .map((path) => ({ id: path.split("/").pop()!.replace(".story.tsx", "").toLowerCase(), path }))
   .sort((a, b) => a.id.localeCompare(b.id));

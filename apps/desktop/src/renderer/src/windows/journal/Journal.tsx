@@ -9,7 +9,7 @@
 import { Badge, Button, Chip, IconButton, Inline, Ribbon, Spinner, Stack, StatusLine, Text, Timeline, TimelineEntry, View, type Tone } from "@cmd/ui";
 import { useState, type ReactNode } from "react";
 import type { JournalDay, JournalEntry, JournalEntryKind, JournalOutcome, JournalWeek } from "@cmd/protocol";
-import { projectHue } from "../../model.ts";
+import { projectHue } from "../../lib/model.ts";
 
 /** Each kind's colour on the rail and the ribbon; the project is the chip. */
 const KIND: Record<JournalEntryKind, { label: string; hue: number }> = {

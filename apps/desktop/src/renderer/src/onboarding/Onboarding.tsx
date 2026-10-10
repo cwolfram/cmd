@@ -6,7 +6,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { Button, Dialog, PageDots, SheetHeader } from "@cmd/ui";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 import { aiStatus, useAiStatus } from "../ai/status.ts";
 import { STEPS, stepById, type OnboardingStep } from "./steps.tsx";
 import { AppIcon } from "./AppIcon.tsx";

@@ -7,8 +7,8 @@
 import { Badge, Button, IconButton, Inline, ListRow, LiveBadge, Popover, Separator, Spacer, Stack, Text, useTooltip } from "@cmd/ui";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { RemoteStatus } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
-import { getState, useStoreValue } from "../store.ts";
+import { cmd } from "../lib/bridge.ts";
+import { getState, useStoreValue } from "../lib/store.ts";
 import { ICON, Symbol } from "./Symbol.tsx";
 import { scopeLabel } from "./PairPrompt.tsx";
 

@@ -13,11 +13,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { WebviewTag } from "electron";
 import type { AppWindow } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { Button, PAGE_SCROLLBAR_CSS, scrollbarScript, ToolbarAddressField, ToolbarButton, ToolbarGroup, View, ViewState, WebStage, WindowToolbar, type FindResults } from "@cmd/ui";
-import { registerWindowActions, setWindowStatus } from "../../windowActions.ts";
-import { useFind } from "../../find.tsx";
-import { handleEmbedMessage } from "../../embed.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
+import { useFind } from "../../lib/find.tsx";
+import { handleEmbedMessage } from "../../lib/embed.ts";
 import { deviceById, type Device } from "./devices.ts";
 
 /** Room around an emulated device: sides and bottom, and the top (its caption). */

@@ -6,7 +6,7 @@
 
 import { Dial, ToolbarButton, ToolbarSegmented, ToolbarSpacer, View, WindowToolbar } from "@cmd/ui";
 import { useEffect, useState } from "react";
-import { setWidgetState, useWidgetStatus } from "../../widgets.ts";
+import { setWidgetState, useWidgetStatus } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 
 const PRESETS = [5, 10, 15, 25, 45, 60];

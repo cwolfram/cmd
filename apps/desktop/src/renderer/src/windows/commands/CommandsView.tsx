@@ -7,12 +7,12 @@ import { Chip, EmptyState, IconButton, ListRow, ListSection, ListValue, Panel, P
 import { useEffect, useMemo, useState } from "react";
 import type { CommandRun } from "@cmd/protocol";
 import { commandRunOf } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { copy, newTerminalIn } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { whereOf } from "../../model.ts";
-import { useStore, subscribeData } from "../../store.ts";
-import { durationText, goTo, scopeOf, useWidgetStatus } from "../../widgets.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy, newTerminalIn } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { whereOf } from "../../lib/model.ts";
+import { useStore, subscribeData } from "../../lib/store.ts";
+import { durationText, goTo, scopeOf, useWidgetStatus } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { shortAgo } from "../../components/SidebarRows.tsx";
 

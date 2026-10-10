@@ -28,18 +28,18 @@
 import { Callout, toast, ToolbarButton, ToolbarPath, ToolbarSpacer, Tree, TreeHeader, TreeRename, TreeRow, View, ViewState, WindowToolbar, type TreeSort, type TreeTone } from "@cmd/ui";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AppWindow, FileEntry, GitFile, GitFileState, GitStatus } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { copy, newTerminalIn, openPath, selectPane } from "../../actions.ts";
-import { showContextMenu, type MenuEntry } from "../../context.ts";
-import { formatBytes, homeOf, shortPath, windowsUsing } from "../../model.ts";
-import { getState, onFsChanged, usePersisted, useStoreValue } from "../../store.ts";
-import { registerDropTarget } from "../../drops.ts";
-import { dragFiles } from "../../drags.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy, newTerminalIn, openPath, selectPane } from "../../lib/actions.ts";
+import { showContextMenu, type MenuEntry } from "../../lib/context.ts";
+import { formatBytes, homeOf, shortPath, windowsUsing } from "../../lib/model.ts";
+import { getState, onFsChanged, usePersisted, useStoreValue } from "../../lib/store.ts";
+import { registerDropTarget } from "../../lib/drops.ts";
+import { dragFiles } from "../../lib/drags.ts";
 import { ICON, Symbol } from "../../components/Symbol.tsx";
 import { PlacementContext } from "../registry.ts";
-import { registerWindowActions } from "../../windowActions.ts";
-import { useFind } from "../../find.tsx";
-import { domFindable } from "../../find-dom.ts";
+import { registerWindowActions } from "../../lib/windowActions.ts";
+import { useFind } from "../../lib/find.tsx";
+import { domFindable } from "../../lib/find-dom.ts";
 
 const iconFor = (e: FileEntry) =>
   e.kind === "dir"

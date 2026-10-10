@@ -4,8 +4,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { WidgetEntry } from "@cmd/protocol";
 
-vi.mock("../src/renderer/src/actions.ts", () => ({ openPath: vi.fn() }));
-const { magicItem, newItems, openableTarget, openItems } = await import("../src/renderer/src/newItems.ts");
+vi.mock("../src/renderer/src/lib/actions.ts", () => ({ openPath: vi.fn() }));
+const { magicItem, newItems, openableTarget, openItems } = await import("../src/renderer/src/shell/newItems.ts");
 const { platformDefaults } = await import("../src/shared/commands.ts");
 
 const MAC = platformDefaults(true);

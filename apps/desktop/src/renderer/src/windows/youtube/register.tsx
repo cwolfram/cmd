@@ -1,7 +1,7 @@
 // YouTube windows (renderer half): Change Video…, Fill Window and the video's link.
 
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
 import { watchUrl, YouTubeView } from "./YouTubeView.tsx";
 import { registerWindowView, stateStr } from "../registry.ts";
 

@@ -10,7 +10,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { renderSVG } from "uqr";
 import type { RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemoteScope, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 import { PairPrompt, scopeLabel } from "../components/PairPrompt.tsx";
 import { Button, Callout, Checklist, FormActions, FormRow, FormSection, Inline, Prose, QrCode, Segmented, Spinner, Stack, Switch, Text, type StepState } from "@cmd/ui";
 

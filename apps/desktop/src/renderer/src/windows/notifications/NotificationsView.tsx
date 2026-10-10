@@ -8,10 +8,10 @@
 import { EmptyState, ListRow, ListSection, ListValue, Panel, PanelBody, useFlip } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationOf, type AppNotification } from "@cmd/protocol";
-import { copy } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { subscribeData, useStore } from "../../store.ts";
-import { goTo, scopeOf } from "../../widgets.ts";
+import { copy } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { subscribeData, useStore } from "../../lib/store.ts";
+import { goTo, scopeOf } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { shortAgo } from "../../components/SidebarRows.tsx";
 

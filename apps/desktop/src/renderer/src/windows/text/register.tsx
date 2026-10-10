@@ -1,8 +1,8 @@
 // Text windows (renderer half): CodeMirror loads on first use; ⌘E to a preview where there is one, and the file's menu.
 
-import { cmd } from "../../bridge.ts";
-import { parentOf } from "../../model.ts";
-import { copy } from "../../actions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { parentOf } from "../../lib/model.ts";
+import { copy } from "../../lib/actions.ts";
 import { lazyView, registerWindowView, stateStr } from "../registry.ts";
 import { previewFor, togglePreview } from "../preview.ts";
 

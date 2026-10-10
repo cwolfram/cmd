@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dock, EMPTY_DOCKS } from "../src/renderer/src/docks.ts";
-import { PLACES_KEPT, putBack, rememberPlaces, type Layout } from "../src/renderer/src/reopen.ts";
+import { dock, EMPTY_DOCKS } from "../src/renderer/src/shell/board/docks.ts";
+import { PLACES_KEPT, putBack, rememberPlaces, type Layout } from "../src/renderer/src/shell/reopen.ts";
 
 const layout = (o: Partial<Layout> = {}): Layout => ({ order: [], docks: EMPTY_DOCKS, widths: {}, rects: {}, ...o });
 

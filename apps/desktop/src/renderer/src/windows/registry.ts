@@ -4,7 +4,7 @@
 
 import { createContext, createElement, lazy, Suspense, type ComponentType } from "react";
 import type { AppWindow, WindowTypeInfo } from "@cmd/protocol";
-import type { MenuEntry } from "../context.ts";
+import type { MenuEntry } from "../lib/context.ts";
 
 export interface WindowViewProps {
   win: AppWindow;

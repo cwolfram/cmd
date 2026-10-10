@@ -1,6 +1,6 @@
 // What's New after an update: the version the app last ran as, kept in the UI
 // state dir. The first app window that asks after a launch learns which version
-// to show changes since (renderer/src/components/WhatsNew.tsx); later windows
+// to show changes since (renderer/src/shell/WhatsNew.tsx); later windows
 // and later asks get nothing, so the sheet opens once, in one window.
 
 import fs from "node:fs";

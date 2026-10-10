@@ -4,9 +4,9 @@
 
 import { useSyncExternalStore } from "react";
 import { DEFAULT_SETTINGS, type RemoteStatus, type SearchStatus, type SecretsStatus, type SettingsSnapshot } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
-import { applyThemeSettings } from "../theme.ts";
-import { applyLookSettings } from "../look.ts";
+import { cmd } from "../lib/bridge.ts";
+import { applyThemeSettings } from "../lib/theme.ts";
+import { applyLookSettings } from "../lib/look.ts";
 
 let snapshot: SettingsSnapshot = { settings: DEFAULT_SETTINGS, overrides: [], errors: [], path: "" };
 let search: SearchStatus | null = null;

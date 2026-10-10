@@ -1,7 +1,7 @@
 // Timer widgets (renderer half): Start or Pause, and Reset; the core rings them.
 
 import { TimerView } from "./TimerView.tsx";
-import { setWidgetState } from "../../widgets.ts";
+import { setWidgetState } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 registerWindowView({

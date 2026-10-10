@@ -7,7 +7,7 @@ import { EditorSelection, type Extension } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { closeSearchPanel, findNext, findPrevious, openSearchPanel, replaceAll, replaceNext, search, searchPanelOpen, SearchQuery, setSearchQuery } from "@codemirror/search";
 import type { FindOptions, FindResults } from "@cmd/ui";
-import type { Findable } from "../find.tsx";
+import type { Findable } from "../lib/find.tsx";
 
 /** Counting stops here ("5000+"). */
 const COUNT_LIMIT = 5000;

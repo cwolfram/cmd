@@ -9,8 +9,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { WebviewTag } from "electron";
 import { Stack, Stage, Text, TextField, View } from "@cmd/ui";
-import { cmd } from "../../bridge.ts";
-import { handleEmbedMessage } from "../../embed.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { handleEmbedMessage } from "../../lib/embed.ts";
 import { POPUPS } from "../browser/BrowserView.tsx";
 import type { WindowViewProps } from "../registry.ts";
 

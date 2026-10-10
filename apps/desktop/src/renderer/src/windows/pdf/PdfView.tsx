@@ -8,12 +8,12 @@
 import { Button, Inline, TextField, View, ViewState, ToolbarButton, ToolbarField, ToolbarGroup, ToolbarMenu, ToolbarSeparator, ToolbarSpacer, ToolbarText, WindowToolbar, type FindOptions, type FindResults } from "@cmd/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { cmd } from "../../bridge.ts";
-import { openPath } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { onFsChanged } from "../../store.ts";
-import { registerWindowActions, setWindowStatus } from "../../windowActions.ts";
-import { useFind } from "../../find.tsx";
+import { cmd } from "../../lib/bridge.ts";
+import { openPath } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { onFsChanged } from "../../lib/store.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
+import { useFind } from "../../lib/find.tsx";
 import type { WindowViewProps } from "../registry.ts";
 import { ASSETS, EventBus, fileUrl, LinkTarget, pdfjs, PDFFindController, PDFLinkService, PDFViewer } from "../../pdf/lib.ts";
 import "../../pdf/pdf.css";

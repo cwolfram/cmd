@@ -5,7 +5,7 @@
 
 import type { AppWindow, WindowId, WorkspaceId } from "@cmd/protocol";
 import { useEffect, useState } from "react";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { AllSizes, RefWindow, type SizeName } from "../../reference/RefWindow.tsx";
 import { SqliteView } from "./sqlite-view.tsx";
 

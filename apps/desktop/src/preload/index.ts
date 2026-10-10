@@ -170,12 +170,12 @@ const api = {
   trashPath: (p: string): Promise<void> => ipcRenderer.invoke("trash-path", p),
   /** Trust, for good, the certificate a browser window's page was just refused for (main/certificates.ts). */
   allowCertificate: (url: string): Promise<boolean> => ipcRenderer.invoke("allow-certificate", url),
-  /** An uncaught error in this page (renderer/src/errors.ts). */
+  /** An uncaught error in this page (renderer/src/lib/errors.ts). */
   reportError: (r: { kind: string; message: string; stack: string | null }) => ipcRenderer.send("renderer-error", r),
   openSettingsFile: (p: string) => ipcRenderer.send("open-settings", p),
   openKeybindingsFile: () => ipcRenderer.send("open-keybindings"),
   openDocs: () => ipcRenderer.send("open-docs"),
-  /** Help → Send Feedback… (components/Feedback.tsx). */
+  /** Help → Send Feedback… (shell/Feedback.tsx). */
   feedbackStatus: (): Promise<FeedbackStatus> => ipcRenderer.invoke("feedback-status"),
   sendFeedback: (r: FeedbackRequest): Promise<void> => ipcRenderer.invoke("send-feedback", r),
   /** After an update, the first app window gets the version to show What's New since (main/whats-new.ts). */
@@ -278,7 +278,7 @@ const api = {
   writeClipboard: (text: string) => ipcRenderer.send("clipboard-write", text),
   /** The path of a file dropped from Finder ("" for one that isn't on disk). */
   pathForFile: (f: File): string => webUtils.getPathForFile(f),
-  /** Turn the drag starting now into a native one of these files: Finder, other apps and cmd's own windows get real files (renderer/src/drags.ts). */
+  /** Turn the drag starting now into a native one of these files: Finder, other apps and cmd's own windows get real files (renderer/src/lib/drags.ts). */
   startFileDrag: (paths: string[]) => ipcRenderer.send("start-file-drag", paths),
   /** Native context menu; resolves with the chosen item id or null. */
   contextMenu: (items: ContextItem[]): Promise<string | null> => ipcRenderer.invoke("context-menu", items),

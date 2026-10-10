@@ -724,7 +724,7 @@ ipcMain.on("show-scroll-bars", (e) => {
 ipcMain.on("reveal-path", (_e, p: string) => shell.showItemInFolder(p));
 ipcMain.handle("trash-path", (_e, p: string) => shell.trashItem(p));
 handleCertificates();
-// A file drag (renderer/src/drags.ts): macOS's own drag of the files, shown with
+// A file drag (renderer/src/lib/drags.ts): macOS's own drag of the files, shown with
 // the first one's Finder icon. It has to start while the mouse is still down.
 ipcMain.on("start-file-drag", async (e, paths: unknown) => {
   const files = Array.isArray(paths) ? paths.filter((p): p is string => typeof p === "string" && path.isAbsolute(p) && fs.existsSync(p)) : [];
@@ -735,7 +735,7 @@ ipcMain.on("start-file-drag", async (e, paths: unknown) => {
   if (e.sender.isDestroyed() || shown.isEmpty()) return; // startDrag throws without an icon
   e.sender.startDrag({ file: first, files, icon: shown });
 });
-// Uncaught errors in the app's pages (renderer/src/errors.ts): each one once per launch.
+// Uncaught errors in the app's pages (renderer/src/lib/errors.ts): each one once per launch.
 const rendererErrors = new Set<string>();
 ipcMain.on("renderer-error", (e, r: { kind: string; message: string; stack: string | null }) => {
   const key = `${r.message}\n${r.stack?.split("\n").find((l) => l.trim().startsWith("at ")) ?? ""}`;
@@ -951,7 +951,7 @@ app.whenReady().then(async () => {
     return new Response(html, { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": widgetCsp(widgetFrames.get(token) ?? []), "cache-control": "no-store" } });
   });
   for (const scheme of FRAME_SCHEMES) protocol.handle(scheme, frameHandler(scheme));
-  // The Visualizer's System Audio source (renderer/src/audio.ts): getDisplayMedia from the app's
+  // The Visualizer's System Audio source (renderer/src/lib/audio.ts): getDisplayMedia from the app's
   // own page gets the Mac's output (a Core Audio tap, macOS 14.2+). The video it must come with
   // is that page itself, so no screen is captured and macOS doesn't ask for Screen Recording.
   session.defaultSession.setDisplayMediaRequestHandler((req, done) => {

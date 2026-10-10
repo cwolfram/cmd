@@ -1,9 +1,9 @@
 // JSON window type (renderer half): title fields, menu and the ⌘E switch to the
 // text editor. The view itself (json-view.tsx) loads on first use.
 
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
-import { shortPath } from "../../model.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
+import { shortPath } from "../../lib/model.ts";
 import { lazyView, registerWindowView, stateStr } from "../registry.ts";
 import { registerPreview, togglePreview } from "../preview.ts";
 

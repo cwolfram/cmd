@@ -45,10 +45,10 @@ import {
   View,
   WindowToolbar,
 } from "@cmd/ui";
-import { cmd } from "../../bridge.ts";
-import { copy, openPath } from "../../actions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy, openPath } from "../../lib/actions.ts";
 import { intervalLabel, refreshChoices, type MagicLive } from "./magic.ts";
-import { ago } from "../../model.ts";
+import { ago } from "../../lib/model.ts";
 import { StepList } from "./MagicView.tsx";
 
 type Tab = "changes" | "settings" | "files" | "health";

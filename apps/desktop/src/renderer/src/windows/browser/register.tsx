@@ -1,10 +1,10 @@
 // Browser windows (renderer half): the title (the page's, else its host) and right-click's Device Size, Open in Default Browser and Copy URL.
 
 import type { AppWindow } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import type { MenuEntry } from "../../context.ts";
-import { copy } from "../../actions.ts";
-import { hostOf } from "../../model.ts";
+import { cmd } from "../../lib/bridge.ts";
+import type { MenuEntry } from "../../lib/context.ts";
+import { copy } from "../../lib/actions.ts";
+import { hostOf } from "../../lib/model.ts";
 import { BrowserView } from "./BrowserView.tsx";
 import { DEVICES } from "./devices.ts";
 import { registerWindowView, stateStr } from "../registry.ts";

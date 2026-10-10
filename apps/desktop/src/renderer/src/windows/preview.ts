@@ -3,9 +3,9 @@
 // kept). A preview says which files it shows; the switch carries the line
 // you're on across when both sides know it (windowActions' line).
 
-import { cmd } from "../bridge.ts";
-import { selectPane } from "../actions.ts";
-import { windowActions } from "../windowActions.ts";
+import { cmd } from "../lib/bridge.ts";
+import { selectPane } from "../lib/actions.ts";
+import { windowActions } from "../lib/windowActions.ts";
 
 const previews: { kind: string; ext: RegExp }[] = [];
 

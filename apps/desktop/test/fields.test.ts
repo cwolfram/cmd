@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, AppWindow, Pane } from "@cmd/protocol";
-import { fieldsOf, setCmdNames, type SidebarRow } from "../src/renderer/src/model.ts";
+import { fieldsOf, setCmdNames, type SidebarRow } from "../src/renderer/src/lib/model.ts";
 import { registerWindowView, setWindowTypes } from "../src/renderer/src/windows/registry.ts";
 
 // Window title fields (docs/10-window-titles.md): one meaning per field, for every type.

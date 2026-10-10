@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DONE_BATCH_MS, DONE_TAG, DoneBatch, Looks, SAW_IT_MS } from "../src/renderer/src/notify.ts";
+import { DONE_BATCH_MS, DONE_TAG, DoneBatch, Looks, SAW_IT_MS } from "../src/renderer/src/shell/notify.ts";
 
 describe("looks", () => {
   it("count what you look at now and what you looked away from just before", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, AppWindow, Pane, Workspace } from "@cmd/protocol";
-import { buildRows, byActivity, inWorkspace, workspaceAttention, under } from "../src/renderer/src/model.ts";
-import type { State } from "../src/renderer/src/store.ts";
+import { buildRows, byActivity, inWorkspace, workspaceAttention, under } from "../src/renderer/src/lib/model.ts";
+import type { State } from "../src/renderer/src/lib/store.ts";
 
 // Workspaces in the UI: an app window sees only its workspace; the switcher sees what waits everywhere.
 

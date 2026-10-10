@@ -8,7 +8,7 @@
 import { Badge, Button, Dialog, Inline, Spacer, Stack, Text } from "@cmd/ui";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { RemotePairRequest, RemoteScope } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 export const scopeLabel = (s: RemoteScope) => (s === "view" ? "View only" : "Control");
 

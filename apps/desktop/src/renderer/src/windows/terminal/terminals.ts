@@ -7,7 +7,7 @@
 // (XTVERSION, color scheme). See docs/02-terminal-foundations.md.
 
 import { MAC_KEYMAP } from "../../../../shared/commands.ts";
-import { isAppShortcut } from "../../keybindings.ts";
+import { isAppShortcut } from "../../lib/keybindings.ts";
 import { Terminal, type IBufferCellPosition, type IDisposable, type ILink, type IMarker, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon, type ISearchOptions } from "@xterm/addon-search";
@@ -16,13 +16,13 @@ import type { ImageAddon } from "@xterm/addon-image";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import type { PaneId, Settings } from "@cmd/protocol";
 import { DEFAULT_SETTINGS } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { currentTheme, onThemeChange, terminalColors } from "@cmd/ui/themes";
 import { findLinks, logicalLine, type Row } from "./links.ts";
 import { scrolled, type FindOptions, type FindResults } from "@cmd/ui";
-import type { FindRequest } from "../../find.tsx";
+import type { FindRequest } from "../../lib/find.tsx";
 import { pasteRisk, preview, shellWord } from "./paste.ts";
-import { registerDropTarget } from "../../drops.ts";
+import { registerDropTarget } from "../../lib/drops.ts";
 import { Replayer } from "@cmd/protocol/replay";
 
 // ⌘ keys sent to the PTY as readline control characters: kill line, start, end.
@@ -131,7 +131,7 @@ function resolvePaths(paths: string[], cwd: string): Promise<(string | null)[]> 
 }
 
 async function openTarget(kind: "url" | "path", target: string): Promise<void> {
-  const { openLink, openPath } = await import("../../actions.ts");
+  const { openLink, openPath } = await import("../../lib/actions.ts");
   if (kind === "url") openLink(target);
   else void openPath(target, "content");
 }
@@ -179,7 +179,7 @@ function linkProvider(term: Terminal, paneId: PaneId) {
       const urls = matches.filter((m) => m.kind === "url").map((m) => make(m.start, m.end, () => void openTarget("url", m.target)));
       const paths = matches.filter((m) => m.kind === "path");
       if (!paths.length) return done(urls);
-      void import("../../store.ts").then(async ({ getState }) => {
+      void import("../../lib/store.ts").then(async ({ getState }) => {
         const cwd = getState().panes.get(paneId)?.cwd;
         const abs = cwd ? await resolvePaths(paths.map((m) => m.target), cwd) : [];
         const links = paths.flatMap((m, i) => (abs[i] ? [make(m.start, m.end, () => void openTarget("path", abs[i]!))] : []));

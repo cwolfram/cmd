@@ -28,7 +28,7 @@ export const COMMANDS = spec([
   { id: "app.pairDevice", label: "Pair a Device…" },
   { id: "app.disconnectRemote", label: "Disconnect Remote Devices" },
 
-  // ⌘N: one picker for every new window and widget (renderer/src/newItems.ts); the rest skip it.
+  // ⌘N: one picker for every new window and widget (renderer/src/shell/newItems.ts); the rest skip it.
   { id: "file.new", label: "New…", keys: ["Cmd+N"] },
   { id: "file.newTerminal", label: "New Terminal", keys: ["Cmd+T"] },
   { id: "file.newClaude", label: "New Claude Session", keys: ["Alt+Cmd+N"] },

@@ -1188,7 +1188,7 @@ await scenario("untitled", async () => {
 });
 
 // Embedded pages: browser pages and Magic widgets run in their own process, so
-// they report presses and sideways scrolls (renderer/src/embed.ts; browser pages
+// they report presses and sideways scrolls (renderer/src/lib/embed.ts; browser pages
 // through preload/guest.ts, widgets by postMessage). Magic widgets are staged
 // with a widget and its data, so no model runs.
 await scenario("embedded", async () => {

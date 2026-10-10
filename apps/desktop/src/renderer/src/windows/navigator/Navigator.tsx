@@ -7,14 +7,14 @@
 import { Button, EmptyState, List, ToolbarSearchField, useFlip, View, WindowToolbar } from "@cmd/ui";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ClosedWindow, PaneId, SearchHit, SearchStatus, SessionInfo, WindowId, WorkspaceId } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { openSession } from "../../actions.ts";
-import { usePersisted, useStoreValue, subscribeView } from "../../store.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { openSession } from "../../lib/actions.ts";
+import { usePersisted, useStoreValue, subscribeView } from "../../lib/store.ts";
 import { terminals } from "../terminal/terminals.ts";
-import { filterRows, flatten, sectionOf, SECTIONS, type Section, type SidebarRow } from "../../model.ts";
+import { filterRows, flatten, sectionOf, SECTIONS, type Section, type SidebarRow } from "../../lib/model.ts";
 import { ClosedRow, HistoryRow, SectionHeading, SessionRow, SidebarSection } from "../../components/SidebarRows.tsx";
 import { IndexRing } from "../../components/IndexRing.tsx";
-import { countRender } from "../../perf.ts";
+import { countRender } from "../../lib/perf.ts";
 import type { WindowViewProps } from "../registry.ts";
 
 /** What the Navigator shows and does, from App. */

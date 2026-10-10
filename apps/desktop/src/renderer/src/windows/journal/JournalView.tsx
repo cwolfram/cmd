@@ -5,12 +5,12 @@
 // recorded (a live query), when the day turns, and when AI gets set up.
 // Without AI nothing is written: it says how to set it up.
 
-import { subscribeData } from "../../store.ts";
+import { subscribeData } from "../../lib/store.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { JournalDay, JournalWeek } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { useAiStatus } from "../../ai/status.ts";
-import { scopeOf } from "../../widgets.ts";
+import { scopeOf } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { Journal } from "./Journal.tsx";
 

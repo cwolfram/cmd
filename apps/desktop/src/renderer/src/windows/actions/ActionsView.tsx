@@ -12,14 +12,14 @@
 import { Button, CodeBlock, ConfirmDialog, Icon, IconButton, LinkButton, List, ListGroup, ListRow, ListSection, ListValue, Spinner, StatusLine, ToolbarSearchField, View, WindowToolbar, Callout, type ViewStateSpec } from "@cmd/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type ActionKind, type ActionRun, type ActionsList, type PaneId, type WorkspaceId, type WorkspaceAction } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
+import { cmd } from "../../lib/bridge.ts";
 import { actionsRootOf, lastLists, runAction } from "./workspaceActions.ts";
-import { copy, newBrowser, openFileAt, openLink } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
+import { copy, newBrowser, openFileAt, openLink } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
 import { useAiStatus } from "../../ai/status.ts";
-import { shortPath } from "../../model.ts";
-import { onActionsChanged, useStore } from "../../store.ts";
-import { durationText, goTo, setWidgetState, useWidgetStatus } from "../../widgets.ts";
+import { shortPath } from "../../lib/model.ts";
+import { onActionsChanged, useStore } from "../../lib/store.ts";
+import { durationText, goTo, setWidgetState, useWidgetStatus } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 
 const KIND: Record<ActionKind, { title: string; icon: string }> = {

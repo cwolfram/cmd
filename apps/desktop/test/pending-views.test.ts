@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PendingViews } from "../src/renderer/src/pendingViews.ts";
+import { PendingViews } from "../src/renderer/src/lib/pendingViews.ts";
 
 const WS = "home";
 

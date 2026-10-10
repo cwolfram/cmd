@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { findCount, NO_FIND_OPTIONS } from "@cmd/ui";
-import { findRegExp } from "../src/renderer/src/find.tsx";
+import { findRegExp } from "../src/renderer/src/lib/find.tsx";
 
 const o = (p: Partial<typeof NO_FIND_OPTIONS> = {}) => ({ ...NO_FIND_OPTIONS, ...p });
 const all = (q: string, text: string, opts = o()) => [...text.matchAll(findRegExp(q, opts)!)].map((m) => m[0]);

@@ -3,7 +3,7 @@
 // currentColor through a CSS mask, like an AppKit template image.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 type Img = { url: string; w: number; h: number; contain?: boolean } | null;
 

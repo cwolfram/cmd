@@ -3,8 +3,8 @@
 // that listens to it; the view registers what those do for its window here.
 
 import type { AppWindow } from "@cmd/protocol";
-import { cmd } from "../bridge.ts";
-import type { MenuEntry } from "../context.ts";
+import { cmd } from "../lib/bridge.ts";
+import type { MenuEntry } from "../lib/context.ts";
 import { lazyView, registerWindowView } from "./registry.ts";
 
 export const jamControls = new Map<string, { play(): void; stop(): void; ask(): void; save(): void }>();

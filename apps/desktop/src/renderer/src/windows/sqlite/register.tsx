@@ -1,10 +1,10 @@
 // SQLite window type (renderer half): title fields and menu. The view itself
 // (sqlite-view.tsx) loads on first use.
 
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
-import { shortPath } from "../../model.ts";
-import { windowActions } from "../../windowActions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
+import { shortPath } from "../../lib/model.ts";
+import { windowActions } from "../../lib/windowActions.ts";
 import { lazyView, registerWindowView, stateStr } from "../registry.ts";
 import { exportTableCsv } from "./sqlite-export.ts";
 

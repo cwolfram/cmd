@@ -1,7 +1,7 @@
 // Live Diff (renderer half): the folder it follows, Choose Folder… and Show in Finder.
 
-import { cmd } from "../../bridge.ts";
-import { shortPath } from "../../model.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { shortPath } from "../../lib/model.ts";
 import { LiveDiff } from "./LiveDiff.tsx";
 import { registerWindowView, stateStr } from "../registry.ts";
 

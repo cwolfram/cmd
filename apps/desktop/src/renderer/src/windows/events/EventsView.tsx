@@ -10,12 +10,12 @@
 import { Chip, CodeBlock, EmptyState, ListRow, ListValue, Panel, PanelBody, ToolbarSearchField, WindowToolbar } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DataClassInfo, DataEvent } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { copy } from "../../actions.ts";
-import { showContextMenu } from "../../context.ts";
-import { projectHue } from "../../model.ts";
-import { subscribeData } from "../../store.ts";
-import { goTo, useWidgetStatus } from "../../widgets.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { copy } from "../../lib/actions.ts";
+import { showContextMenu } from "../../lib/context.ts";
+import { projectHue } from "../../lib/model.ts";
+import { subscribeData } from "../../lib/store.ts";
+import { goTo, useWidgetStatus } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 
 /** Events kept in the list. */

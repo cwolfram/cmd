@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Agent, AppWindow, Pane } from "@cmd/protocol";
-import { buildRows, filterRows, sectionOf } from "../src/renderer/src/model.ts";
-import type { State } from "../src/renderer/src/store.ts";
+import { buildRows, filterRows, sectionOf } from "../src/renderer/src/lib/model.ts";
+import type { State } from "../src/renderer/src/lib/store.ts";
 
 // Sidebar sections: Needs you, then agents, then plain windows; search filters open rows.
 

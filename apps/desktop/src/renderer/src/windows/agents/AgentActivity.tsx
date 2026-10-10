@@ -7,13 +7,13 @@
 import { Button, List, ListRow, Stack, Text, View, useFlip, type DotState } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { bucketOf, type Agent } from "@cmd/protocol";
-import { newAgent, selectPane } from "../../actions.ts";
-import { cmd } from "../../bridge.ts";
-import { fieldsOf, whereOf, type SidebarRow } from "../../model.ts";
-import { showWorkspace } from "../../workspaces.tsx";
-import { useStore } from "../../store.ts";
+import { newAgent, selectPane } from "../../lib/actions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { fieldsOf, whereOf, type SidebarRow } from "../../lib/model.ts";
+import { showWorkspace } from "../../shell/workspaces.tsx";
+import { useStore } from "../../lib/store.ts";
 import type { WindowViewProps } from "../registry.ts";
-import { useWidgetStatus } from "../../widgets.ts";
+import { useWidgetStatus } from "../../lib/widgets.ts";
 import { shortAgo } from "../../components/SidebarRows.tsx";
 
 /** Waiting for you, then working, then the rest; most recent first within each. */

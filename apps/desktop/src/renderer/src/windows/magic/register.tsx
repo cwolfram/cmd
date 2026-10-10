@@ -1,11 +1,11 @@
 // Magic widgets (renderer half): the title from the request, the actions on right-click and in the View menu (Change, Edit, Refresh, Mute, Fix It).
 
 import type { AppWindow } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import type { MenuEntry } from "../../context.ts";
-import { copy } from "../../actions.ts";
-import { hostOf } from "../../model.ts";
-import { windowActions } from "../../windowActions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import type { MenuEntry } from "../../lib/context.ts";
+import { copy } from "../../lib/actions.ts";
+import { hostOf } from "../../lib/model.ts";
+import { windowActions } from "../../lib/windowActions.ts";
 import { MagicView, setEditing } from "./MagicView.tsx";
 import { intervalLabel, refreshChoices } from "./magic.ts";
 import { registerWindowView, stateStr } from "../registry.ts";

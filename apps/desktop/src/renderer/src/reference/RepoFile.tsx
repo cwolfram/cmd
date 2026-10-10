@@ -3,7 +3,7 @@
 
 import type { AppWindow, WindowId, WorkspaceId } from "@cmd/protocol";
 import { useEffect, useState } from "react";
-import { cmd } from "../bridge.ts";
+import { cmd } from "../lib/bridge.ts";
 
 export function useRepoFile(rel: string): string | null {
   const [path, setPath] = useState<string | null>(null);

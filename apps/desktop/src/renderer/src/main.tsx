@@ -6,11 +6,11 @@ import "@xterm/xterm/css/xterm.css";
 import "@cmd/ui/ui.css";
 import "./styles.css";
 import "./windows/builtin.tsx"; // built-in window views (browser, files, text)
-import { App } from "./App.tsx";
+import { App } from "./shell/App.tsx";
 import { TOPBAR_HEIGHT } from "../../shared/chrome.ts";
-import { cmd } from "./bridge.ts";
-import { installErrorReporting, reportRenderError } from "./errors.ts";
-import { installDrops } from "./drops.ts";
+import { cmd } from "./lib/bridge.ts";
+import { installErrorReporting, reportRenderError } from "./lib/errors.ts";
+import { installDrops } from "./lib/drops.ts";
 import { ErrorBoundary, installScrollbars, installTooltips, UIProvider } from "@cmd/ui";
 import "@cmd/ui/themes/builtin";
 import { bootTheme } from "@cmd/ui/themes";

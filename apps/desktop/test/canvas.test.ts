@@ -20,7 +20,7 @@ import {
   visible,
   zoomAt,
   zoomLimits,
-} from "../src/renderer/src/canvas.ts";
+} from "../src/renderer/src/shell/board/canvas.ts";
 
 const vp = { w: 1000, h: 600 };
 

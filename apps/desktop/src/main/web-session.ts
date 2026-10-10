@@ -62,7 +62,7 @@ app.on("web-contents-created", (_e, contents) => {
       return ev.preventDefault();
     }
     // Only cmd's own guest preload, in an isolated world: it reports presses to
-    // the app (preload/guest.ts, renderer/src/embed.ts).
+    // the app (preload/guest.ts, renderer/src/lib/embed.ts).
     prefs.preload = path.join(here, "../preload/guest.cjs");
     prefs.nodeIntegration = false;
     prefs.contextIsolation = true;

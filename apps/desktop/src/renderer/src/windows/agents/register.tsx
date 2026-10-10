@@ -1,7 +1,7 @@
 // Agent Activity (renderer half): a list widget scoped to this workspace or all of them.
 
 import { AgentActivity } from "./AgentActivity.tsx";
-import { scopeMenu, scopeOf, scopeLabel } from "../../widgets.ts";
+import { scopeMenu, scopeOf, scopeLabel } from "../../lib/widgets.ts";
 import { registerWindowView } from "../registry.ts";
 
 registerWindowView({

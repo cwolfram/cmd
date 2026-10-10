@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AppWindow, Pane } from "@cmd/protocol";
-import { windowsUsing } from "../src/renderer/src/model.ts";
+import { windowsUsing } from "../src/renderer/src/lib/model.ts";
 
 const pane = (title: string, cwd: string, exitCode: number | null = null) => ({ title, cwd, exitCode }) as Pane;
 const win = (title: string, path?: string) => ({ title, state: path === undefined ? {} : { path } }) as unknown as AppWindow;

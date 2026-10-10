@@ -31,7 +31,7 @@ mac:
       to: dock-icons
   extendInfo:
     CFBundleIconName: Icon
-    # Visualizer sources (renderer/src/audio.ts). Without the second, system audio comes back silent.
+    # Visualizer sources (renderer/src/lib/audio.ts). Without the second, system audio comes back silent.
     NSMicrophoneUsageDescription: Websites in browser windows can use your microphone when you allow them, and a Visualizer can move to what it hears.
     NSAudioCaptureUsageDescription: A Visualizer can move to the audio your Mac is playing.
     # Websites in browser windows (main/web-session.ts); the microphone's line covers them too.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrangeTiles, gridShape, moveInOrder } from "../src/renderer/src/model.ts";
+import { arrangeTiles, gridShape, moveInOrder } from "../src/renderer/src/lib/model.ts";
 
 const p = (id: string, createdAt: number) => ({ id, createdAt });
 
@@ -23,7 +23,7 @@ describe("grid slots", () => {
   });
 });
 
-import { nextAfterClose, pushHistory } from "../src/renderer/src/model.ts";
+import { nextAfterClose, pushHistory } from "../src/renderer/src/lib/model.ts";
 
 describe("focus after close", () => {
   const alive = (...ids: string[]) => new Set(ids);
@@ -50,7 +50,7 @@ describe("focus after close", () => {
   });
 });
 
-import { formatBytes, usageLabel } from "../src/renderer/src/model.ts";
+import { formatBytes, usageLabel } from "../src/renderer/src/lib/model.ts";
 
 describe("usage labels", () => {
   it("formats bytes and hides idle CPU", () => {

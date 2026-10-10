@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampWidth, currentDot, layout, maxWidth, nextPreset, revealOffset, stepFraction, widthFor, withWidth } from "../src/renderer/src/strip.ts";
+import { clampWidth, currentDot, layout, maxWidth, nextPreset, revealOffset, stepFraction, widthFor, withWidth } from "../src/renderer/src/shell/board/strip.ts";
 
 const G = 8;
 const VP = 1000;

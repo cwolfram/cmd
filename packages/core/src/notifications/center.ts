@@ -9,7 +9,7 @@
 // selection (notifications.when), and how (sound, Dock bounce, visual bell).
 // A turn you prompted that ends within QUICK_TURN_MS isn't news; the UI also
 // drops a "done" you saw happen and sums up agents finishing together
-// (renderer/src/notify.ts). Looking at the terminal clears its marker
+// (renderer/src/shell/notify.ts). Looking at the terminal clears its marker
 // (pane.clearAttention). Every notification is an event in the log
 // (data/recorders.ts), with the workspace of what it is about; the Notifications
 // widget is a live query over them.

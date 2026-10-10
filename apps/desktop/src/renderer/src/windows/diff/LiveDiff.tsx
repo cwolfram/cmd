@@ -7,13 +7,13 @@
 import { Badge, Button, Diff, List, ListRow, Inline, Text, Twisty, View } from "@cmd/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GitFile, GitStatus } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { openPath } from "../../actions.ts";
-import { onFsChanged } from "../../store.ts";
-import { shortPath } from "../../model.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { openPath } from "../../lib/actions.ts";
+import { onFsChanged } from "../../lib/store.ts";
+import { shortPath } from "../../lib/model.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
 import { parseDiff, type FileDiff } from "./diff.ts";
-import { useWidgetStatus } from "../../widgets.ts";
+import { useWidgetStatus } from "../../lib/widgets.ts";
 
 const POLL_MS = 3000;
 /** More files than this start collapsed. */

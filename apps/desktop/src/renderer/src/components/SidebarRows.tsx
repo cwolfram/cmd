@@ -5,14 +5,14 @@
 import { Chip, Highlight, IconButton, ListHeading, ListRow, Text, Twisty, TwistySpace } from "@cmd/ui";
 import type { ReactNode } from "react";
 import type { ClosedWindow, PaneId, SearchHit, WindowId } from "@cmd/protocol";
-import { usePersisted, useStoreValue } from "../store.ts";
+import { usePersisted, useStoreValue } from "../lib/store.ts";
 import { ICON } from "./Symbol.tsx";
 import { DirtyDot, Slot } from "./Slot.tsx";
-import { useFields } from "./TileTitle.tsx";
-import { ago, labelOf, project, shortPath, whereOf, windowIdOf, type SidebarRow } from "../model.ts";
+import { useFields } from "../shell/TileTitle.tsx";
+import { ago, labelOf, project, shortPath, whereOf, windowIdOf, type SidebarRow } from "../lib/model.ts";
 import { RemoteBadge } from "./Remote.tsx";
 import { typeFor } from "../windows/registry.ts";
-import { countRender } from "../perf.ts";
+import { countRender } from "../lib/perf.ts";
 
 /** "2h ago" → "2h": the column is narrow. */
 export const shortAgo = (ts: number, now: number) => ago(ts, now).replace(/ ago$/, "");

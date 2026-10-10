@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/renderer/src/bridge.ts", () => ({ cmd: {} }));
-vi.mock("../src/renderer/src/actions.ts", () => ({ openPath: vi.fn() }));
-const { dropOpens } = await import("../src/renderer/src/drops.ts");
+vi.mock("../src/renderer/src/lib/bridge.ts", () => ({ cmd: {} }));
+vi.mock("../src/renderer/src/lib/actions.ts", () => ({ openPath: vi.fn() }));
+const { dropOpens } = await import("../src/renderer/src/lib/drops.ts");
 
-// Dropped files and links that open in their default app: who chose them (renderer/src/drops.ts).
+// Dropped files and links that open in their default app: who chose them (renderer/src/lib/drops.ts).
 
 describe("dropOpens", () => {
   it("a real file dragged from Finder is the person's choice", () => {

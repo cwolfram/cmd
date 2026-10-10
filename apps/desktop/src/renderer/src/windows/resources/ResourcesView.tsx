@@ -11,10 +11,10 @@
 import { DataGrid, LinkButton, ListMark, Pane, Panes, Sparkline, Stat, StatusLine, Text, Tiles, View } from "@cmd/ui";
 import { useEffect, useState } from "react";
 import type { Pane as TermPane, PaneId, ProcessStat } from "@cmd/protocol";
-import { cmd } from "../../bridge.ts";
-import { fieldsOf, formatBytes } from "../../model.ts";
-import { useStore } from "../../store.ts";
-import { goTo, scopeOf, useWidgetStatus } from "../../widgets.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { fieldsOf, formatBytes } from "../../lib/model.ts";
+import { useStore } from "../../lib/store.ts";
+import { goTo, scopeOf, useWidgetStatus } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 
 const POLL_MS = 2000;

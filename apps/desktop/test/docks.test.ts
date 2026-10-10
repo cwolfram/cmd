@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dock, dockedIds, dockWidths, DOCK_WIDTH, EMPTY_DOCKS, liveDocks, MIN_BOARD, readDocks, shownIds, sideOf, undock } from "../src/renderer/src/docks.ts";
+import { dock, dockedIds, dockWidths, DOCK_WIDTH, EMPTY_DOCKS, liveDocks, MIN_BOARD, readDocks, shownIds, sideOf, undock } from "../src/renderer/src/shell/board/docks.ts";
 
 describe("sidebars", () => {
   it("reads stored values, filling in what's missing", () => {

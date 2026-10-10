@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { GitPlace, Workspace } from "@cmd/protocol";
-import { byProject, workspaceDetail, whereOf } from "../src/renderer/src/model.ts";
+import { byProject, workspaceDetail, whereOf } from "../src/renderer/src/lib/model.ts";
 
 const cmd = "/Users/me/src/cmd";
 const wt = "/Users/me/src/cmd-search";

@@ -15,13 +15,13 @@ import { LanguageDescription } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { highlightCode } from "@lezer/highlight";
 import { StyleModule } from "style-mod";
-import { cmd } from "../../bridge.ts";
-import { openLink, openPath, selectPane } from "../../actions.ts";
+import { cmd } from "../../lib/bridge.ts";
+import { openLink, openPath, selectPane } from "../../lib/actions.ts";
 import { syntax } from "../../editor/syntax.ts";
-import { onFsChanged } from "../../store.ts";
-import { registerWindowActions, setWindowStatus } from "../../windowActions.ts";
-import { useFind } from "../../find.tsx";
-import { domFindable } from "../../find-dom.ts";
+import { onFsChanged } from "../../lib/store.ts";
+import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
+import { useFind } from "../../lib/find.tsx";
+import { domFindable } from "../../lib/find-dom.ts";
 import { stateStr, type WindowViewProps } from "../registry.ts";
 
 // The highlight style's CSS is normally mounted by an editor; mount it for static use.
