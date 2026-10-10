@@ -123,6 +123,27 @@ describe("another agent kind in front of the pane's agent", () => {
 });
 
 describe("foreground polling", () => {
+  // The smoke's mru flake: a poll as the terminal started saw node-pty's spawn-helper, the
+  // prompt came before the next poll, and ⌘W asked whether to end "spawn-helper".
+  it("a terminal whose shell is still starting runs its shell, not node-pty's spawn-helper", async () => {
+    const f = fakeFactory();
+    let fg = { pid: 10, startedAt: 1, path: "/app/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper", argv: ["/app/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper"] };
+    const panes = new PaneManager(f.factory, { socketPath: "/tmp/t.sock", pollMs: 0, inspector: async () => fg });
+    const pane = panes.create();
+    const shell = pane.foreground; // the shell's name until a look says otherwise
+    const seen: string[] = [];
+    panes.on("foreground", (_id, g) => seen.push(g.name));
+    await panes.pollForeground();
+    expect(panes.get(pane.id)!.foreground).toBe(shell);
+    expect(seen).toEqual([]);
+    fg = { pid: 10, startedAt: 1, path: "/bin/zsh", argv: ["-zsh"] };
+    f.ptys[0]!.output("% "); // the prompt
+    await panes.pollForeground();
+    expect(panes.get(pane.id)!.foreground).toBe("zsh");
+    expect(seen).toEqual(["zsh"]);
+    panes.dispose();
+  });
+
   it("checks quiet terminals only now and then, and right after output", async () => {
     const f = fakeFactory();
     let asked = 0;

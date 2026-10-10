@@ -100,6 +100,14 @@ export function agentVersion(info: Pick<ForegroundInfo, "path" | "argv">, agent:
   return null;
 }
 
+/**
+ * node-pty starts a terminal's shell through its spawn-helper, which then execs the
+ * shell. Caught in between, nothing runs yet: not a program ⌘W should ask about.
+ */
+export function isSpawnHelper(info: Pick<ForegroundInfo, "path" | "argv">): boolean {
+  return basename(info.argv[0] ?? info.path) === "spawn-helper" || basename(info.path) === "spawn-helper";
+}
+
 /** Name shown for a pane's foreground process. */
 export function displayName(c: Classification, info: Pick<ForegroundInfo, "path" | "argv">): string {
   if (c.kind === "agent") return c.agent;

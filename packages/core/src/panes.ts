@@ -15,7 +15,7 @@ import { usageChanged } from "./resources.ts";
 import { placeOf, samePlace } from "./checkout.ts";
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
 import { DEVICE_REPLIES, OscScanner, type OscEvent } from "./osc.ts";
-import { agentVersion, classify, displayName, type Classification, type ForegroundInfo } from "./agents/procinfo.ts";
+import { agentVersion, classify, displayName, isSpawnHelper, type Classification, type ForegroundInfo } from "./agents/procinfo.ts";
 import type { Store } from "./store.ts";
 import { integrate, shellName } from "./shells.ts";
 import { ptysExhausted } from "./terminals/ptys.ts";
@@ -517,6 +517,7 @@ export class PaneManager extends EventEmitter<PaneEvents> {
       info = { pid: -1, startedAt: 0, path: name, argv: [name] };
     }
     if (!this.#panes.has(live.pane.id)) return; // closed while we were asking
+    if (isSpawnHelper(info)) return; // the shell is still starting; its prompt brings the next look
     const c = classify(info);
     const fg: Foreground = { pid: info.pid, startedAt: info.startedAt, name: displayName(c, info), class: c };
     const prev = live.fg;
