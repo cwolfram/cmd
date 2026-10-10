@@ -230,7 +230,7 @@ export const SETTINGS_SCHEMA = {
   "ui.focusOutline": { title: "Selected outline width", unit: "px", type: "number", default: 2, min: 1, max: 4, step: 1, description: "Width of the selected window's outline." },
   "ui.focusColor": { title: "Selected outline colour", labels: { accent: "Accent", neutral: "Neutral" }, type: "enum", default: "neutral", options: ["accent", "neutral"], description: "The theme's accent, or its text colour." },
   "ui.focusGlow": { title: "Selected glow", unit: "%", type: "number", default: 0, min: 0, max: 100, step: 10, description: "A soft halo around the selected window." },
-  "ui.focusTitleBar": { title: "Tint selected title bar", labels: { off: "Off", subtle: "Subtle", strong: "Strong" }, type: "enum", default: "subtle", options: ["off", "subtle", "strong"], description: "Tint the selected title bar in the outline colour." },
+  "ui.focusTitleBar": { title: "Tint selected title bar", labels: { off: "Off", subtle: "Subtle", strong: "Strong" }, type: "enum", default: "off", options: ["off", "subtle", "strong"], description: "Tint the selected title bar in the outline colour." },
   "ui.attentionOutline": { title: "Outline windows that need you", type: "boolean", default: true, description: "Outline windows that wait for you." },
   "ui.windowRadius": { title: "Window corner radius", unit: "px", type: "number", default: 11, min: 0, max: 16, step: 1, description: "Corner radius of windows. 0 is square." },
 

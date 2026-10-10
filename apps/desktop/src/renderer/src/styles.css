@@ -303,15 +303,15 @@ kbd {
 .windows-track > .tile.lifted > .tile-frame { --lift: 1.5; }
 
 /* ui.focusTitleBar: the selected window's title bar takes some of its outline colour. */
-.app.title-tint-subtle .tile.sel .tile-title { background: color-mix(in srgb, var(--ring-color) 8%, var(--bg-sidebar)); }
-.app.title-tint-strong .tile.sel .tile-title { background: color-mix(in srgb, var(--ring-color) 18%, var(--bg-sidebar)); }
+.app.title-tint-subtle .tile.sel .tile-title { background: color-mix(in srgb, var(--ring-color) 8%, var(--window-bar-bg)); }
+.app.title-tint-strong .tile.sel .tile-title { background: color-mix(in srgb, var(--ring-color) 18%, var(--window-bar-bg)); }
 /* Sidebars (Dock.tsx) look like an unselected window: no focus ring or title tint,
    dimmed like one (below), only the attention ring, which wins over selection there. */
 .dock-tile.sel { border-color: var(--window-edge); }
 .dock-tile.sel > .tile-frame { box-shadow: inset 0 0 0 var(--edge-w) var(--window-edge), var(--drop); }
 .dock-tile.sel.needs { --ring-color: var(--state-needs); border-color: var(--ring-color); }
 .dock-tile.sel.needs > .tile-frame { box-shadow: var(--ring), var(--drop); }
-.app .tile.dock-tile.sel .tile-title { background: var(--bg-sidebar); }
+.app .tile.dock-tile.sel .tile-title { background: var(--window-bar-bg); }
 .tile .term-well { padding-top: var(--space-sm); }
 .tile-name.editing { flex: 1 1 auto; margin-right: var(--space-md); }
 .tile-title-input {
@@ -466,18 +466,23 @@ kbd {
 
 /* Unfocused windows are dimmed by an overlay (not a filter, which would soften text).
    It stops inside the outline, so outlines match across the board and the
-   sidebars. Sidebars are always dimmed, selected or not, so they look like an
+   sidebars, and below the chrome (title bar, and the toolbar of a View), which
+   keeps its colour: only the content recedes. Sidebars are always dimmed, selected or not, so they look like an
    unselected window. Amount: ui.unfocusedDim (--window-dim-amount, set in App) times
    the theme's --window-dim. A window that needs you isn't dimmed. */
 :is(.windows-track, .dock) > .tile > .tile-frame::after {
   content: "";
   position: absolute;
   inset: var(--edge-w);
+  top: calc(var(--window-outline) + var(--chrome-h, 0px));
   background: var(--scrim);
   opacity: min(1, calc(var(--window-dim) * var(--window-dim-amount, 0.1)));
-  border-radius: max(0px, calc(var(--window-radius) - var(--edge-w)));
+  --dim-r: max(0px, calc(var(--window-radius) - var(--edge-w)));
+  border-radius: var(--dim-top-r, var(--dim-r)) var(--dim-top-r, var(--dim-r)) var(--dim-r) var(--dim-r);
   transition: opacity var(--dur) var(--ease);
 }
+:is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title) { --chrome-h: var(--window-bar-h); --dim-top-r: 0px; }
+:is(.windows-track, .dock) > .tile:has(> .tile-body > .tile-title):has(.ui-view > .ui-tb:first-child) { --chrome-h: calc(var(--window-bar-h) + var(--toolbar-h)); }
 .windows-track > .tile.sel > .tile-frame::after,
 .windows-track > .tile.lifted > .tile-frame::after,
 :is(.windows-track, .dock) > .tile.needs > .tile-frame::after,

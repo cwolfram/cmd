@@ -704,8 +704,8 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--window-edge",
-    "value": "color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--bg-sidebar))",
-    "description": "The outline and the line under the title bar: one opaque colour (the separator over the title bar), so both look the same over any background."
+    "value": "color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--window-bar-bg))",
+    "description": "The outline, the line under the title bar and the toolbar's: one opaque colour mixed over the chrome (the title bar's colour), so they look the same over any background."
   },
   {
     "name": "--window-highlight",
@@ -723,7 +723,8 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--window-bar-bg",
-    "value": "var(--bg-sidebar)"
+    "value": "color-mix(in oklab, var(--well) 50%, var(--bg))",
+    "description": "The window's chrome (title bar and toolbar, one surface): halfway between the backdrop (--bg) and the content (--well), so every theme steps backdrop → chrome → content the same way, whatever its own sidebar colour."
   },
   {
     "name": "--window-dim",
@@ -756,7 +757,13 @@ export const TOKENS: readonly TokenInfo[] = [
   },
   {
     "name": "--toolbar-bg",
-    "value": "var(--bg)"
+    "value": "var(--window-bar-bg)",
+    "description": "The window toolbar: the title bar's colour, so bar and toolbar are one chrome surface with a line between them."
+  },
+  {
+    "name": "--toolbar-field-bg",
+    "value": "color-mix(in oklab, var(--scrim) 6%, var(--toolbar-bg))",
+    "description": "Text fields in the toolbar: recessed into it (its colour toward --scrim), outlined in --window-edge."
   },
   {
     "name": "--sheet-radius",

@@ -146,13 +146,14 @@
   --window-radius: 8px;
   --window-outline: 1px;
   --window-elevation: 0.5;
-  /* The outline and the line under the title bar: one opaque colour (the separator over the title bar), so both look the same over any background. */
-  --window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--bg-sidebar));
+  /* The outline, the line under the title bar and the toolbar's: one opaque colour mixed over the chrome (the title bar's colour), so they look the same over any background. */
+  --window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix, 9%), var(--window-bar-bg));
   --window-highlight: var(--accent);
   --window-bg: var(--well);
   /* The title bar. */
   --window-bar-h: 26px;
-  --window-bar-bg: var(--bg-sidebar);
+  /* The window's chrome (title bar and toolbar, one surface): halfway between the backdrop (--bg) and the content (--well), so every theme steps backdrop → chrome → content the same way, whatever its own sidebar colour. */
+  --window-bar-bg: color-mix(in oklab, var(--well) 50%, var(--bg));
   /* How much this theme darkens unfocused windows: a factor on the ui.unfocusedDim setting. */
   --window-dim: 1;
   --focus-outline: 1px;
@@ -161,7 +162,10 @@
   --toolbar-h: 31px;
   /* Items in the window toolbar. */
   --toolbar-item-h: 22px;
-  --toolbar-bg: var(--bg);
+  /* The window toolbar: the title bar's colour, so bar and toolbar are one chrome surface with a line between them. */
+  --toolbar-bg: var(--window-bar-bg);
+  /* Text fields in the toolbar: recessed into it (its colour toward --scrim), outlined in --window-edge. */
+  --toolbar-field-bg: color-mix(in oklab, var(--scrim) 6%, var(--toolbar-bg));
   /* Sheets look like windows: their corners, outline and the same shadow, higher (4× the windows' elevation, at most 6). */
   --sheet-radius: var(--window-radius);
   --sheet-edge-width: var(--window-outline);

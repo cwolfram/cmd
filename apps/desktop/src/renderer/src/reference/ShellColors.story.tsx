@@ -23,7 +23,7 @@ type Recipe = {
   toolbarIsBar?: boolean;
   /** The outline premixed over the title bar's colour instead of --bg-sidebar. */
   edgeOverChrome?: boolean;
-  /** Toolbar fields: in the well with --input-edge (today), or recessed into the toolbar (its colour toward --scrim by `fieldDim` %) with the window's outline colour. */
+  /** Toolbar fields: in the well (before), or recessed into the toolbar (its colour toward --scrim by `fieldDim` %) with the window's outline colour. */
   field?: "well" | "recessed";
   fieldDim?: number;
   edgeMix: number;
@@ -34,7 +34,7 @@ type Recipe = {
   barLine: boolean;
 };
 
-const TODAY: Recipe = {
+const BEFORE: Recipe = {
   backdrop: { base: "bg", shift: 0 },
   bar: { base: "bg-sidebar", shift: 0 },
   toolbar: { base: "bg", shift: 0 },
@@ -49,22 +49,22 @@ const TODAY: Recipe = {
   fieldDim: 6,
 };
 /** Backdrop → chrome → content, one step each way: chrome between --bg and --well, one tone for bar and toolbar. */
-const ORDERED: Recipe = { ...TODAY, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, field: "recessed", tint: "off", dimScope: "content" };
+const ORDERED: Recipe = { ...BEFORE, bar: { base: "bg", toward: "well", mix: 50, shift: 0 }, toolbarIsBar: true, edgeOverChrome: true, field: "recessed", tint: "off", dimScope: "content" };
 const PRESETS: Record<string, Recipe> = {
-  Today: TODAY,
   Ordered: ORDERED,
-  "Toolbar = bar": { ...TODAY, toolbar: { base: "bg-sidebar", shift: 0 } },
-  "One chrome, no line": { ...TODAY, toolbar: { base: "bg-sidebar", shift: 0 }, barLine: false },
-  "Chrome from well": { ...TODAY, bar: { base: "well", shift: 2 }, toolbar: { base: "well", shift: 2 }, barLine: false },
-  "Dim content only": { ...TODAY, toolbar: { base: "bg-sidebar", shift: 0 }, dimScope: "content" },
+  Before: BEFORE,
+  "Toolbar = bar": { ...BEFORE, toolbar: { base: "bg-sidebar", shift: 0 } },
+  "One chrome, no line": { ...BEFORE, toolbar: { base: "bg-sidebar", shift: 0 }, barLine: false },
+  "Chrome from well": { ...BEFORE, bar: { base: "well", shift: 2 }, toolbar: { base: "well", shift: 2 }, barLine: false },
+  "Dim content only": { ...BEFORE, toolbar: { base: "bg-sidebar", shift: 0 }, dimScope: "content" },
 };
 
 const KEY = "wb.shellcolors";
 function load(): Recipe {
   try {
-    return { ...TODAY, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
+    return { ...ORDERED, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") };
   } catch {
-    return TODAY;
+    return ORDERED;
   }
 }
 function useRecipe(): [Recipe, (r: Recipe) => void] {
@@ -105,7 +105,7 @@ function Shell({ r, name, icon, selected, toolbar = true, width, height }: { r: 
   const dimTop = r.dimScope === "content" ? `calc(var(--window-bar-h) + ${toolbar ? "var(--toolbar-h)" : "0px"})` : "0px";
   const tint = selected && TINT[r.tint] ? { background: `color-mix(in srgb, var(--ring-color) ${TINT[r.tint]}%, var(--window-bar-bg))` } : undefined;
   return (
-    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative", ...(r.edgeOverChrome && { "--window-edge": "color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg))" }), ...(r.field === "recessed" && { "--field-bg": `color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg))`, "--input-edge": "var(--window-edge)" }) } as CSSProperties}>
+    <Window selected={selected} style={{ width, height, flex: width === "auto" ? 1 : "none", minWidth: 0, position: "relative", "--window-edge": `color-mix(in srgb, var(--ink) var(--window-edge-mix), var(${r.edgeOverChrome ? "--window-bar-bg" : "--bg-sidebar"}))`, "--toolbar-field-bg": r.field === "recessed" ? `color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg))` : "var(--well)" } as CSSProperties}>
       <WindowBody style={{ height: "100%" }}>
         <WindowBar icon={icon} name={name} style={{ ...tint, ...(r.barLine || !toolbar ? null : { boxShadow: "none" }) }} />
         {toolbar && (
@@ -197,7 +197,7 @@ function css(r: Recipe): string {
     `--toolbar-bg: ${v["--toolbar-bg"]};`,
     ...(r.edgeOverChrome ? ["--window-edge: color-mix(in srgb, var(--ink) var(--window-edge-mix), var(--window-bar-bg));"] : []),
     `--window-edge-mix: ${v["--window-edge-mix"]};`,
-    ...(r.field === "recessed" ? [`/* toolbar fields */ --field-bg: color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg)); --input-edge: var(--window-edge);`] : []),
+    ...(r.field === "recessed" ? [`--toolbar-field-bg: color-mix(in oklab, var(--scrim) ${r.fieldDim ?? 6}%, var(--toolbar-bg));`] : []),
     `/* ui.unfocusedDim ${r.dim}, dim ${r.dimScope}, title tint ${r.tint}, bar line ${r.barLine ? "on" : "off"} */`,
   ].join("\n");
 }
@@ -245,7 +245,7 @@ function Panel({ r, set }: { r: Recipe; set: (r: Recipe) => void }) {
       <pre style={{ margin: "8px 0 0", padding: 8, font: "var(--text-2xs) var(--font-mono)", whiteSpace: "pre-wrap", background: "var(--well)", borderRadius: "var(--radius-sm)", userSelect: "text" }}>{css(r)}</pre>
       <div style={{ display: "flex", gap: 6 }}>
         <Button size="sm" onClick={() => navigator.clipboard.writeText(css(r))}>Copy CSS</Button>
-        <Button size="sm" variant="ghost" onClick={() => set(TODAY)}>Reset</Button>
+        <Button size="sm" variant="ghost" onClick={() => set(ORDERED)}>Reset</Button>
       </div>
     </div>
   );
@@ -253,7 +253,7 @@ function Panel({ r, set }: { r: Recipe; set: (r: Recipe) => void }) {
 
 // ── variants ───────────────────────────────────────────
 
-/** The workbench's theme, large, with today's recipe under it for comparison. */
+/** The workbench's theme, large, with the recipe before Ordered under it for comparison. */
 export const Board = () => {
   const [r, set] = useRecipe();
   const theme = useTheme();
@@ -262,7 +262,7 @@ export const Board = () => {
       <Panel r={r} set={set} />
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <Scene theme={theme} r={r} height={260} />
-        <Scene theme={theme} r={TODAY} height={140} label="Today" />
+        <Scene theme={theme} r={BEFORE} height={140} label="Before" />
       </div>
     </div>
   );
