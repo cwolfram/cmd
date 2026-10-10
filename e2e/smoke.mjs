@@ -226,8 +226,9 @@ const SCENARIOS = {
 const failures = [];
 const outcome = new Map(); // name → "passed" | "failed" | "skipped" | "not run"
 // --only: the named scenarios (a part of a name picks each it is in), what they need, and onboarding.
-// About how long each scenario takes, in seconds (others: half a second), to deal the shards evenly.
-const COST = { grid: 4.5, magic: 4.2, strip: 3.4, restart: 4, embedded: 1.9, "core-status": 1.4, browser: 1.2, text: 1.2, settings: 1.2, osc8: 1.2, untitled: 1.1, palette: 1.1, terminals: 0.9, sidebars: 1, "site-permissions": 0.9, "window-kinds": 0.7, "files-menus": 0.7 };
+// About how long each scenario takes, in seconds (others: 0.2), to deal the shards evenly.
+// Measured with E2E_SCREEN=ci (the "# name" lines of a run through a timestamping pipe).
+const COST = { magic: 3.9, strip: 3.1, grid: 2.9, restart: 2.7, embedded: 2.3, settings: 1.9, "site-permissions": 1.3, "core-status": 1.3, untitled: 1.1, osc8: 1.1, onboarding: 0.9, sidebars: 0.8, workspaces: 0.6, text: 0.6, json: 0.6, "files-menus": 0.6, "app-window": 0.6, terminals: 0.5, browser: 0.5, palette: 0.4 };
 const wanted = (() => {
   if (!only && !shard) return null;
   const want = new Set();
@@ -239,9 +240,9 @@ const wanted = (() => {
   if (shard) {
     // Longest first, each to the shard it adds the least time to (with what it needs).
     const sets = Array.from({ length: shard[1] }, () => new Set(["onboarding"]));
-    const load = (set) => [...set].reduce((t, n) => t + (COST[n] ?? 0.5), 0);
+    const load = (set) => [...set].reduce((t, n) => t + (COST[n] ?? 0.2), 0);
     // browser uses the system clipboard: it and what needs it run in one shard.
-    for (const name of Object.keys(SCENARIOS).sort((a, b) => (COST[b] ?? 0.5) - (COST[a] ?? 0.5))) {
+    for (const name of Object.keys(SCENARIOS).sort((a, b) => (COST[b] ?? 0.2) - (COST[a] ?? 0.2))) {
       const grown = sets.map((set) => { const g = new Set(set); add(name, g); return g; });
       const browserShard = sets.findIndex((set) => set.has("browser"));
       const i = browserShard >= 0 && grown[browserShard].has("browser") && grown.every((g) => g.has("browser")) // name needs browser
@@ -1891,6 +1892,9 @@ await scenario("marker", async () => {
 
 // Sidebars (docs/21-sidebars.md): any window docks to a side and comes back to the board.
 await scenario("sidebars", async () => {
+  // A window to stay on the board once the marker's is docked (the canvas has nothing to show
+  // without one): earlier scenarios usually leave some, close-idle may leave only the marker's.
+  if ((await panes()) < 2) await tileIn((await win.evaluate(() => window.cmd.call("window.open", { kind: "terminal", input: {} }))).id);
   await select(markerPane);
   const onBoard = () => win.locator(`.windows-track > .tile[data-pane="${markerPane}"]`).count();
   await menu("window.dockRight");
