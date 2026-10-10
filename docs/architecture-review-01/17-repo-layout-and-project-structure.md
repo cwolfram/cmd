@@ -115,7 +115,7 @@ packages/core/src/
 
 ### AR1-17-03 · One folder per window type in the renderer, the terminal included
 
-- **Status:** open
+- **Status:** done (2fb38f02)
 - **Severity:** medium
 - **Effort:** M (1–2 days)
 - **Where:** `renderer/src/windows/builtin.tsx:9-25`, `renderer/src/components/*View.tsx`
@@ -139,14 +139,14 @@ Their `.story.tsx` and feature CSS (`magic.css`, `jam.css`, `widgets.css`, `libr
 - With AR1-07-03, `register.ts` is also where the type's typed state and its core-side definition meet.
 
 **Success criteria.**
-- [ ] Every `registerWindowView` call lives in a `windows/<type>/` folder; `builtin.tsx` contains only imports.
-- [ ] No file in `components/` is a window type's root view (`git grep -l registerWindowView -- '*/components/*'` is empty).
-- [ ] Stories move with their view, and `pnpm workbench <story>` still finds them.
-- [ ] `pnpm e2e` smoke passes (once, at the end).
+- [x] Every `registerWindowView` call lives in a `windows/<type>/` folder; `builtin.tsx` contains only imports. Except Jam (`windows/jam.tsx`, `components/JamView.tsx`, `jam.css`), left in place while the `jam-render` branch had uncommitted work in them: move it to `windows/jam/` next. Files keep their names (`BrowserView.tsx`, not `view.tsx`), so the Workbench's story ids stay the same; each folder's `register.tsx` is the registration that was in `builtin.tsx`.
+- [x] No file in `components/` is a window type's root view (`git grep -l registerWindowView -- '*/components/*'` is empty).
+- [x] Stories move with their view, and `pnpm workbench <story>` still finds them.
+- [x] `pnpm e2e` smoke passes (once, at the end).
 
 ### AR1-17-04 · Split the renderer root into shell, lib and features
 
-- **Status:** open
+- **Status:** done (63c09652)
 - **Severity:** medium
 - **Effort:** M (1–2 days)
 - **Where:** `apps/desktop/src/renderer/src/*.ts*` (38 files), `components/` app chrome
@@ -176,9 +176,9 @@ renderer/src/
 As with AR1-17-02: rename-only commits, one folder at a time.
 
 **Success criteria.**
-- [ ] The renderer root contains only `main.tsx` and `styles.css`.
-- [ ] `components/` has ≤ 15 entries, all used by more than one window or shell part.
-- [ ] `pnpm typecheck && pnpm test` pass after each commit; the smoke e2e passes at the end.
+- [x] The renderer root contains only `main.tsx` and `styles.css`.
+- [x] `components/` has ≤ 15 entries, all used by more than one window or shell part. 13: the shared pieces (SidebarRows, Slot, Symbol, IndexRing, PairPrompt, Remote) plus Jam (see AR1-17-03) and four stories of kit controls. No `features/` yet: the renderer halves of features went into their window's folder (`magic.ts`, `workspaceActions.ts`, `devices.ts`, `diff.ts`) or `lib/` (`widgets.ts`, `actions.ts`, `audio.ts`); `features/` comes with AR1-17-05. `pdf/`, `editor/` and the rest stay as they were.
+- [x] `pnpm typecheck && pnpm test` pass after each commit; the smoke e2e passes at the end.
 
 ### AR1-17-05 · Make a feature one folder per side, with one contribution entry
 
