@@ -71,7 +71,7 @@ A missing method fails the assignment to `Handlers`; a method registered twice i
 
 ### AR1-03-02 · Replace the lambda option bags with a typed `CoreContext`
 
-- **Status:** open
+- **Status:** open · mostly done (core-context branch, see Progress)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:252-527`, `packages/core/src/core.ts:308`, `packages/core/src/core.ts:356`, `packages/core/src/core.ts:466-470`, `packages/core/src/core.ts:405-411`
@@ -121,9 +121,17 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 - [ ] `packages/core/src/context.ts` exists and every service in the graph above takes `Pick<CoreContext, …>` (or nothing) instead of a bag of closures into `Core`
 - [ ] `grep -c "=>" core.ts` constructor region under 25, and `grep -n "workspaceOf =" core.ts` returns nothing
-- [ ] No lambda in the constructor reads a `this.*` field assigned on a later line (a test constructs `Core` with `usage` stubbed to throw and calls `actions.run`/`agent.summarize` paths)
-- [ ] `dependency-cruiser` (00-research §9) or a small script lists services → context slices with no edge into `core.ts`
-- [ ] `SummaryService`, `ActionsService`, `AgentNaming` and `JournalService` each have a test that constructs them with a fake context and no `Core`
+- [x] No lambda in the constructor reads a `this.*` field assigned on a later line (a test constructs `Core` with `usage` stubbed to throw and calls `actions.run`/`agent.summarize` paths)
+- [x] `dependency-cruiser` (00-research §9) or a small script lists services → context slices with no edge into `core.ts`
+- [x] `SummaryService`, `ActionsService`, `AgentNaming` and `JournalService` each have a test that constructs them with a fake context and no `Core`
+
+**Progress (2026-10-10).**
+- `kernel/context.ts` (not `src/context.ts`: the core's root keeps only its entry points, doc 17) has `CoreContext`: the services by name plus what only Core does (`broadcast`, `place`, `opened`, `watched`, `libraryChanged`, `previewer`). Core builds it once with `contextOf`; a service is read when used, and reading one before Core made it throws (`core.usage was used before the core made it`), which replaces the `†` cases with a loud error. `usage` is now made right after settings.
+- The services keep their narrow option interfaces, which their tests fake; what moved is the wiring. Each gets a `createX(ctx: Pick<CoreContext, …>)` beside it that turns the context into its options: `createNotifications` (with `#writeNotice`, now in `notifications/center.ts`), `createNaming`, `createSummaries`, `createAi` (the `onCall` recorder, its settings binding, `ai.updated`), `createMagic`, and, from the feature work, `createJournal`, `createActions`, `createTimers`. So a service's dependencies are in that function's signature, and Core's constructor calls it.
+- Both `workspaceOf` property injections are constructor arguments now (`NotificationCenter`, `ActivityView`).
+- `packages/core/test/core-context.test.ts`: the context throws on a service not made yet; no file but `main.ts` and `index.ts` imports `kernel/core.ts`; naming, summaries, actions and the journal are made from a fake context with no Core.
+- Not yet: the constructor still has 54 `=>` (from 84; the target is 25). What's left is mostly Core's own work: forwarding service events to clients, the subscriptions behind `#dataChanged`/`#viewChanged`, closed windows, agent homes. Those move out with AR1-03-01. `PaneManager`, `AgentTracker`, `WindowManager`, `AgentHomes`, `PaneOutputRecorder` and `RemoteService` still take their options inline; `RemoteService` is left for whoever works on remote.
+
 
 ### AR1-03-03 · Give handlers the connection and delete `#afterCall`
 
