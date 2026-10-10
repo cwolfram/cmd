@@ -6,6 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import "@cmd/ui/ui.css";
 import "./styles.css";
 import "./windows/builtin.tsx"; // built-in window views (browser, files, text)
+import "./shell/commands/index.ts"; // the app's commands
 import { App } from "./shell/App.tsx";
 import { TOPBAR_HEIGHT } from "../../shared/chrome.ts";
 import { cmd } from "./lib/bridge.ts";

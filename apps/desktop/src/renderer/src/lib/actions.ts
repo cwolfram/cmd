@@ -6,20 +6,12 @@ import { cmd } from "./bridge.ts";
 import { getState, setUi } from "./store.ts";
 import { isWidget, under } from "./model.ts";
 import { windowStatus } from "./windowActions.ts";
+import { select, selected } from "./selection.ts";
 import type { OpenFrom } from "../../../main/open-policy.ts";
 
-type Selector = (paneId: PaneId) => void;
-let select: Selector = () => {};
-let currentPane: () => PaneId | null = () => null;
-
-/** Select a pane from outside React (e.g. after resuming a session). */
+/** Select a window (lib/selection.ts; kept under this name for the windows that call it). */
 export function selectPane(id: PaneId): void {
   select(id);
-}
-
-export function bindSelection(fn: Selector, current: () => PaneId | null): void {
-  select = fn;
-  currentPane = current;
 }
 
 /** New things go to the workspace this app window shows. */
@@ -56,7 +48,7 @@ export function windowSelected(id: string | null): void {
  * inside the root in other workspaces; otherwise (undefined) the core starts them at the root.
  */
 export function contextCwd(): string | undefined {
-  const cwd = folderOf(currentPane()) ?? folderOf(lastWithFolder);
+  const cwd = folderOf(selected()) ?? folderOf(lastWithFolder);
   const workspace = getState().workspaces.get(here());
   return cwd && workspace && (workspace.home || under(workspace.root, cwd)) ? cwd : undefined;
 }

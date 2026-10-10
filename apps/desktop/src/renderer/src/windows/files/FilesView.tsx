@@ -37,7 +37,7 @@ import { registerDropTarget } from "../../lib/drops.ts";
 import { dragFiles } from "../../lib/drags.ts";
 import { ICON, Symbol } from "../../components/Symbol.tsx";
 import { PlacementContext } from "../registry.ts";
-import { registerWindowActions } from "../../lib/windowActions.ts";
+import { registerWindowActions, type WindowActions } from "../../lib/windowActions.ts";
 import { useFind } from "../../lib/find.tsx";
 import { domFindable } from "../../lib/find-dom.ts";
 
@@ -126,7 +126,12 @@ export function FilesView({ win, focused }: { win: AppWindow; focused: boolean }
     [],
   );
   const find = useFind(findable, { placeholder: "Find a name", onClose: () => listRef.current?.focus() });
-  useEffect(() => registerWindowActions(win.id, { find: find.request }), [win.id, find.request]);
+  // Its commands (windows/files/commands.ts) act on what is selected when they run.
+  const own = useRef<NonNullable<WindowActions["files"]>>(null!);
+  useEffect(
+    () => registerWindowActions(win.id, { find: find.request, files: { newFolder: () => own.current.newFolder(), duplicate: () => own.current.duplicate(), trash: () => own.current.trash(), up: () => own.current.up(), open: () => own.current.open() } }),
+    [win.id, find.request],
+  );
   const docked = useContext(PlacementContext) === "sidebar";
   const [bookmarks, setBookmarks] = usePersisted<Bookmark[]>("files.bookmarks", []);
   const isBookmarked = (p: string) => bookmarks.some((b) => b.path === p);
@@ -505,17 +510,25 @@ export function FilesView({ win, focused }: { win: AppWindow; focused: boolean }
     return out;
   }, [root]);
 
+  const current = () => rows.find((r) => r.entry.path === sel)?.entry;
+  own.current = {
+    newFolder: () => void create("dir"),
+    duplicate: () => current() && void duplicate(current()!),
+    trash: () => current() && void trash(current()!),
+    up: rootUp,
+    open: () => {
+      const e = current();
+      if (e) e.kind === "dir" ? setRoot(e.path) : openFile(e);
+    },
+  };
+
   const onKey = (e: React.KeyboardEvent) => {
     const i = rows.findIndex((r) => r.entry.path === sel);
     const cur = rows[i];
     const pick = (j: number) => setSel(rows[Math.max(0, Math.min(rows.length - 1, j))]?.entry.path ?? null);
     let handled = true;
-    if (e.metaKey && e.shiftKey && e.key.toLowerCase() === "n") void create("dir");
-    else if (e.metaKey && e.key === "d") cur && void duplicate(cur.entry);
-    else if (e.metaKey && e.key === "Backspace") cur && void trash(cur.entry);
-    else if (e.key === "F2") cur && setRenaming(cur.entry.path);
-    else if (e.metaKey && e.key === "ArrowUp") rootUp();
-    else if (e.metaKey && e.key === "ArrowDown") cur && (cur.entry.kind === "dir" ? setRoot(cur.entry.path) : openFile(cur.entry));
+    // ⌘D, ⌘⌫, ⌘↑, ⌘↓ are the window's commands (windows/files/commands.ts), remappable in Settings.
+    if (e.key === "F2") cur && setRenaming(cur.entry.path);
     else if (e.metaKey || e.ctrlKey || e.altKey) handled = false; // app shortcuts (⌥⌘← etc.)
     else if (e.key === "ArrowDown") pick(i + 1);
     else if (e.key === "ArrowUp") pick(i < 0 ? 0 : i - 1);

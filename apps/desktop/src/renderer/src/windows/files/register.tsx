@@ -1,5 +1,6 @@
 // File browser windows (renderer half): the folder it's in as the title's place, Show in Finder and Copy Path.
 
+import "./commands.ts"; // its commands (shell/commands/registry.ts)
 import { cmd } from "../../lib/bridge.ts";
 import { parentOf } from "../../lib/model.ts";
 import { copy } from "../../lib/actions.ts";

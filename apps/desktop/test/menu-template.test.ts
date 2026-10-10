@@ -3,7 +3,7 @@
 // register with the menu (the window runs it).
 import { describe, expect, it } from "vitest";
 import type { MenuItemConstructorOptions } from "electron";
-import { menuSlots, menuTemplate } from "../src/main/menu-template.ts";
+import { contextTemplate, menuSlots, menuTemplate } from "../src/main/menu-template.ts";
 import { COMMANDS, DEFAULT_KEYBINDINGS, type CommandSpec } from "../src/shared/commands.ts";
 
 const flat = (items: MenuItemConstructorOptions[]): MenuItemConstructorOptions[] => items.flatMap((i) => [i, ...(Array.isArray(i.submenu) ? flat(i.submenu) : [])]);
@@ -28,5 +28,11 @@ describe("the menu bar", () => {
     for (const c of (COMMANDS as readonly CommandSpec[]).filter((c) => c.scope === "window")) {
       expect(items.find((i) => i.id === c.id)?.registerAccelerator, c.id).toBe(false);
     }
+  });
+
+  it("shows a context-menu entry's shortcut when it is a command, without taking the key", () => {
+    const [cmdItem, plain] = contextTemplate([{ id: "0", label: "Copy Session ID", accelerator: "Alt+Cmd+C" }, { id: "1", label: "Paste" }], () => {});
+    expect(cmdItem).toMatchObject({ accelerator: "Alt+Cmd+C", registerAccelerator: false });
+    expect(plain!.accelerator).toBeUndefined();
   });
 });

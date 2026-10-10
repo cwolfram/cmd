@@ -188,6 +188,9 @@ function set(next: Partial<State>): void {
 
 const subscribe = (fn: () => void) => (listeners.add(fn), () => void listeners.delete(fn));
 
+/** Every state change, outside React; returns the unsubscribe. */
+export const onState = subscribe;
+
 /** The whole state: re-renders on every change (panes, agents, usage…). Prefer useStoreValue. */
 export function useStore(): State {
   return useSyncExternalStore(subscribe, () => state);

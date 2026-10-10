@@ -58,6 +58,12 @@ export const COMMANDS = spec([
   { id: "view.magicStop", label: "Stop Making Widget", keys: ["Cmd+."], menu: "Widgets/widget" },
   { id: "widget.remove", label: "Remove from Board", menu: "Widgets/remove" },
   { id: "file.save", label: "Save", keys: ["Cmd+S"], menu: "File/save" },
+  // A file browser's own (windows/files/commands.ts): its keys work only there (scope "window").
+  { id: "files.newFolder", label: "New Folder", menu: "File/files", scope: "window" },
+  { id: "files.duplicate", label: "Duplicate", keys: ["Cmd+D"], menu: "File/files", scope: "window" },
+  { id: "files.trash", label: "Move to Trash", keys: ["Cmd+Backspace"], menu: "File/files", scope: "window" },
+  { id: "files.up", label: "Enclosing Folder", keys: ["Cmd+Up"], menu: "File/files", scope: "window" },
+  { id: "files.open", label: "Open Selection", keys: ["Cmd+Down"], menu: "File/files", scope: "window" },
   { id: "file.close", label: "Close Window", keys: ["Cmd+W"], menu: "File/close" },
   { id: "file.closeWindow", label: "Close App Window", keys: ["Shift+Cmd+W"], menu: "File/close" },
   { id: "file.reopenClosed", label: "Reopen Closed Window", keys: ["Shift+Cmd+T"], menu: "File/close" },
@@ -155,9 +161,11 @@ export interface MenuState {
   enabled: Partial<Record<CommandId, boolean>>;
 }
 
-/** Context menu item sent from renderer to main. */
-/** A context-menu item; `checked` shows a checkmark, `submenu` nests items (its own id is never chosen). */
-export type ContextItem = { id: string; label: string; enabled?: boolean; checked?: boolean; submenu?: ContextItem[] } | { separator: true };
+/**
+ * A context-menu item sent from renderer to main; `checked` shows a checkmark, `submenu` nests
+ * items (its own id is never chosen), `accelerator` shows an app command's shortcut beside it.
+ */
+export type ContextItem = { id: string; label: string; enabled?: boolean; checked?: boolean; accelerator?: string; submenu?: ContextItem[] } | { separator: true };
 
 export type Keybindings = Record<string, string[]>;
 

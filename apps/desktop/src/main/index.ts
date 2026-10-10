@@ -16,6 +16,7 @@ import path from "node:path";
 import { KIT_FILES, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
 import { cmdHome, connect, CORE_REFUSED_EXIT, coreRefusal, coreSocketPath, enterInstance, foreignHome, foreignHomeText, hasDevMarker, initLog, instanceName, isOwnCore, installCrashHandlers, ipcPath, logDir, logger, sourceBuildId } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
+import { contextTemplate } from "./menu-template.ts";
 import { SETTINGS_TITLEBAR_HEIGHT, TOPBAR_HEIGHT, trafficLights } from "../shared/chrome.ts";
 import { applyMenuState, buildMenu, commandSender } from "./menu.ts";
 import { buildInstance, readFlavor } from "./flavor.ts";
@@ -909,15 +910,7 @@ ipcMain.handle("widget-frame", (_e, media: unknown, kit: unknown) => {
 ipcMain.handle("context-menu", (e, items: ContextItem[]) => {
   return new Promise<string | null>((resolve) => {
     let chosen: string | null = null;
-    const template = (list: ContextItem[]): Electron.MenuItemConstructorOptions[] =>
-      list.map((it) =>
-        "separator" in it
-          ? { type: "separator" as const }
-          : it.submenu
-            ? { label: it.label, enabled: it.enabled ?? true, submenu: template(it.submenu) }
-            : { label: it.label, enabled: it.enabled ?? true, ...(it.checked !== undefined ? { type: "checkbox" as const, checked: it.checked } : {}), click: () => (chosen = it.id) },
-      );
-    const menu = Menu.buildFromTemplate(template(items));
+    const menu = Menu.buildFromTemplate(contextTemplate(items, (id) => (chosen = id)));
     menu.popup({ window: winOf(e) ?? undefined, callback: () => resolve(chosen) });
   });
 });

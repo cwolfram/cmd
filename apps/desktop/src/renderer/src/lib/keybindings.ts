@@ -17,6 +17,9 @@ const set = (s: KeybindingsSnapshot) => {
 void cmd.keybindings().then(set);
 cmd.onKeybindings(set);
 
+/** The shortcuts now (outside React). */
+export const keybindings = (): KeybindingsSnapshot => snapshot;
+
 export function useKeybindings(): KeybindingsSnapshot {
   return useSyncExternalStore(
     (fn) => (listeners.add(fn), () => listeners.delete(fn)),

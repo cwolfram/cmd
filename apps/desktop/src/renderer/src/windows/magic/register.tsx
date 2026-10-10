@@ -1,5 +1,6 @@
 // Magic widgets (renderer half): the title from the request, the actions on right-click and in the View menu (Change, Edit, Refresh, Mute, Fix It).
 
+import "./commands.ts"; // its commands (shell/commands/registry.ts)
 import type { AppWindow } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import type { MenuEntry } from "../../lib/context.ts";

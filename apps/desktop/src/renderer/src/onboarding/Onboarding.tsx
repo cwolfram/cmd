@@ -29,6 +29,11 @@ export function closeSetup(): void {
   set(null);
 }
 
+/** Whether onboarding is open (What's New waits for it, shell/sheets.ts). */
+export function setupOpen(): boolean {
+  return open !== null;
+}
+
 export function useSetup(): readonly string[] | null {
   return useSyncExternalStore(
     (fn) => (listeners.add(fn), () => listeners.delete(fn)),

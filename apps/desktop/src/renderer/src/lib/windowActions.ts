@@ -7,7 +7,7 @@
 import { useSyncExternalStore } from "react";
 import type { FindRequest } from "./find.tsx";
 
-type Actions = {
+export type WindowActions = {
   save?: () => void | Promise<void>;
   openExternally?: () => void;
   /** Magic widgets: change (refine), refresh the data, stop a run. */
@@ -22,7 +22,10 @@ type Actions = {
   find?: (r: FindRequest) => void;
   /** ⌘+ / ⌘− / ⌘0 zoom the window's content (a PDF) instead of the app's text. */
   zoom?: (d: 1 | -1 | 0) => void;
+  /** A file browser's own commands (windows/files/commands.ts), on its selected row or folder. */
+  files?: { newFolder: () => void; duplicate: () => void; trash: () => void; up: () => void; open: () => void };
 };
+type Actions = WindowActions;
 const registry = new Map<string, Actions>();
 let registryVersion = 0;
 const registryListeners = new Set<() => void>();

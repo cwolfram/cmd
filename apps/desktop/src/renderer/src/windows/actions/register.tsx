@@ -1,5 +1,6 @@
 // Workspace Actions (renderer half): the title bar names the folder or worktree they're for, its menu picks which.
 
+import "./commands.ts"; // its commands (shell/commands/registry.ts)
 import { ACTIONS_TITLE, type AppWindow } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import type { MenuEntry } from "../../lib/context.ts";

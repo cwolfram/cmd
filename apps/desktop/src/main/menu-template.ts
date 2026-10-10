@@ -3,7 +3,7 @@
 // Pure (Electron's types only), so a test can check every command is placed exactly once.
 
 import type { MenuItemConstructorOptions } from "electron";
-import { COMMANDS, type CommandSpec, type Keybindings } from "../shared/commands.ts";
+import { COMMANDS, type CommandSpec, type ContextItem, type Keybindings } from "../shared/commands.ts";
 
 type Send = (id: string) => void;
 type Role = NonNullable<MenuItemConstructorOptions["role"]>;
@@ -60,4 +60,21 @@ export function menuTemplate(send: Send, bindings: Keybindings, o: { mac: boolea
 /** Every slot the layout places (for the test: a command in another slot isn't in the menu). */
 export function menuSlots(mac: boolean): string[] {
   return layout(mac, "cmd").flatMap((m) => m.groups.flat().filter((p): p is string => typeof p === "string"));
+}
+
+/** A context menu's template; an entry that is an app command shows its shortcut, which the menu bar runs (not this menu). */
+export function contextTemplate(list: ContextItem[], choose: (id: string) => void): MenuItemConstructorOptions[] {
+  return list.map((it) =>
+    "separator" in it
+      ? { type: "separator" as const }
+      : it.submenu
+        ? { label: it.label, enabled: it.enabled ?? true, submenu: contextTemplate(it.submenu, choose) }
+        : {
+            label: it.label,
+            enabled: it.enabled ?? true,
+            ...(it.checked !== undefined ? { type: "checkbox" as const, checked: it.checked } : {}),
+            ...(it.accelerator ? { accelerator: it.accelerator, registerAccelerator: false } : {}),
+            click: () => choose(it.id),
+          },
+  );
 }
