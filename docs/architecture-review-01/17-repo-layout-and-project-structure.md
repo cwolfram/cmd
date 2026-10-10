@@ -209,7 +209,7 @@ The central files import a list of contributions instead of holding entries. The
 - `kernel/features.ts` lists features (`Feature`: `id`, `handlers(core)`, `startup`, `dispose`); `Core` spreads their handlers into `Handlers` (tsc still fails on a method nobody handles), runs their startup jobs where the journal's ran and disposes them. `kernel/handlers.ts` has `Handlers` and `HandlerSlice<K>`.
 - `journal/feature.ts` declares the journal's service construction, its 8 handlers, its startup job, its teardown and its window type (`windows/builtin.ts` registers it in its old place, so the Widget Library order holds; the scoped list widget shape moved to `windows/scoped.ts`).
 - `JournalMethods` lives in protocol `journal.ts`; `Methods` extends it.
-- `test/features.test.ts`: each feature's methods are named after it, none twice, all served.
+- `packages/core/test/features.test.ts`: each feature's methods are named after it, none twice, all served.
 
 Folders stay where they were (`core/src/journal/`, `renderer/src/windows/journal/`): a `features/` level would move every feature for no gain over one folder per feature, which they already are. The journal has no settings or commands, so those contributions wait for a feature that has them (and for AR1-15-03). Still central: `remote/policy.ts` lists the journal's methods (a policy per method; a feature could declare it next to its handlers), `data/project.ts` and `data/recorders.ts` import `repoOfSync` and `projectOf` from `journal/` (they belong in `lib/`), and the CLI's dispatch. Next: timers and actions the same way (AR1-16-08), then settings and commands as contributions.
 
