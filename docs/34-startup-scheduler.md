@@ -1,5 +1,7 @@
 # Startup phases and the work scheduler
 
+**Status:** built: phases, the scheduler and the watchdog (`kernel/scheduler.ts`); index builds in a worker not yet.
+
 > Status (2026-10-07): **phases, the scheduler and the watchdog built and stress-tested**: the core answers before it rebuilds anything, startup jobs run behind the socket in order and show in the footer ("Indexing sessions…"), long jobs yield on a budget, and the watchdog logs every block of the thread over 100 ms with what ran (`[lag] 642 ms in sessions rebuild`), kept in `core.info.stalls` and shown in the core details. The stress harness (below) then found and fixed what the watchdog named: on the author's 1.6 GB log a first launch now answers in 2 ms, finishes its rebuilds in 5 s and reads 4,260 transcripts in 4 minutes with one stall of 109 ms in the whole run. Not built: index builds on a worker; an e2e check on a large fixture; the app's start wait. Read first: this doc; `packages/core/src/scheduler.ts`; `Core.start()` in `packages/core/src/core.ts`; `apps/desktop/src/main/index.ts` (`waitForCore`). Builds on the data layer ([28](28-data-plan.md)): the views it rebuilds are the ones this schedules.
 
 ## Why

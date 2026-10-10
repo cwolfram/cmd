@@ -1,5 +1,7 @@
 # Data requirements
 
+**Status:** reference: the requirements (A1–F3) the data plan is measured against.
+
 > Status (2026-10-06), branch `data-model`: the second of four documents. [25](25-data-model-critique.md) said what's wrong with how cmd stores and derives data. This one says what the data layer must do for the next six to twelve months, as requirements the plan (27) is measured against and the refactor (28) implements. It names no tables and no libraries. Decided already: cmd owns transcripts; redaction wherever possible (branch `redact`, tested on real transcripts).
 
 ## The vision, in data terms

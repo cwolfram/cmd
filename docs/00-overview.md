@@ -1,5 +1,7 @@
 # cmd: research overview and recommendation
 
+**Status:** reference: the index of every design doc, and the first stack choice the app was scaffolded on.
+
 Date: 2026-10-02. Goal: a personal "swiss army knife" app for macOS, built around a mature terminal core:
 - agent-aware sidebar
 - routines, monitors and plugins
@@ -10,43 +12,59 @@ Date: 2026-10-02. Goal: a personal "swiss army knife" app for macOS, built aroun
 
 The goal is to replace the `ghostty-agents` fork with something owned outright.
 
-**Status (2026-10-03):** scaffolded per this architecture: Electron + a TypeScript core process + CLI. See the [README](../README.md) for what works.
+**2026-10-03:** scaffolded per this architecture: Electron + a TypeScript core process + CLI. See the [README](../README.md) for what works.
 
 ## Documents
-| # | Doc | What's in it |
-|---|---|---|
-| 01 | [Prior work: ghostty-agents](01-prior-work-ghostty-agents.md) | Inventory of the fork's features and mechanisms, what ports as-is, its limitations |
-| 02 | [Terminal foundations](02-terminal-foundations.md) | libghostty-vt, ghostty-web, restty, xterm.js, alacritty, SwiftTerm; PTYs; benchmarks; **canvas rendering** |
-| 03 | [App shell options](03-app-shell-options.md) | Electron, Electrobun, Tauri, Wails, native Swift, GPUI, Flutter |
-| 04 | [Prior art](04-prior-art.md) | cmux, Superset, Conductor, Wave, Tabby, canvas terminals; plugin patterns |
-| 05 | [Agent integration](05-agent-integration.md) | Claude and Codex on-disk formats, ways to detect state, resume commands, search index |
-| 06 | [Plugins, routines, system](06-plugins-routines-system.md) | Plugin model, VPN/SSH/secrets, sudo, testing |
-| 07 | [UI vision](07-ui-vision.md) | Sidebar, view modes, command palette, "Platinum, but playful" design language |
-| 08 | [Host agents and sub-agents](08-host-agents.md) | How cmux does it (and what it lacks), agent-tree data model, host API, UI |
-| 12 | [Magic widgets](12-magic-widgets.md) | v1: a request in, a live widget out; research, agent, security |
-| 14 | [Magic widgets v2](14-magic-v2.md) | Widgets as typed apps: Deno data.ts, checked views, previews, revisions, health, the edit view; toward a store |
-| 15 | [Positioning and voice](15-positioning.md) | The story, the category (a software workbench), pillars, voice, copy bank, naming, visual direction |
-| 16 | [Widgets](16-widgets.md) | Widgets apart from windows: the Widget Library, Magic as how you make one, built-in widgets, how they stay windows underneath |
-| 17 | [AI providers and onboarding](17-ai.md) | One AI service for every feature: providers, tiers, models that pick themselves; the first-launch wizard |
-| 18 | [Agent activity data](18-agent-activity.md) | What agents do, captured reliably: spooled hook events, one vocabulary across agents, state with causes, turns and the files they changed, discovered agent homes, hooks out of the box |
-| 19 | [Reviewing real agent activity data](19-agent-activity-review.md) | Handoff: collect a few days of real sessions, export them, check state, interrupts, turns and files against them, turn findings into fixes and fixtures |
-| 20 | [Session summaries](20-session-summaries.md) | Right-click an agent's title: what the session did, streamed into an editable Markdown file, pruned to fit, shaped to the kind of session |
-| 21 | [Sidebars are windows](21-sidebars.md) | Any window docks left or right per workspace; today's sidebar becomes the Navigator widget; a top bar with the workspace switcher; window hosts so nothing remounts |
-| 22 | [Drag and drop](22-drag-and-drop.md) | Files and links between Finder, terminals, file browsers and windows: native file drags out, one drop router in, window drop targets, `fs.transfer` |
-| 23 | [The journal](23-journal.md) | What happened, as a work log: events kept 180 days (agents, commands, git, pages), threads by identity and links, days written by a model; `cmd journal`, the Journal widget |
-| 24 | [Journal versions](24-journal-versions.md) | A version per layer (event schema, sources, threads, writer), stamped on the data; what a bump re-reads, rewrites or keeps; the runbook for a revision |
-| 25 | [The data model, challenged](25-data-model-critique.md) | Four event logs and no event model: what cmd stores, where the same facts live several times, how derivation and retention differ per feature, what the next features would cost; the questions the requirements must answer |
-| 26 | [Data requirements](26-data-requirements.md) | What the data layer must do for the next year, against the vision (primitives below, intelligence above): twelve scenarios, requirements for facts, views, query, intelligence, operations and developer experience; non-requirements; what the plan decides |
-| 27 | [Data models elsewhere](27-data-research.md) | What comparable systems do, from primary sources: event sourcing on SQLite (LiveStore, Linear), activity trackers (ActivityWatch, Atuin, Screenpipe), agent observability (OTel GenAI, Langfuse, LangSmith), the agents' own transcripts, memory layers (Graphiti, Letta), FTS5/JSONB/subscriptions, privacy; recurring patterns and anti-patterns with evidence |
-| 28 | [The data layer: design and plan](28-data-plan.md) | One event log with one envelope, blobs, entities and links; views as versioned materialisations rebuilt by replay; one query shape with subscriptions and policy; a context builder; retention as a table; two files; seven phases from a spike to memory |
-| 29 | [Memory and recall](29-memory.md) | Planned, not built: facts that expire instead of being deleted, with sources; editable blocks per project; `cmd recall`, an MCP tool and the briefing line; evals before shipping |
-| 30 | [What the data model makes possible](30-data-capabilities.md) | What cmd knows now (one log of agents, transcripts, commands with output, git, pages, your focus, model calls), what that won over the four old logs, features it makes possible from "a screen away" to memory, and examples to run today |
-| 31 | [Context-aware notifications](31-context-notifications.md) | Handoff, not built: what cmd notifies about today, principles, 20 new notifications as rules over the event log (a failing command passes now, an agent changed a file you have open, two agents on one file, a stopped agent can go on, …), a rule engine in the core, a dry run over real history before anything ships |
-| 32 | [Session names](32-session-names.md) | Plan, not built: names of 1–3 nouns in the person's words that tell agents apart in notifications ("Tours · done", not "cmd · done"); what a good name is, real sessions renamed by hand, renaming from the title bar, the worktree rule, a model for the rest with change-of-task detection and hysteresis, `session.name` events, a replay eval |
-| 33 | [Search](33-search.md) | Design, not built: what find (⌘F) and session search (⇧⌘F) do today, one find bar for every window, ⇧⌘F over everything cmd remembers (sessions, commands and output, pages, files, notes) and over project files with ripgrep, a trigram index later as an accelerator that is never the source of truth |
-| 34 | [Startup phases and the work scheduler](34-startup-scheduler.md) | Built: the core answers before it rebuilds anything; startup jobs (indexes, imports, view rebuilds, the transcript reader, homes, journal, retention) run behind the socket in order and show in the footer ("Indexing sessions…"); long jobs yield on a budget (12 ms slices, 30% of wall time); a watchdog logs every block of the thread over 100 ms with what ran, kept in `core.info.stalls`; why (a 172 s "Connecting to core…" on a first launch), the frame-budget pattern from games and React, VS Code's phases, rules for new code, what's left (a worker for one-statement work, an e2e check) |
-| 35 | [Repositories, worktrees and branches](35-checkouts.md) | Plan, not built: what cmd knows about repositories, worktrees and branches and where it shows them (one reader, four shapes, four meanings of "project"); the rule: show where something is only where it differs from the workspace; checkouts on panes, agents and workspaces, chips by difference, worktrees grouped in the picker, removed folders, the CLI; managing worktrees stays out |
-| 39 | [Workspace Actions](39-workspace-actions.md) | Plan, not built: a widget that finds how to run the project in its workspace (package.json, Make, just, Task, mise, Compose, scripts/ and more, parsed, never run), keeps it current as files change, describes actions with the fast tier, ranks them by the commands you ran, and runs them in the right place: own terminals for dev servers, a browser for their URL, confirmation for deploys |
+
+Every doc says under its title what it is: **research**, a **proposal**, **partly built**, **built**, a living **reference**, or **superseded by** a later one. A new doc takes the next free number (`test/docs.test.ts` checks numbers, status lines and this index).
+
+| # | Doc | Status | What's in it |
+|---|---|---|---|
+| 01 | [Prior work: ghostty-agents](01-prior-work-ghostty-agents.md) | research | Inventory of the fork's features and mechanisms, what ports as-is, its limitations |
+| 02 | [Terminal foundations](02-terminal-foundations.md) | research | libghostty-vt, ghostty-web, restty, xterm.js, alacritty, SwiftTerm; PTYs; benchmarks; **canvas rendering** |
+| 03 | [App shell options](03-app-shell-options.md) | research | Electron, Electrobun, Tauri, Wails, native Swift, GPUI, Flutter |
+| 04 | [Prior art](04-prior-art.md) | research | Cmux, Superset, Conductor, Wave, Tabby, canvas terminals; plugin patterns |
+| 05 | [Agent integration](05-agent-integration.md) | research | Claude and Codex on-disk formats, ways to detect state, resume commands, search index |
+| 06 | [Plugins, routines, system](06-plugins-routines-system.md) | proposal | Plugin model, VPN/SSH/secrets, sudo, testing |
+| 07 | [UI vision](07-ui-vision.md) | partly built | Sidebar, view modes, command palette, "Platinum, but playful" design language |
+| 08 | [Host agents and sub-agents](08-host-agents.md) | built | How cmux does it (and what it lacks), agent-tree data model, host API, UI |
+| 09 | [Window types](09-window-types.md) | built | Every window is a type with a core half (state, what it opens) and a UI half (view, title meta, menus); the registry, routing |
+| 10 | [Window titles](10-window-titles.md) | built | One information architecture for the title bar, sidebar row, status bar and palette: which field goes where |
+| 11 | [Workspaces](11-workspaces.md) | partly built | A workspace per folder: identity, placement, matching, the switcher and pickers, one workspace per app window, `cmd .` |
+| 12 | [Magic widgets](12-magic-widgets.md) | superseded by 14 | V1: a request in, a live widget out; research, agent, security |
+| 13 | [Remote access](13-remote-access.md) | partly built | Your workspaces from a phone's browser: Noise over WebCrypto, the relay, pairing with approval, devices, the policy table, the web client |
+| 14 | [Magic widgets v2](14-magic-v2.md) | built | Widgets as typed apps: Deno data.ts, checked views, previews, revisions, health, the edit view; toward a store |
+| 15 | [Positioning and voice](15-positioning.md) | reference | The story, the category (a software workbench), pillars, voice, copy bank, naming, visual direction |
+| 16 | [Widgets](16-widgets.md) | built | Widgets apart from windows: the Widget Library, Magic as how you make one, built-in widgets, how they stay windows underneath |
+| 17 | [AI providers and onboarding](17-ai.md) | partly built | One AI service for every feature: providers, tiers, models that pick themselves; the first-launch wizard |
+| 18 | [Agent activity data](18-agent-activity.md) | superseded by 28 | What agents do, captured reliably: spooled hook events, one vocabulary across agents, state with causes, turns and the files they changed, discovered agent homes, hooks out of the box |
+| 19 | [Reviewing real agent activity data](19-agent-activity-review.md) | partly built | Collect a few days of real sessions, export them, check state, interrupts, turns and files against them, turn findings into fixes and fixtures |
+| 20 | [Session summaries](20-session-summaries.md) | built | Right-click an agent's title: what the session did, streamed into an editable Markdown file, pruned to fit, shaped to the kind of session |
+| 21 | [Sidebars are windows](21-sidebars.md) | partly built | Any window docks left or right per workspace; today's sidebar becomes the Navigator widget; a top bar with the workspace switcher; window hosts so nothing remounts |
+| 22 | [Drag and drop](22-drag-and-drop.md) | built | Files and links between Finder, terminals, file browsers and windows: native file drags out, one drop router in, window drop targets, `fs.transfer` |
+| 23 | [The journal](23-journal.md) | built | What happened, as a work log: events kept 180 days (agents, commands, git, pages), threads by identity and links, days written by a model; `cmd journal`, the Journal widget |
+| 24 | [Journal versions](24-journal-versions.md) | built | A version per layer (event schema, sources, threads, writer), stamped on the data; what a bump re-reads, rewrites or keeps; the runbook for a revision |
+| 25 | [The data model, challenged](25-data-model-critique.md) | research | Four event logs and no event model: what cmd stores, where the same facts live several times, how derivation and retention differ per feature, what the next features would cost; the questions the requirements must answer |
+| 26 | [Data requirements](26-data-requirements.md) | reference | What the data layer must do for the next year, against the vision (primitives below, intelligence above): twelve scenarios, requirements for facts, views, query, intelligence, operations and developer experience; non-requirements; what the plan decides |
+| 27 | [Data models elsewhere](27-data-research.md) | research | What comparable systems do, from primary sources: event sourcing on SQLite (LiveStore, Linear), activity trackers (ActivityWatch, Atuin, Screenpipe), agent observability (OTel GenAI, Langfuse, LangSmith), the agents' own transcripts, memory layers (Graphiti, Letta), FTS5/JSONB/subscriptions, privacy; recurring patterns and anti-patterns with evidence |
+| 28 | [The data layer: design and plan](28-data-plan.md) | built | One event log with one envelope, blobs, entities and links; views as versioned materialisations rebuilt by replay; one query shape with subscriptions and policy; a context builder; retention as a table; two files; seven phases from a spike to memory |
+| 29 | [Memory and recall](29-memory.md) | proposal | Facts that expire instead of being deleted, with sources; editable blocks per project; `cmd recall`, an MCP tool and the briefing line; evals before shipping |
+| 30 | [What the data model makes possible](30-data-capabilities.md) | reference | What cmd knows now (one log of agents, transcripts, commands with output, git, pages, your focus, model calls), what that won over the four old logs, features it makes possible from "a screen away" to memory, and examples to run today |
+| 31 | [Context-aware notifications](31-context-notifications.md) | proposal | What cmd notifies about today, principles, 20 new notifications as rules over the event log (a failing command passes now, an agent changed a file you have open, two agents on one file, a stopped agent can go on, …), a rule engine in the core, a dry run over real history before anything ships |
+| 32 | [Session names](32-session-names.md) | built | Names of 1–3 nouns in the person's words that tell agents apart in notifications ("Tours · done", not "cmd · done"); what a good name is, real sessions renamed by hand, renaming from the title bar, the worktree rule, a model for the rest with change-of-task detection and hysteresis, `session.name` events, a replay eval |
+| 33 | [Search](33-search.md) | partly built | What find (⌘F) and session search (⇧⌘F) do today, one find bar for every window, ⇧⌘F over everything cmd remembers (sessions, commands and output, pages, files, notes) and over project files with ripgrep, a trigram index later as an accelerator that is never the source of truth |
+| 34 | [Startup phases and the work scheduler](34-startup-scheduler.md) | built | The core answers before it rebuilds anything; startup jobs (indexes, imports, view rebuilds, the transcript reader, homes, journal, retention) run behind the socket in order and show in the footer ("Indexing sessions…"); long jobs yield on a budget (12 ms slices, 30% of wall time); a watchdog logs every block of the thread over 100 ms with what ran, kept in `core.info.stalls`; why (a 172 s "Connecting to core…" on a first launch), the frame-budget pattern from games and React, VS Code's phases, rules for new code, what's left (a worker for one-statement work, an e2e check) |
+| 35 | [Repositories, worktrees and branches](35-checkouts.md) | built | What cmd knows about repositories, worktrees and branches and where it shows them (one reader, four shapes, four meanings of "project"); the rule: show where something is only where it differs from the workspace; checkouts on panes, agents and workspaces, chips by difference, worktrees grouped in the picker, removed folders, the CLI; managing worktrees stays out |
+| 36 | [SQLite viewer](36-sqlite-viewer.md) | built | A window for `.sqlite` and `.db` files: tables and views, rows and structure, a read-only query |
+| 37 | [Motion and visual stability](37-motion.md) | reference | How windows, sidebars and workspaces move: TileMotion, presence, FLIP, one curve; the per-frame harness that scores jumps and snaps |
+| 38 | [Direct remote access](38-direct-remote-access.md) | built | Remote access without the hosted relay: Tailscale and your own URL as access modes, the relay one of them, a setup checklist |
+| 39 | [Workspace Actions](39-workspace-actions.md) | built | A widget that finds how to run the project in its workspace (package.json, Make, just, Task, mise, Compose, scripts/ and more, parsed, never run), keeps it current as files change, describes actions with the fast tier, ranks them by the commands you ran, and runs them in the right place: own terminals for dev servers, a browser for their URL, confirmation for deploys |
+| 40 | [Window design](40-window-design.md) | built | One layout language for every window: DTCG tokens, the kit's window pieces, rules for insets, bars, tables, charts and lists |
+| 41 | [Testing](41-testing.md) | partly built | Why the e2e flaked in the first week and the plan: scenarios, shards, no fixed waits, where a behaviour's test belongs |
+| 42 | [Windows](42-windows.md) | partly built | Running cmd on Windows: what's done, the phases left, the CI job as the scoreboard |
+| 43 | [Performance and resource usage](43-performance.md) | partly built | An audit of idle, per-terminal and scrolling cost, the rule (looks the same, costs less) and a log of wins with numbers |
+| 44 | [JSON viewer](44-json-viewer.md) | built | A window for `.json` and JSON Lines: a collapsible live tree, ⌘E to the text editor and back |
+| 45 | [Image viewer](45-image-viewer.md) | built | A window for images: fit or zoomed, the folder's other images a key away, live reload |
 
 ## Key findings
 1. **Nothing has to be invented for agent awareness.** Every tool in this space combines three things:

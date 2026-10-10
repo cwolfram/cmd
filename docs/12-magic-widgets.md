@@ -1,5 +1,7 @@
 # Magic widgets
 
+**Status:** superseded by 14: v1's contract, data sources and data model were replaced by v2.
+
 > **Superseded in part by [14-magic-v2.md](14-magic-v2.md) (2026-10-04):** widgets are now folders with a typed Deno data.ts, a type-checked view, revisions and checks before they show. The output contract, data sources and data model below are v1.
 
 > Status (2026-10-03), branch `magic-windows`:

@@ -1,5 +1,7 @@
 # Window titles: information architecture
 
+**Status:** built: `WindowFields`/`fieldsOf` in the renderer's `model.ts` feed every surface.
+
 Every window shows up in four places: its **title bar**, its **sidebar row**, the **status bar** (when selected) and the **command palette**. Today each window type decides on its own what goes where (`label`, `detail`, `meta` in `windows/registry.ts`, plus terminal special cases in `model.ts`, `TileTitle.tsx` and `StatusBar.tsx`). The same fact lands in different slots depending on the type, so the surfaces don't read alike. This doc sets one set of fields, one meaning per field, and one rule for which surface shows which field.
 
 ## Fields

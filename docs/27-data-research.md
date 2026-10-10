@@ -1,5 +1,7 @@
 # Data models elsewhere: research
 
+**Status:** research: prior art: event sourcing, agent telemetry, memory systems.
+
 > Status (2026-10-06), branch `data-model`: the third of four documents. What comparable systems actually do (schemas, identifiers, retention, invalidation), from their primary sources, and what transfers to cmd's single-user SQLite core. Gathered for the plan in [28](28-data-plan.md), against the requirements in [26](26-data-requirements.md). Field and table names are quoted as found; links are to docs, schema files and engineering posts, not summaries.
 
 ## 1. Event sourcing and event logs in local, single-user apps

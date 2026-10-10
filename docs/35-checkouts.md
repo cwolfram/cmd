@@ -1,5 +1,7 @@
 # Repositories, worktrees and branches
 
+**Status:** built: `placeOf`/`placeAgainst`/`whereOf`; Navigator rows and switcher grouping not yet.
+
 > Status (2026-10-08): built on branch `checkouts`. `GitPlace` on panes, agents, workspaces and command runs (`checkout.ts` `placeOf`; an agent's from where it writes, `tracker.ts#placeAfter`); peer briefings from it; one rule, `placeAgainst` (protocol `workspace.ts`), said by `whereOf` (sidebar, Agent Activity, Commands) and `cmd ls`; the picker shows a project's workspaces together and whose worktree one is; `Workspace.gone` and "folder removed"; restored terminals say their folder is gone; file search skips nested worktrees; the journal no longer guesses `<repo>-<branch>`; `cmd search` shows folder and branch; `cmd journal --project`. Not done: Navigator history rows (a session knows its cwd and branch, not whether it was a worktree), and the switcher doesn't group (its order is the person's, ⌃1–9).
 
 **The rule.** cmd shows where something is only where it differs from what you're looking at. A terminal or agent in the workspace's own checkout says nothing about it; one in a linked worktree says which branch; one in another project says which project. Someone who never makes a worktree sees no change, except fewer repeated labels.

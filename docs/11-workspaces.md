@@ -1,5 +1,7 @@
 # Workspaces
 
+**Status:** partly built: core, CLI and switcher built; per-workspace config and launching the app from the CLI not yet.
+
 > Named Spaces until 2026-10-09 ([15-positioning.md](15-positioning.md), "Naming in the product").
 
 > Status (2026-10-03): decisions confirmed. Built: core and protocol (workspaces, placement, matching), the CLI (`cmd .`, `cmd workspace …`), the renderer (switcher, pickers, per-workspace layout) and Electron main (window ↔ workspace routing). Not yet: the CLI launching the app when it isn't running, per-workspace config, reordering workspaces in the switcher. No backwards compatibility: the store schema and `ui_state` keys change freely.

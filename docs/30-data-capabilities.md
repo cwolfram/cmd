@@ -1,5 +1,7 @@
 # What the data model makes possible
 
+**Status:** reference: what the event log knows and which features it makes possible; most not built.
+
 > Status (2026-10-06): a map of what cmd can do now that everything it sees is one event log ([28](28-data-plan.md), built), and what that won compared to before ([25](25-data-model-critique.md)). For people deciding what to build next. Every "possible" feature below lists what already exists and what is missing, usually a screen.
 
 ## What cmd knows now

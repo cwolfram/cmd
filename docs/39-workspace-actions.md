@@ -1,5 +1,7 @@
 # Workspace Actions
 
+**Status:** built: the actions service, the widget and ⇧⌘R; remote, arguments and ports not yet.
+
 > Status (2026-10-09): **built** on branch `workspace-actions`: discovery from every source below plus agent skills, watching, the fast tier's descriptions (cached per folder), ranking and "From Your History", runs with exit status, URLs and Stop/Restart, pins, the widget, the palette's Actions group, workspace → Workspace Actions and Run Last Action Again (⇧⌘R), `actions.openBrowser`, `cmd actions [run]`. Not yet: remote access (the methods are Mac-only), the opt-in tool listers, arguments, listening ports, port blocks per worktree. Decided: the name stays "Workspace Actions" for now; no sidebar Run button yet; pins live in cmd's database; one-shot terminals are kept. From a #feedback idea (2026-10-08): "A widget that uses AI to gather the project's run commands and CLIs and make files to offer intelligent actions." The name may change; it lives in one string (`ACTIONS_TITLE`) and the internal id is `actions`.
 
 A widget that knows how to run the project in its workspace: `pnpm dev`, `make test`, `just release`, `docker compose up api`, the GitHub workflow that deploys. It finds them in the folder's own files, keeps them current as those files change, describes each in a few words, ranks them by what you actually run, and runs one with a click in the right place: long-running ones in a terminal of their own, a dev server's URL in a browser window, a deploy only after you confirm.

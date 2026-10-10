@@ -1,5 +1,7 @@
 # SQLite viewer
 
+**Status:** built: the MVP; editing, find and a virtualized grid not yet.
+
 > Status (2026-10-09): **built** on branch `sqlite`, the MVP below. Not yet: editing rows, exports beyond Copy as CSV, find (⌘F) over a grid, a virtualized grid (rows come 200 at a time instead), ⌘E to a text view (the file is binary, so there's nothing to switch to), the Widget Library.
 
 A window that shows a `.sqlite` or `.db` file: its tables and views, each one's rows and structure, and a read-only query over the whole database. Read first: this doc, docs/09-window-types.md, the JSON window it copies (docs/44-json-viewer.md, `packages/core/src/windows/builtin.ts` `jsonType`, `renderer/src/windows/json.tsx`).

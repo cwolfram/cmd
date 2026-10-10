@@ -1,5 +1,7 @@
 # App shell options
 
+**Status:** research: app shells compared; Electron was chosen.
+
 Researched 2026-10-02. Memory and startup figures are typical community numbers, not our own benchmarks. "(unverified)" marks claims I could not confirm from a primary source.
 
 ## What we judged the shells on

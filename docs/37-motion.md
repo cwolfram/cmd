@@ -1,5 +1,7 @@
 # Motion and visual stability
 
+**Status:** reference: the rules for TileMotion, presence and FLIP, and the `e2e/motion.mjs` harness.
+
 How windows, sidebars and workspaces move, why, and how it's measured. The engine is
 `apps/desktop/src/renderer/src/motion.ts`; the harness is `e2e/motion.mjs`
 (`pnpm e2e:motion`). The vocabulary (curves, named timings, presence, FLIP) is the kit's,

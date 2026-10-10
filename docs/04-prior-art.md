@@ -1,5 +1,7 @@
 # Prior art
 
+**Status:** research: cmux, Wave, canvas terminals and plugin patterns.
+
 Apps that overlap with what we want, and what to borrow from each. Researched 2026-10-02. "(from memory)" marks a detail I didn't confirm from a primary source.
 
 ## Agent-terminal managers

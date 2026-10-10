@@ -1,5 +1,7 @@
 # Session summaries
 
+**Status:** built: summaries into a Markdown window, now on 28's context builder.
+
 > Status (2026-10-05): built (branch `summary`). Tested against real Claude Code and Codex sessions (4 minutes to 8 hours, 10 to 283 messages) on gpt-5.4-mini: facts in the file within ~150 ms, the full summary in 2–12 s.
 
 Right-click an agent's title bar (or the sidebar row, or Session → Summarize Session) and a Markdown window opens next to it with a summary of what the session did. It is written to be edited and passed on: to the team chat, into a ticket or merge request, or to yourself next week. The first of the AI features in [17-ai.md](17-ai.md), on the data from [18-agent-activity.md](18-agent-activity.md).

@@ -1,5 +1,7 @@
 # Agent integration: detection, state, transcripts, search, resume
 
+**Status:** research: Claude and Codex on-disk formats, state detection, resume, search.
+
 Researched 2026-10-02 from this machine (read-only) and the web. Covers Claude Code and Codex CLI. Gemini, opencode, Cursor, Amp and Aider are not installed here, so they are not covered.
 
 ## On-disk formats (this machine)

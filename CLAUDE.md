@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`cmd`: a macOS app for running terminals and coding agents side by side, with web and file browsers, an editor and Magic widgets (Electron UI, a long-lived TypeScript core process, a CLI). Positioning and voice for user-facing copy: `docs/15-positioning.md`. Design research and rationale live in `docs/` (start at `docs/00-overview.md`). The README is user-facing (features, install, shortcuts, CLI); DEVELOPMENT.md covers building, packaging, internals and what is done or next.
+`cmd`: a macOS app for running terminals and coding agents side by side, with web and file browsers, an editor and Magic widgets (Electron UI, a long-lived TypeScript core process, a CLI). Positioning and voice for user-facing copy: `docs/15-positioning.md`. Design research and rationale live in `docs/` (start at `docs/00-overview.md`, which lists every doc with its status: research, proposal, partly built, built, reference or superseded; a new doc takes the next free number and a `**Status:**` line under its title, `test/docs.test.ts` checks both). The README is user-facing (features, install, shortcuts, CLI); DEVELOPMENT.md covers building, packaging, internals and what is done or next.
 
 ## Commands
 

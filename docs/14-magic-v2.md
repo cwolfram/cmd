@@ -1,5 +1,7 @@
 # Magic widgets v2: widgets that keep working
 
+**Status:** built: Deno data.ts, revisions and checks; the library and store continue in 16.
+
 > Status (2026-10-04), branch `magic-v2`: built as described here. Not yet: a widget library and store (see "Toward a store"), images sent to models that don't take them, and pausing refreshes while a window is hidden. [12-magic-widgets.md](12-magic-widgets.md) is the v1 design; this replaces its output contract, data sources and data model.
 
 v1 asked the model for one answer: a JSON header naming a data source (a URL or a shell command), then an HTML page that parsed whatever came back. It looked good in a demo and went stale in use. v2 makes a widget a small typed app that cmd builds, runs and checks like code.

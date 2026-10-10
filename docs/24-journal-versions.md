@@ -1,5 +1,7 @@
 # Journal versions
 
+**Status:** built: version constants per layer in `protocol/src/journal.ts`.
+
 > Status (2026-10-06), branch `journal-versions`: built. Every layer of the journal ([23-journal.md](23-journal.md)) has a version; data says which versions made it; the core decides from them what to read again, what to write again and what to leave as it was. Written ahead of the journal's first revision, so that one doesn't turn into a mess of half-old, half-new days.
 
 ## Why

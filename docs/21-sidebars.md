@@ -1,5 +1,7 @@
 # Sidebars are windows
 
+**Status:** partly built: top bar, footer, docked sidebars and the Navigator built; drag to dock (phase 5) not yet.
+
 > Status (2026-10-05): built on branch `sidebars`: the top bar and footer, sidebars per workspace (Make Sidebar ▸ Left / Right, Move to Board, Show Left/Right Sidebar), the Navigator widget docked left in every workspace, "desk" renamed to "board". Not built: phase 5 (drag to dock, dock animations). Where the build differs from the plan below, see "As built" at the end. Builds on [16-widgets.md](16-widgets.md) (widgets are windows underneath), [11-workspaces.md](11-workspaces.md) (per-workspace layout in `workspace.view`) and [10-window-titles.md](10-window-titles.md) (one title bar for every window).
 
 Some people want cmd to feel more like an IDE, with a file tree down the left. We could build a file-tree sidebar. Then someone wants the CI runs on the right, then a notes panel, and every one would be a special case. Instead, we embrace the window concept all the way: **any window can become a sidebar.**

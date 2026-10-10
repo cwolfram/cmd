@@ -1,5 +1,7 @@
 # The data model, challenged
 
+**Status:** research: a critique of the old storage; it led to 28.
+
 > Status (2026-10-06), branch `data-model`: the first of four documents. This one says what cmd stores today, how each piece came to be, and where the whole falls short of what the next year asks for: an app that is the most resilient and the most intelligent place to work with agents. Nothing here is a design. Next: requirements for the coming months (26), then research and a plan, then the refactor. cmd has almost no users, so compatibility with today's files is not a constraint; what's recorded on the author's Mac is the only data worth carrying over, and only if it's cheap.
 
 The short version: **cmd has four event logs and no event model.** Agent activity, the journal, the command log and the transcript index were each built for one feature, each with its own capture, its own vocabulary, its own derivation, its own retention and its own read path. Every one of them is reasonable on its own. Together they store the same facts several times, lose some of them after 14 days, derive the rest in five different ways with five different invalidation rules, and offer no way to ask a question nobody anticipated. The next features (digests, "what were we doing on the payments branch", week rollups, agents reading their own history, widgets over agent data) would each add a fifth pipeline.

@@ -1,5 +1,7 @@
 # Plugins, routines, monitors and system tasks
 
+**Status:** proposal: no plugin host, manifests, routines or monitors in the code yet.
+
 This is a proposal built from the patterns in [04-prior-art.md](04-prior-art.md). It is a starting point, not a final spec.
 
 ## What exists locally to migrate

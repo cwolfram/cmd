@@ -1,5 +1,7 @@
 # Positioning and voice
 
+**Status:** reference: the voice and positioning guide for user-facing copy.
+
 Date: 2026-10-04. What cmd is, who it is for and how it talks about itself. The README, the website, the app's About box and release notes take their wording from here.
 
 ## The story

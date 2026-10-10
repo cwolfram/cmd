@@ -1,5 +1,7 @@
 # Drag and drop
 
+**Status:** built: drags between Finder, terminals and file browsers; its "Not yet" list is open.
+
 > Status (2026-10-06): built on branch `dnd`. Files and links drag between Finder (or any app), terminals, file browsers and the rest of the board, in both directions. Not built: see "Not yet" at the end. Prompted by feedback on 0.14.0 asking for file browser → terminal, Finder → terminal and Finder → file browser.
 
 ## What people see

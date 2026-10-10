@@ -1,5 +1,7 @@
 # Prior work: the `ghostty-agents` fork
 
+**Status:** research: what the ghostty-agents fork did, what ports and its limits.
+
 Source: `~/src/ghostty-agents` (fork of Ghostty). The agent sidebar adds about 4.66k lines across 29 files, almost all Swift. It touches upstream in only three places: one line in `TerminalController.swift`, one line in `SurfaceView_AppKit.swift`, and the README. This is an inventory of what to port.
 
 Path shorthands used below:

@@ -1,5 +1,7 @@
 # Agent activity data
 
+**Status:** superseded by 28: the activity log was imported into 28's event log and views.
+
 > Status (2026-10-05): the data layer is built (branch `agent-activity`): spooled hook events, the activity log, normalising, state and turns, files changed per turn, agent homes, automatic hook installs, `cmd agents`. Not yet: the UI using turns (sidebar, Agent Activity widget, notifications beyond the final message), recorded Gemini fixtures, transcript tails for agents without hooks. Comes before the AI features in [17-ai.md](17-ai.md) ("First features on top"), which need this data to be worth anything.
 
 cmd knew *that* an agent was working or finished, not *what* happened: its picture of an agent was the current state plus one line, rebuilt from whichever hook files were on disk, and the "done" notification's body was always empty. This is the layer that captures what agents do reliably — complete, ordered, attributable to a source, surviving restarts, the same shape for every agent — and the agent state derived from it. Features are listed at the end.

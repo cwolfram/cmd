@@ -1,5 +1,7 @@
 # Direct remote access (Tailscale and your own URL)
 
+**Status:** built: phases 1–3: `DirectListener`, access modes, setup; extends 13.
+
 > Status (2026-10-09): built, and works on a real tailnet (the Tailscale app's CLI: checks, publish, a phone in control, unpublish). Phases 1–3 are in: the `Transport`, `DirectListener`, access modes (the relay, `tailscale`, `url`) in one registry, the settings, the setup checklist in Settings and `cmd remote setup`, the web client in the runtime. Extends docs/13-remote-access.md, which describes the relay mode this builds on.
 
 **Goal.** Use remote access without the hosted relay and web client: the phone talks straight to the Mac's core, over a network you control. Tailscale first, with a setup wizard; every way the Mac is reached is an **access mode**, the relay included, so other ways (your own reverse proxy URL today; Cloudflare Tunnel, ngrok, Funnel later) plug in the same way.

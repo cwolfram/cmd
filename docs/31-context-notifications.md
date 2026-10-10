@@ -1,5 +1,7 @@
 # Context-aware notifications
 
+**Status:** proposal: a handoff: no rule engine yet, only `notifications/center.ts`.
+
 > Status (2026-10-06): **handoff, not built.** A plan for the next agent: notifications that know what happened around them ("the test you ran 10 minutes ago passes now", "the agent finished the file you have open"), built as rules over the event log ([28](28-data-plan.md), [30](30-data-capabilities.md)). Read first: this doc; `packages/core/src/notifications.ts`; the copywriting skill's Notifications section (`.claude/skills/copywriting/SKILL.md`); docs/30's table of what cmd records. Work in a worktree with its own `CMD_HOME` (CLAUDE.md).
 
 ## What exists

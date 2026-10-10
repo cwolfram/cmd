@@ -1,5 +1,7 @@
 # Memory and recall
 
+**Status:** proposal: memory and recall, planned and not built.
+
 > Status (2026-10-06): **planned, not built**. This was phase 6 of [28](28-data-plan.md), deferred so the data layer could settle first. Everything here builds on what phases 1–5 left: the event log, owned transcripts, the views, the context builder and the eval harness. Read 28 §6 and [27](27-data-research.md) §5 (Graphiti, Mem0, Letta, A-MEM) first.
 
 cmd records what happened. Memory is what follows from it that is still true: decisions, causes found, conventions, where something was left. It's what lets an agent ask "what did we decide about the payments retry?" or "where did we leave the flaky test?" and get an answer with sources, across sessions and agents, without reading a hundred transcripts.

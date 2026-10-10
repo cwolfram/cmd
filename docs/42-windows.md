@@ -1,5 +1,7 @@
 # Windows
 
+**Status:** partly built: phase 1 and the CI job built; phase 2 (PowerShell, procinfo, CLI) not yet.
+
 cmd started macOS-only. This is the plan for running it on Windows, and the record of what's done. Work happens on the `windows` branch; the `windows` CI job (`.github/workflows/build.yml`) is the scoreboard. It runs with `continue-on-error` until it is green, then becomes required.
 
 ## Status (2026-10-03)

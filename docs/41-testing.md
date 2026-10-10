@@ -1,5 +1,7 @@
 # Testing: why the e2e flakes, and how to test cmd faster and more reliably
 
+**Status:** partly built: scenarios, shards and build-if-stale landed; `settled()`, a fake clock and @playwright/test not yet.
+
 What went wrong with the smoke e2e and the test suite in the first week of October 2026,
 the root causes behind every incident, what that says about how we test, and the plan.
 Companion to DEVELOPMENT.md ("Tests"), docs/34 (the scheduler stress test) and docs/37

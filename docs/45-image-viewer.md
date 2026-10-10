@@ -1,5 +1,7 @@
 # Image viewer
 
+**Status:** built: the MVP; HEIC, rotation, a slideshow and metadata not yet.
+
 > Status (2026-10-09): **built** on branch `image`, the MVP below. Not yet: HEIC (Chromium can't decode it; `sips` on macOS could convert), rotation, a slideshow, thumbnails, metadata, pausing an animated GIF.
 
 A window that shows an image: fit to the window or zoomed, with the folder's other images a key away. Read first: this doc, docs/09-window-types.md, the PDF window it copies the toolbar and zoom from (`renderer/src/components/PdfView.tsx`), and the JSON window for live reload (docs/44-json-viewer.md).

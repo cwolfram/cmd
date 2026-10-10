@@ -1,5 +1,7 @@
 # JSON viewer
 
+**Status:** built: phases 1–3 and JSON Lines; filtering and schema hints not yet.
+
 > Status (2026-10-08): **built** on branch `json-viewer`: phases 1–3 plus JSON Lines (moved up from phase 4). Differences from the plan below: the parser is hand-written (`renderer/src/windows/json-parse.ts`), not Lezer, since it needs exact error messages, JSONC and per-line JSON Lines anyway, and parses 40k objects well under the test's budget on the main thread (no worker yet); the line crosses ⌘E through a `line` window action on both sides, and the JSON type takes `reveal: { line }` like the text type; there's no `select` state. Not yet: a filter field, schema hints, find inside unreadable JSON Lines rows.
 
 A window that shows a `.json` file as a collapsible tree, live like the Markdown window, with ⌘E switching the same window to the text editor and back. Read first: this doc; docs/09-window-types.md; the Markdown window it copies (`packages/core/src/windows/builtin.ts` `markdownType`, `apps/desktop/src/renderer/src/windows/markdown.tsx`, `markdown-view.tsx`).

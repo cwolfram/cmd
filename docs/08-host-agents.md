@@ -1,5 +1,7 @@
 # Host agents and sub-agents
 
+**Status:** built: agent spawn/send/wait/kill and the agent tree (`agents/tracker.ts`).
+
 **Goal:** a "host" agent (a strong model) can spawn other agents (Claude, Codex, …) in their own panes. Those agents show up in the UI as normal agents, nested under the host. The host can prompt them, read their output, wait for them and kill them.
 
 Researched 2026-10-02 from the cmux source (`manaflow-ai/cmux` HEAD, `manaflow-ai/cmux-skills`) and current Claude Code and Codex docs.

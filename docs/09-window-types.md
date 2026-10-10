@@ -1,5 +1,7 @@
 # Window types
 
+**Status:** built: the window type registry, `windows/builtin.ts` and `routing.ts`.
+
 Everything the main pane shows is a **window**: a terminal, a browser, a file tree, a text editor, and whatever comes next. Each kind is a **window type** with two halves:
 
 - **Core half** (`packages/core/src/windows/`): what it is, what it can open, and how its state is created and updated. The core stores each window's `state` as opaque JSON and syncs it to every UI, so a new type needs no protocol or storage changes.

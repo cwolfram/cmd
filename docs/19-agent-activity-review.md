@@ -1,5 +1,7 @@
 # Reviewing real agent activity data
 
+**Status:** partly built: a handoff: real-session recordings and the agent lab done, the checklist review not confirmed.
+
 > Status (2026-10-05): handoff. cmd 0.11.0 shipped the activity layer ([18-agent-activity.md](18-agent-activity.md)) and started recording on the author's Mac the same day. This doc is the plan for the first review of real data, to be done after a few days of normal use. Nothing here is built yet; the outcome is a list of fixes to the adapters and rules, new fixtures, and a decision on what the UI can rely on.
 
 The activity layer was designed from documentation and five recorded sessions, all headless (`claude -p`, `codex exec`) in a scratch repository. Real use differs: interactive sessions, permission prompts answered by a person, Esc interrupts, long turns, background subagents, several agents in one repository, folders that aren't repositories. This review checks the data against that, before any feature (notifications, the Agent Activity widget, summaries) is built on it.

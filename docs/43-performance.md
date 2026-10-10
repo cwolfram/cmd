@@ -1,5 +1,7 @@
 # Performance and resource usage
 
+**Status:** partly built: the audit and a log of wins; PTY host throughput, code cache and flow control open.
+
 > Status (2026-10-04): audit done; first round of fixes on the `perf` branch (see Wins). The rule: the UI looks and behaves the same; it only costs less. Wins are logged at the bottom with before/after numbers.
 
 The aim is a workbench that costs close to nothing while idle, stays cheap per open terminal and agent, and never stutters while scrolling, typing or streaming output.

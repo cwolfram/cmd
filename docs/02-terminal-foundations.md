@@ -1,5 +1,7 @@
 # Terminal foundations
 
+**Status:** research: terminal engines and PTYs; xterm.js was chosen and shipped.
+
 Researched 2026-10-02. Versions and benchmarks change fast. Benchmarks come from blogs, issues and tweets, not controlled studies.
 
 Requirements this has to meet:
