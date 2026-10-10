@@ -961,7 +961,7 @@ button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
 
 .ui-list-row { --depth: 0; display: flex; align-items: center; gap: var(--space-sm); margin: 0 var(--list-inset, var(--space-sm)); padding: 0 var(--space-md) 0 calc(var(--space-md) + var(--depth) * var(--space-lg)); border-radius: var(--radius); cursor: default; }
 .ui-list-row.short { height: 28px; }
-.ui-list-row.tall { min-height: 38px; padding-top: var(--space-2xs); padding-bottom: var(--space-2xs); }
+.ui-list-row.tall { min-height: 44px; padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
 .ui-list-row:hover { background: var(--bg-hover); }
 .ui-list-row.sel { background: var(--bg-selected); }
 .ui-list-row[data-dim] { opacity: var(--disabled-opacity); }
