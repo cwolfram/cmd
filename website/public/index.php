@@ -50,6 +50,7 @@ page_start('cmd', 'A software workbench for macOS. Terminals, coding agents, bro
   <img src="shots/site.png" width="1498" height="898" alt="The strip: this website in a browser window between the Navigator, a usage widget and a CI widget">
   <img src="shots/canvas-commands.png" width="1498" height="898" alt="The canvas: the file browser, a Hacker widget, the Commands widget and a Claude Code session, with the Navigator docked on the right">
   <img src="shots/strip-hacker.png" width="1498" height="898" alt="The strip: a Claude Code session and a Hacker widget between the file browser and the Navigator">
+  <img src="shots/top.png" width="1498" height="898" alt="The strip: the Navigator, a usage widget, top in a terminal and a CI widget">
 </div>
 <script>
 // Shuffle the hero screenshots, fade the gallery in from a blur once the first has loaded,
