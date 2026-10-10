@@ -535,15 +535,11 @@ if (process.platform !== "win32") {
   const usageText = await win.locator(".statusbar-usage .slot-v").first().textContent();
   check(/\d+ (KB|MB|GB)/.test(usageText ?? ""), `status bar shows memory of the process tree (${usageText})`);
 } else console.log("skip - status bar memory (needs a Windows procinfo helper)");
-// Notifications: a bell in the other terminal marks it until you look at it.
+// Notifications: a mark the core sets shows in the window's title bar until you look at it.
+// (Which events mark a terminal, bells included: notifications.test.ts; the status text: fields.test.ts.)
 {
   const other = await win.evaluate(() => document.querySelector(".windows-track > .tile:not(.sel)")?.getAttribute("data-pane"));
-  // A bell from the shell: PowerShell on Windows, a POSIX shell elsewhere.
-  const bell = process.platform === "win32" ? 'Write-Host -NoNewline "`a"\r' : "printf '\\a'\r";
-  await win.evaluate(([id, data]) => window.cmd.call("pane.write", { paneId: id, data }), [other, bell]);
   const status = win.locator(`.tile[data-pane="${other}"] .slot-status .slot-v:not(.out)`);
-  await status.filter({ hasText: "Bell" }).waitFor({ timeout: 10_000 });
-  check(true, "a terminal bell marks its window (Bell)");
   await win.evaluate((id) => window.cmd.call("notify.send", { paneId: id, title: "Build", body: "done" }), other);
   await status.filter({ hasText: "done" }).waitFor({ timeout: 10_000 });
   check(true, "cmd notify marks the terminal it came from");
@@ -573,18 +569,7 @@ await still();
 }
 const order1 = await until(panesOrder, (o) => Array.isArray(o) && JSON.stringify(o) !== JSON.stringify(order0));
 check(Array.isArray(order1) && order1.length === 2, `a tile flicked onto another (move and release in one frame) reorders the grid (${JSON.stringify(order1?.map((x) => x.slice(0, 4)))})`);
-// Let the windows glide into their new places first: mid-animation, positions (and so the drag target) are stale.
-await win.waitForFunction(() => !document.querySelector(".tile[data-morphing], .tile.lifted"), null, { timeout: 10_000 }).catch(expired("windows done gliding"));
-await still(400);
-// The order is saved debounced: wait for it to change rather than a fixed time (slow CI runners).
-// A drag that lands while a tile still glides can miss its target: take fresh positions and drag again.
-let order2 = order1;
-for (let attempt = 0; attempt < 3 && JSON.stringify(order2) === JSON.stringify(order1); attempt++) {
-  if (attempt) await still();
-  { const t = await visualTiles(); await t[1].locator(".tile-title").dragTo(t[0]); }
-  order2 = await until(panesOrder, (o) => JSON.stringify(o) !== JSON.stringify(order1), 5000);
-}
-check(order2[0] === order1[1] && order2[1] === order1[0], "dragging back swaps the slots again");
+// (Where a drop lands, for each layout: layouts.test.ts and grid.test.ts.)
 // A real drag through three tiles: the dragged tile follows the pointer, the others make room.
 await menu("file.newTerminal");
 await until(panes, (n) => n === 3);
@@ -1786,15 +1771,7 @@ await scenario("strip", async () => {
   check((await win.locator(".strip-dots button").count()) === n && (await win.locator(".strip-dots button[data-current]").count()) === 1
     && (await win.locator(".strip-dots button").last().getAttribute("data-current")) === "true",
     "the strip shows a pagination dot per window, the last one current at the end");
-  await menu("session.prev");
-  await until(dotIsCurrent(n - 2), (c) => c === "true");
-  check((await win.locator(".strip-dots button").nth(n - 2).getAttribute("data-current")) === "true",
-    "⌥⌘← from the last window moves the current dot, even when nothing scrolls");
-  await win.mouse.wheel(60, 0);
-  await until(dotIsCurrent(n - 1), (c) => c === "true");
-  check((await win.locator(".strip-dots button").last().getAttribute("data-current")) === "true",
-    "swiping on at the end of the strip makes the last dot current again, whatever is selected");
-  // The swipe's scroll must have come to rest first: one still settling would carry on past the click.
+  // (Which dot is current after keys and swipes: currentDot in strip.test.ts.)
   await still(300);
   await win.locator(".strip-dots button").first().click();
   const atStart = await until(async () => [await trackX(), await dotIsCurrent(0)()], ([x, c]) => Math.abs(x) < 1 && c === "true");
@@ -1829,23 +1806,15 @@ await scenario("strip", async () => {
     check((await trackX()) === 0, `resizing the window keeps the strip scrolled to the start (${Math.round(-(await trackX()))})`);
   }
 
-  // resize by the right edge, capped at the pane width
+  // (How wide a window may get, presets included: strip.test.ts.)
   const first = (await visualTiles())[0];
   await select(await first.getAttribute("data-pane"));
   await still(500);
-  const fb = await first.boundingBox();
-  const handle = await first.locator('.strip-resize[data-edge="right"]').boundingBox();
-  await win.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
-  await win.mouse.down();
-  await win.mouse.move(pane.x + pane.width - 2, handle.y + handle.height / 2, { steps: 8 });
-  await win.mouse.up();
-  await still(400);
   const fb2 = await first.boundingBox();
-  check(fb2.width > fb.width && fb2.width <= pane.width - 16 + 1, `resizing is capped at the pane width (${Math.round(fb.width)} → ${Math.round(fb2.width)})`);
   await menu("view.cycleWidth");
   await still(400);
   const fb3 = await first.boundingBox();
-  check(fb3.width < fb2.width, `⌃⌘R cycles width presets (${Math.round(fb2.width)} → ${Math.round(fb3.width)})`);
+  check(Math.abs(fb3.width - fb2.width) > 1, `⌃⌘R cycles width presets (${Math.round(fb2.width)} → ${Math.round(fb3.width)})`);
   // Every window has a left edge too: it grows the window leftwards (its right edge stays, the strip scrolls).
   {
     const second = (await visualTiles())[1];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampWidth, layout, maxWidth, nextPreset, revealOffset, stepFraction, widthFor, withWidth } from "../src/renderer/src/strip.ts";
+import { clampWidth, currentDot, layout, maxWidth, nextPreset, revealOffset, stepFraction, widthFor, withWidth } from "../src/renderer/src/strip.ts";
 
 const G = 8;
 const VP = 1000;
@@ -49,6 +49,32 @@ describe("reveal", () => {
     expect(revealOffset(0, slots[0]!, VP, G, total)).toBe(0); // already visible
     expect(revealOffset(0, slots[2]!, VP, G, total)).toBe(532); // flush right
     expect(revealOffset(532, slots[0]!, VP, G, total)).toBe(0); // flush left
+  });
+});
+
+describe("pagination dots", () => {
+  // Five 400 px windows in a 1000 px viewport: the strip scrolls 0…1048.
+  const { slots, total } = layout([400, 400, 400, 400, 400], G);
+  const max = total - VP;
+
+  it("follow the selection while it is in view", () => {
+    expect(currentDot(slots, 0, 0, VP, total, true)).toBe(0);
+    expect(currentDot(slots, 4, max, VP, total, true)).toBe(4);
+  });
+
+  it("move with ⌥⌘← from the last window even when nothing scrolls", () => {
+    // At the end, the one before the last is in view too: selecting it takes the dot.
+    expect(currentDot(slots, 3, max, VP, total, true)).toBe(3);
+  });
+
+  it("go by position once the user scrolls sideways: the last at the end, whatever is selected", () => {
+    expect(currentDot(slots, 3, max, VP, total, false)).toBe(4);
+    expect(currentDot(slots, 3, 0, VP, total, false)).toBe(0);
+    expect(currentDot(slots, 0, max / 2, VP, total, false)).toBe(2);
+  });
+
+  it("go by position when the selection is mostly out of view", () => {
+    expect(currentDot(slots, 0, max, VP, total, true)).toBe(4);
   });
 });
 

@@ -76,6 +76,22 @@ export function revealOffset(offset: number, slot: Slot, viewport: number, pad: 
 }
 
 /**
+ * The pagination dot that is current. The selection has it while it is at least half in
+ * view (or as far in as it can be), until the user scrolls sideways (`bySelection` false);
+ * otherwise the window at the scroll position, whose reference point runs from the
+ * viewport's left edge at the start to its right edge at the end, so the last dot is
+ * current there whatever the last window's width.
+ */
+export function currentDot(slots: Slot[], selected: number, scrollLeft: number, viewport: number, total: number, bySelection: boolean): number {
+  const sel = slots[selected];
+  const max = total - viewport;
+  const seen = sel ? Math.min(sel.x + sel.w, scrollLeft + viewport) - Math.max(sel.x, scrollLeft) : 0;
+  const at = scrollLeft + (max > 0 ? Math.min(1, Math.max(0, scrollLeft / max)) : 0) * viewport;
+  const i = bySelection && sel && seen >= Math.min(sel.w, viewport) / 2 ? selected : slots.findIndex((s) => at < s.x + s.w);
+  return i < 0 ? slots.length - 1 : i;
+}
+
+/**
  * Stored widths with `id` set to `fraction`, dropping windows that no longer
  * exist. The strip holds terminals (panes) and other windows alike.
  */

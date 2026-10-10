@@ -48,6 +48,7 @@ import {
 } from "../canvas.ts";
 import {
   clampWidth,
+  currentDot,
   DEFAULT_FRACTION,
   fractionFor,
   maxOffset,
@@ -1189,14 +1190,7 @@ function StripDots(p: {
   useLayoutEffect(() => {
     const sc = p.scroller.current;
     if (!sc || !shown) return;
-    const place = () => {
-      const sel = p.slots[p.selected];
-      const max = p.total - p.viewport;
-      const seen = sel ? Math.min(sel.x + sel.w, sc.scrollLeft + p.viewport) - Math.max(sel.x, sc.scrollLeft) : 0;
-      const at = sc.scrollLeft + (max > 0 ? Math.min(1, Math.max(0, sc.scrollLeft / max)) : 0) * p.viewport;
-      const i = bySelection.current && sel && seen >= Math.min(sel.w, p.viewport) / 2 ? p.selected : p.slots.findIndex((s) => at < s.x + s.w);
-      setCur(i < 0 ? p.slots.length - 1 : i);
-    };
+    const place = () => setCur(currentDot(p.slots, p.selected, sc.scrollLeft, p.viewport, p.total, bySelection.current));
     // A sideways swipe is the user's scroll; reveals and our own glides aren't.
     p.swipe.current = () => {
       if (!bySelection.current) return;
