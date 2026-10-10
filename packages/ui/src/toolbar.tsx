@@ -74,6 +74,7 @@ export function WindowToolbar({
   label,
   className,
   floating,
+  bottom,
 }: {
   children: ReactNode;
   /** Its accessible name ("Browser", "Filter events"). */
@@ -81,6 +82,8 @@ export function WindowToolbar({
   className?: string;
   /** Over the content (a terminal's find bar): as wide as its items, rounded, with a shadow. */
   floating?: boolean;
+  /** Under the content (a player's transport): its line on top. */
+  bottom?: boolean;
 }) {
   const bar = useRef<HTMLDivElement>(null);
   const more = useRef<HTMLButtonElement>(null);
@@ -131,7 +134,7 @@ export function WindowToolbar({
 
   return (
     <Registry.Provider value={registry}>
-      <div ref={bar} className={cls("ui-tb", className)} role="toolbar" aria-label={label} data-floating={floating || undefined}>
+      <div ref={bar} className={cls("ui-tb", className)} role="toolbar" aria-label={label} data-floating={floating || undefined} data-bottom={bottom || undefined}>
         {children}
         <button
           ref={more}

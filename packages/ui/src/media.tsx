@@ -1,5 +1,5 @@
 // Media controls: the Scrubber, a video's or a sound's timeline. Plain, a slim
-// track with what has played; with `thumbs`, a strip of frames to find a place by
+// track with what has played (`inline`: inside a toolbar, between its times); with `thumbs`, a strip of frames to find a place by
 // eye; with `trim`, a range with a handle at each end, what falls outside it shaded.
 // Click or drag anywhere to seek; drag a handle to move that end (the caller shows
 // the frame there); the time under the pointer floats above it.
@@ -24,6 +24,8 @@ export interface ScrubberProps {
   /** The shortest range a trim can be (s). */
   minTrim?: number;
   label?: string;
+  /** In a toolbar: no band of its own, it takes the row's spare width. */
+  inline?: boolean;
 }
 
 /** "1:05", "1:02:03"; `tenths` adds ".4". */
@@ -37,7 +39,7 @@ export function formatTime(s: number, tenths = false): string {
   return h ? `${h}:${String(m).padStart(2, "0")}:${ss}${frac}` : `${m}:${ss}${frac}`;
 }
 
-export function Scrubber({ duration, time, onSeek, thumbs, trim, onTrim, minTrim = 0.5, label = "Timeline" }: ScrubberProps) {
+export function Scrubber({ duration, time, onSeek, thumbs, trim, onTrim, minTrim = 0.5, label = "Timeline", inline }: ScrubberProps) {
   const track = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number | null>(null);
   const [drag, setDrag] = useState<"seek" | "start" | "end" | null>(null);
@@ -75,7 +77,7 @@ export function Scrubber({ duration, time, onSeek, thumbs, trim, onTrim, minTrim
 
   const shown = drag === "start" ? trim?.start : drag === "end" ? trim?.end : hover;
   return (
-    <div className="ui-scrub" data-thumbs={thumbs ? "" : undefined} data-trim={trim ? "" : undefined} data-drag={drag ?? undefined}>
+    <div className="ui-scrub" data-inline={inline || undefined} data-thumbs={thumbs ? "" : undefined} data-trim={trim ? "" : undefined} data-drag={drag ?? undefined}>
       <div
         ref={track}
         className="ui-scrub-track"

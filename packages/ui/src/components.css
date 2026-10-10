@@ -1258,6 +1258,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   /* The line under it: the window's outline colour, as the title bar's is. */
   box-shadow: inset 0 -1px 0 var(--window-edge);
 }
+.ui-tb[data-bottom] { overflow: visible; padding: 1px var(--space-sm) 0; box-shadow: inset 0 1px 0 var(--window-edge); }
 .ui-tb[data-floating] { height: auto; padding: var(--space-xs); border-radius: var(--radius-md); background: var(--toolbar-bg); box-shadow: 0 0 0 1px var(--window-edge), 0 4px 14px var(--shadow); }
 .ui-tb > *, .ui-tb-group > * { flex: none; }
 .ui-tb-group { display: flex; align-items: center; gap: 0; }

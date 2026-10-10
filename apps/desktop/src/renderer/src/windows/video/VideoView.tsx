@@ -1,5 +1,5 @@
-// Video window view: the video on the stage, a scrubber under it, the controls in
-// the toolbar. Space plays and pauses, ← → step 5 s (⇧: a frame), ⌘T trims: the
+// Video window view: the video on the stage, the controls under it in a bar with
+// the scrubber, as players have them. Space plays and pauses, ← → step 5 s (⇧: a frame), ⌘T trims: the
 // scrubber turns into a strip of frames with a handle at each end, I and O set
 // them at the playhead, Return saves the kept part as a new file, Esc leaves.
 // Drawn with the kit: a View, a Stage and a Scrubber (the window-design skill).
@@ -161,8 +161,8 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
     void showContextMenu(RATES.map((r) => ({ label: `${r}×`, checked: r === rate, run: () => (setRate(r), save({ rate: r })) })));
 
   const kept = trim ? trim.end - trim.start : 0;
-  const toolbar = (
-    <WindowToolbar label="Video">
+  const bar = (
+    <WindowToolbar label="Video" bottom>
       <ToolbarButton icon={playing ? "pause.fill" : "play.fill"} label={playing ? "Pause" : "Play"} shortcut="Space" disabled={!duration} onClick={toggle} />
       {trim ? (
         <>
@@ -175,10 +175,9 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
         </>
       ) : (
         <>
-          <ToolbarText priority={1}>
-            {formatTime(time)} / {formatTime(duration)}
-          </ToolbarText>
-          <ToolbarSpacer />
+          <ToolbarText>{formatTime(time)}</ToolbarText>
+          <Scrubber inline duration={duration} time={time} onSeek={seek} />
+          <ToolbarText priority={1}>{formatTime(duration)}</ToolbarText>
           <ToolbarMenu label="Speed" onClick={rateMenu} priority={2}>
             {rate}×
           </ToolbarMenu>
@@ -199,7 +198,6 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
         scroll={false}
         focusable
         bodyRef={body}
-        toolbar={toolbar}
         state={error ? { kind: "error", title: "Can't play this video", text: "It may be in a format cmd can't play. Open it with the default app instead.", action: undefined } : null}
       >
         <Stage>
@@ -224,14 +222,8 @@ export function VideoView({ win, focused, api = realApi, initialTrim }: WindowVi
             onError={() => setError(true)}
           />
         </Stage>
-        <Scrubber
-          duration={duration}
-          time={time}
-          onSeek={seek}
-          thumbs={trim ? (frames ?? []) : undefined}
-          trim={trim}
-          onTrim={(r, end) => (setTrim(r), seek(end === "start" ? r.start : r.end))}
-        />
+        {trim && <Scrubber duration={duration} time={time} onSeek={seek} thumbs={frames ?? []} trim={trim} onTrim={(r, end) => (setTrim(r), seek(end === "start" ? r.start : r.end))} />}
+        {bar}
       </View>
     </div>
   );
