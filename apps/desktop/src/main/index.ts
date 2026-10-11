@@ -579,6 +579,8 @@ function openUtility(page: UtilityPage, o: { title: string; width: number; heigh
 const openSettings = (at?: string) => openUtility("settings", { title: "Settings", width: 860, height: 620, minWidth: 700, minHeight: 440 }, at);
 /** Dev only: `pnpm workbench [story]` (scripts/workbench.mjs) sets CMD_WORKBENCH and gets this window instead of the app's. */
 const workbench = process.env.ELECTRON_RENDERER_URL ? process.env.CMD_WORKBENCH : undefined;
+/** The Workbench is the only window: nothing opens an app window (Dock, menu commands, stories), closing it quits. */
+const workbenchOnly = workbench !== undefined;
 const openWorkbench = () => openUtility("workbench", { title: "Workbench", width: 1100, height: 760, minWidth: 600, minHeight: 400 }, workbench || undefined);
 
 /** App windows, not Settings or the Workbench. */
@@ -675,7 +677,7 @@ app.on("browser-window-focus", (_e, win) => {
   const state = menuStates.get(win);
   if (state) applyMenuState(state);
 });
-ipcMain.on("workspace-show", (e, workspaceId: string, o: { select?: string; newWindow?: boolean }) => workspaces.show(workspaceId, o ?? {}, winOf(e)));
+ipcMain.on("workspace-show", (e, workspaceId: string, o: { select?: string; newWindow?: boolean }) => !workbenchOnly && workspaces.show(workspaceId, o ?? {}, winOf(e)));
 ipcMain.on("workspace-lost", (e) => {
   const win = winOf(e);
   if (win) workspaces.lost(win);
@@ -708,7 +710,7 @@ ipcMain.on("check-updates", () => checkForUpdates());
 ipcMain.handle("app-metrics", () => appMetrics());
 // The Task Manager is a sheet in the app window it was asked from (the Resources widget, the core's status).
 ipcMain.on("task-manager", (e) => e.sender.send("command", "app.taskManager"));
-ipcMain.on("show-pane", (_e, workspaceId: string, paneId: string) => workspaces.show(workspaceId, { select: paneId }, appWindows()[0] ?? null));
+ipcMain.on("show-pane", (_e, workspaceId: string, paneId: string) => !workbenchOnly && workspaces.show(workspaceId, { select: paneId }, appWindows()[0] ?? null));
 ipcMain.on("install-update", () => void updater().then((u) => u.installUpdate()));
 ipcMain.handle("restart-core", () => restartCore());
 // Window → Resize to 1500 × 900: the whole window at that size, out of full screen, centred on its display.
@@ -973,7 +975,7 @@ app.whenReady().then(async () => {
   });
   // First: the window loads its bundle while the menu is built and the core is
   // checked or started; the preload connects once that is done (core-checked).
-  if (workbench !== undefined) openWorkbench();
+  if (workbenchOnly) openWorkbench();
   else workspaces.restore();
   // Decoding and setting it takes ~80 ms on this thread: not while the first window starts (dev builds only).
   if (devIcon) setTimeout(() => app.dock?.setIcon(devIcon), 1000);
@@ -985,7 +987,7 @@ app.whenReady().then(async () => {
   followCrashReports(socketPath);
   // Its bundle (about 570 KB) is parsed on this thread; its first check is 30 s away anyway.
   setTimeout(() => void startUpdater(), 5000);
-  const send = commandSender(() => workspaces.reopen(), { openSettings, checkForUpdates, isUtility, appWindows });
+  const send = commandSender(() => (workbenchOnly ? null : workspaces.reopen()), { openSettings, checkForUpdates, isUtility, appWindows });
   refreshMenu = () => buildMenu(send, recordingShortcut ? {} : keybindings.bindings);
   refreshMenu();
   watchKeybindings((next) => {
@@ -993,7 +995,7 @@ app.whenReady().then(async () => {
     refreshMenu();
     for (const w of BrowserWindow.getAllWindows()) w.webContents.send("keybindings", next);
   });
-  app.dock?.setMenu(
+  if (!workbenchOnly) app.dock?.setMenu(
     Menu.buildFromTemplate([
       // Its picker needs the app in front; macOS lists the open windows above these.
       { label: "New Window…", click: () => (app.focus({ steal: true }), send("file.newWindow")) },
@@ -1002,11 +1004,12 @@ app.whenReady().then(async () => {
     ]),
   );
   app.on("activate", () => {
-    if (appWindows().length === 0) workspaces.reopen();
+    if (workbenchOnly) openWorkbench();
+    else if (appWindows().length === 0) workspaces.reopen();
   });
 });
 
 // Closing the window does not stop the core: terminals keep running.
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin" || workbenchOnly) app.quit();
 });

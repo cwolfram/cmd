@@ -41,7 +41,8 @@ interface UtilityWindows {
 /** Utility windows handle closing and text editing themselves; other commands go to an app window. */
 const UTILITY_COMMANDS = new Set(["edit.copy", "edit.selectAll"]);
 
-export function commandSender(createWindow: () => BrowserWindow, s: UtilityWindows): Send {
+/** createWindow: null when no app window may open (the Workbench): the command is dropped. */
+export function commandSender(createWindow: () => BrowserWindow | null, s: UtilityWindows): Send {
   return (id) => {
     if (id === "app.settings") return s.openSettings();
     if (id === "app.remoteAccess") return s.openSettings("remote");
@@ -55,7 +56,8 @@ export function commandSender(createWindow: () => BrowserWindow, s: UtilityWindo
     let win = (focused && !s.isUtility(focused) ? focused : null) ?? s.appWindows()[0];
     if (win && s.isUtility(focused)) win.focus();
     if (!win) {
-      win = createWindow();
+      win = createWindow() ?? undefined;
+      if (!win) return;
       win.webContents.once("did-finish-load", () => win!.webContents.send("command", id));
       return;
     }
