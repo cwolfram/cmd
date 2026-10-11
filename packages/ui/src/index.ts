@@ -24,7 +24,7 @@ export { ICON, Icon, UIProvider, iconNode, type IconProps, type IconWeight } fro
 export { Callout, Card, Checklist, CodeBlock, Diff, EmptyState, FeatureList, FormActions, FormRow, FormSection, Group, InfoButton, KeyValue, Prose, QrCode, ResetButton, SectionHeading, Separator, SheetHeader, Spacer, Toolbar, type Step, type StepState } from "./layout.tsx";
 export { ConfirmDialog, Dialog, DialogLayer, Menu, Popover, Presence, Toast, Toaster, dismissToast, placePopover, toast, type Align, type MenuItemProps, type ToastOptions } from "./overlay.tsx";
 export { Badge, Kbd, LiveBadge, PageDots, Progress, ProgressRing, Spinner, StatusDot, type DotState, type Tone } from "./status.tsx";
-export { installScrollbars, scrollbarScript, scrolled, watchScrollbars, PAGE_SCROLLBAR_CSS, SCROLLBAR_CSS, SCROLLBAR_HOLD, type ScrollbarsOptions } from "./scrollbars.ts";
+export { installScrollbars, scrollbarScript, scrolled, scrollbarsMoved, watchScrollbars, PAGE_SCROLLBAR_CSS, SCROLLBAR_CSS, SCROLLBAR_HOLD, type ScrollbarsOptions } from "./scrollbars.ts";
 export { displayAddress, ToolbarAddressField, ToolbarButton, ToolbarField, ToolbarSearchField, ToolbarGroup, ToolbarMenu, ToolbarPath, ToolbarSegmented, ToolbarSeparator, ToolbarSpacer, ToolbarText, WindowToolbar, type ToolbarButtonProps, type ToolbarFieldProps } from "./toolbar.tsx";
 export { EASE, EASE_EXIT, glide, GLIDE_EASING, GLIDE_MS, glideNow, MOTION, tween, reducedMotion, slide, spring, timing, useFlip, usePresence, usePresentValue } from "./motion.ts";
 export { ErrorBoundary, type ErrorBoundaryProps } from "./boundary.tsx";

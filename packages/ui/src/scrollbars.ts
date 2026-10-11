@@ -77,6 +77,14 @@ const XTERM_CSS = `
 .xterm .xterm-scrollable-element > .shadow { display: none; }
 `;
 
+/**
+ * Tells the app's scrollbars that something moved on screen without scrolling or
+ * resizing (TileMotion gliding a window), so they follow before the frame paints.
+ */
+export function scrollbarsMoved(doc: Document = document): void {
+  doc.dispatchEvent(new Event("cmd-scrollbars-moved"));
+}
+
 const holds = new Map<Element, ReturnType<typeof setTimeout>>();
 
 /** Marks `el` as scrolling (.cmd-scrolling) until SCROLLBAR_HOLD ms after the last call. */
@@ -294,6 +302,7 @@ export function pageScrollbars(doc: Document, o: PageScrollbarsOptions, span: ty
       for (const b of Object.values(s.bars)) b?.el.remove();
       clearTimeout(s.timer);
       states.delete(el);
+      resized.unobserve(el);
       return;
     }
     const v = box(el);
@@ -326,6 +335,19 @@ export function pageScrollbars(doc: Document, o: PageScrollbarsOptions, span: ty
     for (const [el, s] of states) if (s.on) place(el, s);
   };
   const soon = () => (frame ||= win.requestAnimationFrame(placeAll));
+  // A scroller that resizes or moves without scrolling (a board window gliding or being
+  // resized) takes its thumbs along before the frame paints: a ResizeObserver runs after
+  // layout, and scrollbarsMoved() is answered in a microtask, after the motion frame wrote.
+  const resized = new win.ResizeObserver(placeAll);
+  let queued = false;
+  doc.addEventListener("cmd-scrollbars-moved", () => {
+    if (queued) return;
+    queued = true;
+    queueMicrotask(() => {
+      queued = false;
+      placeAll();
+    });
+  });
 
   const hide = (s: State) => {
     s.on = false;
@@ -336,6 +358,7 @@ export function pageScrollbars(doc: Document, o: PageScrollbarsOptions, span: ty
     if (!s) {
       s = { bars: {}, on: false, hovered: false, held: false };
       states.set(el, s);
+      resized.observe(el);
     }
     if (!s.on) {
       const tones = dark(el) ? o.dark : o.light;

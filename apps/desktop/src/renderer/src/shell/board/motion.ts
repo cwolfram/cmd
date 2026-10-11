@@ -9,7 +9,7 @@
 // rather than jump to the focused window's rect. Below it: windows moving between
 // the board and the sidebars, and closed windows fading out (ghosts).
 
-import { glideNow, reducedMotion, spring, timing } from "@cmd/ui";
+import { glideNow, reducedMotion, scrollbarsMoved, spring, timing } from "@cmd/ui";
 
 export interface Rect {
   x: number;
@@ -253,6 +253,7 @@ export class TileMotion {
     // steadily; the layout size is what's left (their quotient).
     if (g.w !== p.w || g.s !== p.s) s.width = `${g.w / g.s}px`;
     if (g.h !== p.h || g.s !== p.s) s.height = `${g.h / g.s}px`;
+    if (g.x !== p.x || g.y !== p.y || g.w !== p.w || g.h !== p.h || g.s !== p.s) scrollbarsMoved();
     const o = Math.max(0, Math.min(1, g.o));
     if (o !== p.o) {
       s.opacity = o >= 1 ? "" : String(o);
