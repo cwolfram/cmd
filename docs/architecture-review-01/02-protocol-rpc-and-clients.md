@@ -56,7 +56,7 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 ### AR1-02-02 · Make event-versus-reply ordering a guarantee, or stop relying on it
 
-- **Status:** open
+- **Status:** open · mostly done (52899e22, ab382afb)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1297`, `packages/core/src/core.ts:1313-1343`, `packages/core/src/terminals/remote.ts:196-216`, `apps/desktop/src/renderer/src/store.ts:408-416`, `apps/desktop/src/renderer/src/store.ts:583-586`
@@ -72,10 +72,13 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 **Proposal.** Adopt docs/13's and 00-research §1's rule explicitly: a client starts from a snapshot and then applies ordered deltas, with a cursor to join them. Give every pane a monotonic output offset in the core (bytes emitted since the pane started): `pane.output {paneId, data, offset}` and `pane.snapshot → {data, cols, rows, offset}`. The renderer keeps output that arrives while awaiting a snapshot and, when the snapshot lands, applies only output with `offset > snapshot.offset`. This makes ordering irrelevant and also covers `pane.resync`. Separately, document in `connection.ts` that replies are unordered relative to each other and to events, and delete the two comments in `store.ts`. Do not serialize `#receive` per connection to "fix" this: one slow `search.files` would then block `pane.write`.
 
 **Success criteria.**
-- [ ] `pane.output` and `pane.snapshot` carry `offset`; a core test feeds output and a snapshot in the same tick and asserts a client applying the rule loses no bytes.
-- [ ] `grep -n "order asked\|ordered socket" apps/desktop/src/renderer/src/store.ts` returns nothing.
+- [x] `pane.output` and `pane.snapshot` carry `offset`; a core test feeds output and a snapshot in the same tick and asserts a client applying the rule loses no bytes.
+- [x] `grep -n "order asked\|ordered socket" apps/desktop/src/renderer/src/store.ts` returns nothing.
 - [ ] A reconnect e2e (restart the core while `yes | head -c 50M` runs in two panes) shows both terminals' content identical to `pane.read` afterwards.
-- [ ] `connection.ts`'s header states the ordering contract in one sentence.
+- [x] `connection.ts`'s header states the ordering contract in one sentence.
+
+**Progress (2026-10-10).** The offset is `seq` (52899e22; see AR1-04-01 for where it comes from). `snapshot-order.test.ts` checks every path (the core's terminals, the PTY host, a remote session through the relay) with snapshots taken while output flows, and each line arrives exactly once. The store's comment and `connection.ts`'s header now say replies are unordered and `seq` joins them (ab382afb). Left: the reconnect e2e (restart the core while two panes print 50 MB).
+
 
 ### AR1-02-03 · Negotiate protocol version and capabilities in `core.hello`
 

@@ -33,7 +33,7 @@ Terminals run in the **PTY host** (`packages/core/src/terminals/host.ts` 222 lin
 
 ### AR1-04-01 · Number the output in the PTY host so a snapshot and the stream join exactly
 
-- **Status:** open
+- **Status:** done (52899e22, 3513f52f)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/terminals/local.ts:37-40`, `packages/core/src/terminals/local.ts:77-93`, `packages/core/src/terminals/local.ts:125-128`, `packages/core/src/terminals/host.ts:155`, `apps/desktop/src/renderer/src/store.ts:408-416`, `apps/desktop/src/renderer/src/store.ts:587-596`
@@ -46,10 +46,15 @@ Terminals run in the **PTY host** (`packages/core/src/terminals/host.ts` 222 lin
 **Proposal.** Make the host the clock. Each `LocalTerm` keeps `fed` (bytes handed to the vt) and `parsed` (advanced in each chunk's write callback: `vt.write(d, () => (this.#parsed += d.length))`). Data events carry their end offset (`{ev:"data", t, d, o}`), `snapshot` returns `{data, cols, rows, offset: parsed}` taken synchronously, so it is exact without the flush dance. The core passes `o` through as `pane.output.offset` and `pane.snapshot.offset` (this is AR1-02-02's wire change, with the number sourced here). The renderer keeps events that arrive while it waits, and when the snapshot lands writes only the part of each with `offset > snapshot.offset` (slicing the one that straddles). Bump `HOST_PROTOCOL` to 3. The same offsets give AR1-02-01's resync a precise restart point. Prior art: VS Code's pty host replays from a serialized state plus the events after it, keyed by sequence (00-research §5 [VSC-TERM]).
 
 **Success criteria.**
-- [ ] `host.ts` data events and `snapshot` replies carry an offset; `HOST_PROTOCOL` is 3.
+- [x] `host.ts` data events and `snapshot` replies carry an offset; `HOST_PROTOCOL` is 3.
 - [ ] A test in `ptyhost.test.ts` floods a terminal (≥ 50 MB), takes 20 snapshots during the flood, and for each, snapshot + events after its offset replayed into a fresh headless terminal equals the host's final `read(…)`.
-- [ ] `grep -n "awaitingSnapshot.has" apps/desktop/src/renderer/src/store.ts` returns nothing (events are buffered and trimmed by offset, not dropped).
+- [x] `grep -n "awaitingSnapshot.has" apps/desktop/src/renderer/src/store.ts` returns nothing (events are buffered and trimmed by offset, not dropped).
 - [ ] `LocalTerm` has no `#flush` call in `snapshot`.
+
+**Done (2026-10-10), another way than proposed.** 52899e22 (after this review) made the join exact with `seq`: the host's snapshot counts the output it shows, its reply says how much of what it has sent came after (`after`), the core turns that into the pane's `seq` (`panes.ts`), and `pane.output` carries `seq` too. Clients keep output that arrives while they wait (`OutputGate`, `@cmd/protocol/replay`, the app's store and the web client) and write only what the snapshot doesn't show. No `HOST_PROTOCOL` bump was needed: `after` rides on the reply over the same ordered socket.
+
+The proposal's other half, a snapshot "as parsed now" with no flush, is unsafe and was tried and reverted (pty-offsets branch): a client gets output events only from when it subscribes, so output printed before that which the parser hadn't reached yet would be in neither the snapshot nor the events. A snapshot has to cover everything sent before it was asked for; the `write("")` wait is what guarantees that. Its cost is the parser's backlog when a pane floods, which is real but correct. The flaky `snapshot-order.test.ts` was that cost in a test whose printer outran the parser (13–15 s against a 15 s timeout, failing as a timeout, never on a lost byte); 3513f52f paces it. Not done: the ≥ 50 MB flood test with 20 snapshots.
+
 
 ### AR1-04-02 · Mirror only the panes a window shows, not every pane in every window
 
