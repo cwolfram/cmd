@@ -14,6 +14,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import http from "node:http";
 import { _electron as electron } from "playwright";
+import { connect } from "../packages/protocol/src/node.ts";
 import { corePid, stopCore } from "../scripts/stop-core.mjs";
 import { fitScreen, screenEnv } from "./screen.mjs";
 
@@ -212,6 +213,7 @@ const SCENARIOS = {
   "blank-browser": [],
   "site-permissions": ["browser"],
   osc8: [],
+  resync: [],
   files: ["terminals"],
   "files-menus": ["files"],
   text: ["files"],
@@ -902,6 +904,51 @@ await scenario("osc8", async () => {
   } finally {
     await app.evaluate(({ dialog, shell }) => globalThis.__restore && ((dialog.showMessageBox = globalThis.__restore.box), (shell.openExternal = globalThis.__restore.ext), (shell.openPath = globalThis.__restore.path)));
     for (const w of [term, linked]) if (w) await win.evaluate((id) => window.cmd.call("window.close", { id }), w.id);
+  }
+});
+
+// A window that stops reading while its terminal prints a lot (a busy or paused page,
+// AR1-02-01): the core holds a bounded amount for it, then tells it to resync, and the
+// terminal shows what the core's copy shows, not a frozen or garbled screen.
+await scenario("resync", async () => {
+  let term = null;
+  let cdp = null;
+  let core = null;
+  try {
+    await win.evaluate(() => {
+      window.__resyncs = 0;
+      window.cmd.onEvent((e) => void (e.type === "pane.resync" && window.__resyncs++));
+    });
+    term = await win.evaluate(() => window.cmd.call("window.open", { kind: "terminal", input: {} }));
+    await tileIn(term.id);
+    await select(term.id);
+    await until(() => paneText(term.id, 5), (t) => /\S/.test(t));
+    // Asked from here while the window is stopped.
+    core = await connect(path.join(home, "core.sock"));
+    const coreScreen = () => core.client.call("pane.read", { paneId: term.id, lines: 8 }).then((r) => r.text);
+    cdp = await win.context().newCDPSession(win);
+    await cdp.send("Debugger.enable");
+    const paused = new Promise((r) => cdp.once("Debugger.paused", r));
+    await win.evaluate(([id, data]) => window.cmd.call("pane.write", { paneId: id, data }), [term.id, "yes 'cmd keeps up' | head -c 20000000; echo resync-$((6*7))\r"]);
+    await cdp.send("Debugger.pause");
+    await paused;
+    step("the window is paused while the terminal prints");
+    for (const t0 = Date.now(); !(await coreScreen()).includes("resync-42"); ) {
+      if (Date.now() - t0 > 60_000) throw new Error("the output never ended");
+      await new Promise((r) => setTimeout(r, 50)); // a poll: the window can't be asked
+    }
+    await cdp.send("Debugger.resume");
+    const lastRows = (t) => t.split("\n").map((l) => l.trimEnd()).filter(Boolean).slice(-4).join("\n");
+    const want = lastRows(await coreScreen());
+    const got = await until(() => win.evaluate((id) => window.__cmdTermScreen(id), term.id).then(lastRows), (t) => t === want, 20_000);
+    const resyncs = await win.evaluate(() => window.__resyncs);
+    check(resyncs > 0, `a window that stopped reading during 20 MB of output is told to resync (${resyncs}×)`);
+    check(got === want, `and then shows what the core shows (${JSON.stringify(got)} vs ${JSON.stringify(want)})`);
+  } finally {
+    await cdp?.send("Debugger.resume").catch(() => {});
+    await cdp?.detach().catch(() => {});
+    core?.close();
+    if (term) await win.evaluate((id) => window.cmd.call("window.close", { id }), term.id);
   }
 });
 

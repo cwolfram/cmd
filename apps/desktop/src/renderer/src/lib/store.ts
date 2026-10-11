@@ -417,29 +417,27 @@ export function usePersisted<T>(key: string, fallback: T): [T, (v: T | ((prev: T
 // either side of what the snapshot holds, @cmd/protocol/replay).
 const gates = new Map<PaneId, OutputGate>();
 
-/** The latest snapshot asked for per pane (by request number): an older answer arriving after a newer request is left out. */
-const attaching = new Map<PaneId, number>();
-let attachCount = 0;
+/** Snapshots being asked for; `again`: a resync came meanwhile, so the answer is stale and one more is asked. */
+const attaching = new Map<PaneId, { again: boolean }>();
 
 /** Show a terminal from its snapshot; output that waited at its gate goes after it, each byte once. */
 async function attach(paneId: PaneId): Promise<void> {
-  const n = ++attachCount;
-  attaching.set(paneId, n);
-  try {
-    const { data, cols, rows, seq } = await cmd.call("pane.snapshot", { paneId });
-    if (attaching.get(paneId) !== n) return;
+  const busy = attaching.get(paneId);
+  if (busy) return void (busy.again = true);
+  const me = { again: false };
+  attaching.set(paneId, me);
+  const snap = await cmd.call("pane.snapshot", { paneId }).catch(() => null); // null: the pane is gone
+  attaching.delete(paneId);
+  if (me.again) return attach(paneId);
+  if (snap) {
     terminals.reset(paneId);
-    terminals.replay(paneId, data, { cols, rows });
-    const rest = gates.get(paneId)?.snapshot(seq);
+    terminals.replay(paneId, snap.data, { cols: snap.cols, rows: snap.rows });
+    const rest = gates.get(paneId)?.snapshot(snap.seq);
     if (rest) terminals.write(paneId, rest);
-  } finally {
-    // Failed (the pane is gone) or nothing left to skip: output goes straight through.
-    if (attaching.get(paneId) === n) {
-      attaching.delete(paneId);
-      const gate = gates.get(paneId);
-      if (gate && (gate.done || gate.waiting)) gates.delete(paneId);
-    }
   }
+  // Failed or nothing left to skip: output goes straight through.
+  const gate = gates.get(paneId);
+  if (gate && (gate.done || gate.waiting)) gates.delete(paneId);
 }
 
 function handle(e: CoreEvent): void {
@@ -458,7 +456,7 @@ function handle(e: CoreEvent): void {
       const gate = gates.get(e.paneId);
       if (gate) gate.wait();
       else gates.set(e.paneId, new OutputGate("drop"));
-      attach(e.paneId).catch(() => {}); // the pane is gone
+      void attach(e.paneId);
       return;
     }
     case "pane.updated": {

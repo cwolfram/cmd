@@ -3,6 +3,7 @@ import { Toast, type FindResults } from "@cmd/ui";
 import type { PaneId, Progress } from "@cmd/protocol";
 import { useStoreValue } from "../../lib/store.ts";
 import { terminals } from "./terminals.ts";
+import "./testhook.ts";
 import { useFind } from "../../lib/find.tsx";
 import { cmd } from "../../lib/bridge.ts";
 import { countRender } from "../../lib/perf.ts";
