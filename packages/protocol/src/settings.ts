@@ -119,7 +119,7 @@ export const SETTINGS_SCHEMA = {
     default: "both",
     options: ["both", "left", "right", "off"],
     labels: { both: "Both", left: "Left Option", right: "Right Option", off: "Off" },
-    description: "Option+key sends Escape+key, for shell shortcuts.", details: "Off, or on one side only, keeps that Option key typing characters like @ and € on international layouts.",
+    description: "Option+key sends Escape+key, for shell shortcuts.", details: "Both still types the characters your layout puts on Option, like @ [ | and € on German and most European layouts. Off, or one side only, keeps every other Option character too.",
   },
   "terminal.clickMovesCursor": {
     title: "Click moves the cursor",

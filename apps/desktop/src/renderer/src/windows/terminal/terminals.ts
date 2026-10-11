@@ -3,7 +3,7 @@
 // WebGL contexts are pooled (browsers keep ~16); others use the DOM renderer.
 // Also what xterm.js leaves to the app: find (⌘F), prompt marks (OSC 133:
 // ⌘↑/⌘↓, copy last output), OSC 52 copy, images, drag-and-drop, paste
-// protection, Option as Meta per side, and the queries it doesn't answer
+// protection, Option as Meta (option.ts), and the queries it doesn't answer
 // (XTVERSION, color scheme). See docs/02-terminal-foundations.md.
 
 import { MAC_KEYMAP } from "../../../../shared/commands.ts";
@@ -19,6 +19,7 @@ import { DEFAULT_SETTINGS } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import { currentTheme, onThemeChange, terminalColors } from "@cmd/ui/themes";
 import { findLinks, logicalLine, type Row } from "./links.ts";
+import { optionIsMeta } from "./option.ts";
 import { scrolled, type FindOptions, type FindResults } from "@cmd/ui";
 import type { FindRequest } from "../../lib/find.tsx";
 import { pasteRisk, preview, shellWord } from "./paste.ts";
@@ -368,7 +369,7 @@ class Terminals {
     // Except the line-editing keys macOS terminals translate (⌘⌫ ⌘← ⌘→, as Ghostty does).
     // ⇧↩ sends ESC CR, which agents (Claude Code, Codex) read as a newline in their input
     // and zsh inserts as one; xterm.js would send a plain CR, the same as ↩.
-    // Option as Meta for one side only: decided per key, from which Option is down.
+    // Option as Meta: decided per key, from which Option is down and what it types (option.ts).
     // ⌘↑ ⌘↓ jump between prompts, ⌘Home ⌘End ⌘PgUp ⌘PgDn scroll (Terminal.app, Ghostty).
     term.attachCustomKeyEventHandler((e) => {
       if (e.key === "Enter" && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -377,8 +378,7 @@ class Terminals {
       }
       if (!MAC_KEYMAP) return !isAppShortcut(e);
       if (e.altKey && !e.metaKey) {
-        const mode = this.#settings["terminal.optionAsMeta"];
-        const meta = mode === "both" || (mode !== "off" && mode === optionSide);
+        const meta = optionIsMeta(this.#settings["terminal.optionAsMeta"], optionSide, e.key);
         if (term.options.macOptionIsMeta !== meta) term.options.macOptionIsMeta = meta;
       }
       if (!e.metaKey) return true;
