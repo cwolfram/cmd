@@ -6,7 +6,7 @@
 /** The app window's top bar (docs/21-sidebars.md). */
 export const TOPBAR_HEIGHT = 38;
 /** The Settings window's sidebar title row (its --titlebar-h). */
-export const SETTINGS_TITLEBAR_HEIGHT = 38;
+export const SETTINGS_TITLEBAR_HEIGHT = 40;
 
 /** The traffic lights' button frames are 14 pt tall; `trafficLightPosition` is their top left. */
 const LIGHTS_HEIGHT = 14;

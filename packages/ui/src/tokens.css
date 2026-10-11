@@ -177,7 +177,7 @@
 
   /* ── window ── */
   /* A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge). */
-  --footer-h: 26px;
+  --footer-h: 28px;
   /* Windows (window.tsx) and sheets (Dialog): rounded corners and crisp whole-pixel outlines, the selected one in the highlight with a soft glow, and an elevation shadow. An app maps these to its own settings (cmd: the ui.window* settings, look.ts): --window-radius, --window-outline, --window-edge-mix (the outline's contrast), --window-elevation, --focus-outline, --focus-glow (1 = the default halo). What's built from them is declared again on .ui-window, where an app's per-mode values resolve. */
   --window-radius: 8px;
   --window-outline: 1px;
@@ -187,7 +187,7 @@
   --window-highlight: var(--accent);
   --window-bg: var(--well);
   /* The title bar. */
-  --window-bar-h: 26px;
+  --window-bar-h: 28px;
   /* The window's chrome (title bar and toolbar, one surface): halfway between the backdrop (--bg) and the content (--well), so every theme steps backdrop → chrome → content the same way, whatever its own sidebar colour. */
   --window-bar-bg: color-mix(in oklab, var(--well) 50%, var(--bg));
   /* How much this theme darkens unfocused windows: a factor on the ui.unfocusedDim setting. */
@@ -195,7 +195,7 @@
   --focus-outline: 1px;
   --focus-glow: 1;
   /* The window toolbar (WindowToolbar), with its 1px line. A row that holds controls is a toolbar, not part of the body. */
-  --toolbar-h: 31px;
+  --toolbar-h: 32px;
   /* Items in the window toolbar. */
   --toolbar-item-h: 22px;
   /* The window toolbar: the title bar's colour, so bar and toolbar are one chrome surface with a line between them. */
@@ -210,7 +210,7 @@
   --sheet-sh: color-mix(in oklab, var(--shadow) 85%, var(--bg));
   --sheet-shadow: 0 calc(0.5px * var(--sheet-elev)) calc(1px * var(--sheet-elev)) color-mix(in srgb, var(--sheet-sh) 36%, transparent), 0 calc(1px * var(--sheet-elev)) calc(2px * var(--sheet-elev)) color-mix(in srgb, var(--sheet-sh) 30%, transparent), 0 calc(2px * var(--sheet-elev)) calc(4px * var(--sheet-elev)) color-mix(in srgb, var(--sheet-sh) 24%, transparent), 0 calc(4px * var(--sheet-elev)) calc(8px * var(--sheet-elev)) calc(-1px * var(--sheet-elev)) color-mix(in srgb, var(--sheet-sh) 20%, transparent), 0 calc(8px * var(--sheet-elev)) calc(16px * var(--sheet-elev)) calc(-2px * var(--sheet-elev)) color-mix(in srgb, var(--sheet-sh) 16%, transparent);
   /* The title bar's band in a window of its own (Settings): where the traffic lights sit, drawn by the page under them (TitleBand). 28px off macOS (the app's styles.css). */
-  --titlebar-h: 38px;
+  --titlebar-h: 40px;
 
   /* ── motion ── */
   /* (motion.ts MOTION has the same values; a test keeps them equal) exit: something leaving, and quick pops in. change: a state changing (a ring, a size). slow: an indicator (a progress, a dot). glide: something moving (below). */

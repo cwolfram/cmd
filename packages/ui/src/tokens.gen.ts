@@ -784,7 +784,7 @@ export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--footer-h",
     "type": "dimension",
-    "value": "26px",
+    "value": "28px",
     "description": "A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge)."
   },
   {
@@ -819,7 +819,7 @@ export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--window-bar-h",
     "type": "dimension",
-    "value": "26px",
+    "value": "28px",
     "description": "The title bar."
   },
   {
@@ -847,7 +847,7 @@ export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--toolbar-h",
     "type": "dimension",
-    "value": "31px",
+    "value": "32px",
     "description": "The window toolbar (WindowToolbar), with its 1px line. A row that holds controls is a toolbar, not part of the body."
   },
   {
@@ -895,7 +895,7 @@ export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--titlebar-h",
     "type": "dimension",
-    "value": "38px",
+    "value": "40px",
     "description": "The title bar's band in a window of its own (Settings): where the traffic lights sit, drawn by the page under them (TitleBand). 28px off macOS (the app's styles.css)."
   },
   {

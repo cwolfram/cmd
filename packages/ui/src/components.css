@@ -1249,7 +1249,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   gap: var(--space-0-5);
   box-sizing: border-box;
   height: var(--toolbar-h);
-  /* The line at the bottom is inside the height: items centre in the 30px above it. */
+  /* The line at the bottom is inside the height: items centre in the 31px above it. */
   padding: 0 var(--toolbar-pad) 1px;
   overflow: hidden;
   font: var(--text-sm) var(--font-ui);
