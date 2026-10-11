@@ -18,6 +18,7 @@ import { handleMagicEvent } from "../windows/magic/magic.ts";
 import { countEvent, perf } from "./perf.ts";
 import { cleanTitle } from "./model.ts";
 import { PendingViews } from "./pendingViews.ts";
+import { UiOutbox } from "./uiOutbox.ts";
 
 export interface State {
   connected: boolean;
@@ -211,9 +212,9 @@ export function getState(): State {
 
 // ── persisted UI state ───────────────────────────────────
 
-const pendingUi = new Map<string, ReturnType<typeof setTimeout>>();
+const uiOutbox = new UiOutbox((key, value) => cmd.call("ui.set", { key, value: value ?? null }));
 
-/** Update UI state now; write it to the core shortly after (debounced per key). */
+/** Update UI state now; write it to the core shortly after (debounced per key; uiOutbox.ts). */
 /** The Widget Library as the core just listed it. */
 function loadClosed(): void {
   if (cmd.has("window.closed")) void cmd.call("window.closed", {}).then((closed) => set({ closed }), () => {});
@@ -226,24 +227,11 @@ export function setLibrary(library: WidgetEntry[]): void {
 export function setUi(key: string, value: unknown): void {
   if (JSON.stringify(state.ui[key]) === JSON.stringify(value)) return;
   set({ ui: { ...state.ui, [key]: value } });
-  clearTimeout(pendingUi.get(key));
-  pendingUi.set(
-    key,
-    setTimeout(() => {
-      pendingUi.delete(key);
-      void cmd.call("ui.set", { key, value: value ?? null }).catch(() => {});
-    }, 250),
-  );
+  uiOutbox.set(key, value);
 }
 
 /** Flush pending writes, e.g. before the window unloads. */
-export function flushUi(): void {
-  for (const [key, t] of pendingUi) {
-    clearTimeout(t);
-    void cmd.call("ui.set", { key, value: state.ui[key] ?? null }).catch(() => {});
-  }
-  pendingUi.clear();
-}
+export const flushUi = (): void => uiOutbox.flush();
 window.addEventListener("beforeunload", () => (flushUi(), flushWorkspaceViews()));
 
 // ── per-workspace view state ─────────────────────────────────
@@ -280,7 +268,16 @@ function sendView(workspaceId: WorkspaceId): void {
   clearTimeout(viewTimers.get(workspaceId));
   viewTimers.delete(workspaceId);
   const send = pendingView.take(workspaceId);
-  if (send) void cmd.call("workspace.update", { id: workspaceId, view: send.view }).then(send.settle, send.settle);
+  if (send) void cmd.call("workspace.update", { id: workspaceId, view: send.view }).then(send.settle, send.failed);
+}
+
+/** After a reconnect: UI and view writes whose calls failed (the core restarted) go again. */
+function resendWrites(): void {
+  uiOutbox.resend();
+  for (const id of pendingView.unsent()) {
+    if (!state.workspaces.has(id)) pendingView.drop(id);
+    else if (!viewTimers.has(id)) sendView(id);
+  }
 }
 
 function flushWorkspaceViews(): void {
@@ -618,13 +615,14 @@ cmd.onStatus(async (status) => {
     connected: true,
     error: undefined,
     settings: snap.settings,
-    ui: snap.ui ?? {},
+    ui: uiOutbox.over(snap.ui ?? {}),
     panes: new Map(snap.panes.map((p) => [p.id, p])),
     agents: new Map(snap.agents.map((a) => [a.id, a])),
     windows: new Map((snap.windows ?? []).map((w) => [w.id, w])),
     workspaces: new Map((snap.workspaces ?? []).map((sp) => [sp.id, withPending(sp, state.workspaces.get(sp.id))])),
   });
   checkWorkspace();
+  resendWrites();
   void cmd.call("search.status", {}).then((search) => set({ search }), () => {});
   void cmd.call("widget.list", {}).then((library) => set({ library }), () => {});
   loadClosed();

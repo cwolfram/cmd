@@ -82,4 +82,35 @@ describe("pending workspace view writes", () => {
     expect(p.over("b", { k: 2 })).toEqual({ k: 2 });
     expect(p.take("b")).toBeNull();
   });
+
+  it("a write whose call failed (the core restarting) stays and is sent once more after the reconnect", () => {
+    const p = new PendingViews();
+    p.set(WS, "sidebar.width", 320);
+    p.take(WS)!.failed();
+    // The reconnect's snapshot has the old value: the write still shows over it.
+    expect(p.over(WS, { "sidebar.width": 240 })["sidebar.width"]).toBe(320);
+    expect(p.unsent()).toEqual([WS]);
+    const again = p.take(WS)!;
+    expect(again.view).toEqual({ "sidebar.width": 320 });
+    again.settle();
+    expect(p.unsent()).toEqual([]);
+    expect(p.over(WS, { "sidebar.width": 320 })).toEqual({ "sidebar.width": 320 });
+  });
+
+  it("gives up on a write the core keeps refusing", () => {
+    const p = new PendingViews();
+    p.set(WS, "k", 1);
+    for (let i = 0; i < 3; i++) p.take(WS)?.failed();
+    expect(p.take(WS)).toBeNull();
+    expect(p.over(WS, { k: 0 }).k).toBe(0);
+  });
+
+  it("a failed call doesn't bring back a write a newer one replaced", () => {
+    const p = new PendingViews();
+    p.set(WS, "k", 1);
+    const first = p.take(WS)!;
+    p.set(WS, "k", 2);
+    first.failed();
+    expect(p.take(WS)!.view).toEqual({ k: 2 });
+  });
 });
