@@ -68,7 +68,7 @@ Every doc says under its title what it is: **research**, a **proposal**, **partl
 | 46 | [Spacing system](46-spacing.md) | built | One 4px unit, a numeric scale, roles (inset, bar and page insets, row padding and gaps) that components read, size classes; the migration |
 | 47 | [Motion feel](47-motion-feel.md) | proposal | Snappy and smooth on top of docs/37: speed across hand-offs, things from their cause, distance-aware springs, lists that move as one |
 | 48 | [UI Workbench](48-workbench.md) | built | One place to see and work on every component: the UI Workbench replaces the `@cmd/ui` gallery, and its sidebar, variant matrices, playground, props tables, notes and tests are derived from the component sources and story files |
-| 49 | [Stats](49-stats.md) | proposal | Usage numbers from the event log: a stats registry in the core (hour buckets in views.sqlite, kept current from dirty marks, rebuilt by version, one query and `cmd stats`), what cmd can show (agent time, waiting on you, failures, focus, tokens), a chart kit with Apple's discipline and a terminal's density (a mark grammar, scrubbing cursor, presets), the Stats widget, phases |
+| 49 | [Stats](49-stats.md) | partly built | Usage numbers from the event log: a stats registry in the core (hour buckets in views.sqlite, kept current from dirty marks, rebuilt by version, one query and `cmd stats`), what cmd can show (agent time, waiting on you, failures, focus, tokens), a chart kit with Apple's discipline and a terminal's density (a mark grammar, scrubbing cursor, presets), the Stats widget, phases |
 
 ## Key findings
 1. **Nothing has to be invented for agent awareness.** Every tool in this space combines three things:
