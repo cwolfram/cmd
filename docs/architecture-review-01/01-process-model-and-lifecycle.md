@@ -146,7 +146,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-07 · Give both handshakes a protocol version and a compatibility rule
 
-- **Status:** done (handshake branch, not merged yet)
+- **Status:** done (b7a199e2)
 - **Severity:** low
 - **Effort:** M
 - **Where:** `packages/core/src/terminals/host.ts:28`, `packages/core/src/terminals/remote.ts:109`, `packages/protocol/src/rpc.ts:79`, `packages/core/src/core.ts:71`

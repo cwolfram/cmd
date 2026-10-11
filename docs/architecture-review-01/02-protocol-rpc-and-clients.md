@@ -32,7 +32,7 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 ### AR1-02-01 · Give the local socket flow control and a frame limit
 
-- **Status:** mostly done (handshake branch, not merged yet; the renderer's ACK and pausing the PTY are left)
+- **Status:** mostly done (b7051979; the renderer's ACK and pausing the PTY are left)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1280`, `packages/core/src/core.ts:1546-1554`, `packages/protocol/src/client.ts:62-72`, `apps/desktop/src/renderer/src/terminals.ts:589-593`, `packages/core/src/panes.ts:420-428`
@@ -84,7 +84,7 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 ### AR1-02-03 · Negotiate protocol version and capabilities in `core.hello`
 
-- **Status:** done (handshake branch, not merged yet)
+- **Status:** done (7932ae5c)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/protocol/src/rpc.ts:79`, `packages/core/src/core.ts:71`, `packages/core/src/core.ts:592`, `apps/desktop/src/renderer/src/store.ts:555,572-576`, `apps/web/src/model.ts:19-21,43-51`, `packages/protocol/src/instance.ts:119-130`, `packages/cli/src/main.ts:158-166`
