@@ -1,5 +1,5 @@
-// Dialog and Popover focus, in a real browser: the gallery's overlays page in
-// Playwright's Chromium (jsdom has no layout, inert or focus order to check).
+// Dialog and Popover focus, in a real browser: the Sheets story (src/overlay.story.tsx) on
+// the stage (test/stage) in Playwright's Chromium (jsdom has no layout, inert or focus order).
 // A Dialog is modal: Tab stays inside, the page behind is inert, Escape closes
 // it from anywhere inside and focus goes back to where it was. Needs Playwright's
 // Chromium (`pnpm exec playwright install chromium`; CI installs it).
@@ -15,13 +15,13 @@ const here = import.meta.dirname;
 const noChromium = needs(existsSync(chromium.executablePath()), "Playwright's Chromium (pnpm exec playwright install chromium)");
 if (noChromium) it.skip("Playwright's Chromium isn't installed, so Dialog and Popover focus aren't tested", () => {});
 
-describe.skipIf(noChromium)("Dialog and Popover focus (gallery, Chromium)", () => {
+describe.skipIf(noChromium)("Dialog and Popover focus (stage, Chromium)", () => {
   let server: ViteDevServer;
   let browser: Browser;
   let page: Page;
 
   beforeAll(async () => {
-    server = await createServer({ configFile: path.join(here, "../gallery/vite.config.ts"), server: { port: 0 }, logLevel: "error" });
+    server = await createServer({ configFile: path.join(here, "stage/vite.config.ts"), server: { port: 0 } });
     await server.listen();
     browser = await chromium.launch();
     page = await browser.newPage({ viewport: { width: 1180, height: 900 } });
@@ -31,9 +31,10 @@ describe.skipIf(noChromium)("Dialog and Popover focus (gallery, Chromium)", () =
     await server?.close();
   });
 
+  const SHEETS = "?story=overlay&variant=Sheets&theme=dark";
   const open = async () => {
-    await page.goto(`${server.resolvedUrls!.local[0]}?theme=dark&page=overlays`);
-    await page.waitForSelector(".g-page h1");
+    await page.goto(`${server.resolvedUrls!.local[0]}${SHEETS}`);
+    await page.waitForSelector('body[data-ready="overlay/Sheets"]');
   };
   /** Where focus is: inside the open dialog, or what it is outside. */
   const focus = () => page.evaluate(() => {
@@ -134,8 +135,8 @@ describe.skipIf(noChromium)("Dialog and Popover focus (gallery, Chromium)", () =
     const p = await browser.newPage({ viewport: { width: 1180, height: 900 } });
     try {
       await p.clock.install();
-      await p.goto(`${server.resolvedUrls!.local[0]}?theme=dark&page=overlays`);
-      await p.waitForSelector(".g-page h1");
+      await p.goto(`${server.resolvedUrls!.local[0]}${SHEETS}`);
+      await p.waitForSelector('body[data-ready="overlay/Sheets"]');
       await p.getByRole("button", { name: "Delete Workspace…" }).click();
       await p.waitForSelector(".ui-dialog");
       await p.clock.pauseAt(Date.now() + 1000); // a second on: nothing is due then
@@ -223,9 +224,10 @@ describe.skipIf(noChromium)("Dialog and Popover focus (gallery, Chromium)", () =
   });
 
   it("moves focus into a dialog Popover on open and back to its anchor on Escape", async () => {
-    await open();
+    // The Card story opens its popover as it mounts.
+    await page.goto(`${server.resolvedUrls!.local[0]}?story=overlay&variant=Card&theme=dark`);
+    await page.waitForSelector('body[data-ready="overlay/Card"]');
     const anchor = page.getByRole("button", { name: "Core details" });
-    await anchor.click();
     const pop = page.getByRole("dialog");
     await pop.waitFor();
     await expect.poll(() => pop.evaluate((el) => el.contains(document.activeElement))).toBe(true);

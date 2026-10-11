@@ -5,5 +5,5 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node", "vite/client"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "gallery/**/*.ts", "gallery/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "gallery/**/*.ts", "gallery/**/*.tsx", "test/stage/**/*.ts", "test/stage/**/*.tsx"]
 }

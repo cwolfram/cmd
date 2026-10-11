@@ -1,9 +1,12 @@
 // Overlays that need more than a native menu or confirm: a menu with icons, details and
 // shortcuts; a popover card; a sheet whose content works while it shows (Presence); a
 // confirmation; toasts. The menus, popover and confirmation start open.
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Button, ButtonGroup } from "./button.tsx";
-import { KeyValue, SectionHeading } from "./layout.tsx";
+import { Checkbox, Segmented, Select } from "./choice.tsx";
+import { SearchField, TextArea } from "./fields.tsx";
+import { FeatureList, KeyValue, Prose, SectionHeading, SheetHeader } from "./layout.tsx";
+import { Badge, PageDots } from "./status.tsx";
 import { ConfirmDialog, Dialog, Menu, Popover, Presence, Toast, Toaster, toast } from "./overlay.tsx";
 import { StatusDot } from "./status.tsx";
 
@@ -98,11 +101,12 @@ export const Card = () => {
   );
 };
 
-/** Polls while it's mounted; Presence keeps it mounted while shown and while it fades out, then not at all. */
+/** Polls while it's mounted (window.__polls counts, so a test sees a closed one stop); Presence keeps it mounted while shown and while it fades out, then not at all. */
 function PollingSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [polls, setPolls] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setPolls((n) => n + 1), 50);
+    const w = window as { __polls?: number };
+    const t = setInterval(() => (setPolls((n) => n + 1), (w.__polls = (w.__polls ?? 0) + 1)), 50);
     return () => clearInterval(t);
   }, []);
   return (
@@ -160,3 +164,138 @@ export const Toasting = () => (
     <Toaster />
   </div>
 );
+
+/**
+ * The sheets the app opens, each from its button: one shape (centred, the kit's title row or a
+ * SheetHeader when it greets, the body's controls 12px apart, a footer with the aside across
+ * from the actions). Send Feedback has fields and a Select, the Widget Library a field that
+ * takes focus itself and a body that scrolls under it, What's New a divided one, the Task
+ * Manager works while it shows. Modal: Tab stays inside, the page behind is inert, Escape
+ * closes from anywhere inside and focus goes back to the button (packages/ui/test/dialog.test.ts).
+ */
+export const Sheets = () => {
+  const [open, setOpen] = useState<null | "feedback" | "delete" | "news" | "welcome" | "library">(null);
+  const [polling, setPolling] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [area, setArea] = useState("terminals");
+  const close = () => setOpen(null);
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-2)" }}>
+      <Button onClick={() => setOpen("feedback")}>Send Feedback…</Button>
+      <Button variant="danger" onClick={() => setOpen("delete")}>
+        Delete Workspace…
+      </Button>
+      <Button onClick={() => setOpen("news")}>What's New</Button>
+      <Button onClick={() => setOpen("welcome")}>Welcome</Button>
+      <Button onClick={() => setOpen("library")}>Widget Library</Button>
+      <Button onClick={() => setPolling(true)}>Task Manager…</Button>
+      <Dialog
+        open={open === "feedback"}
+        onClose={close}
+        title="Send Feedback"
+        width={480}
+        position="center"
+        aside={
+          <Checkbox checked onChange={() => {}}>
+            Include version and system info
+          </Checkbox>
+        }
+        actions={
+          <>
+            <Button onClick={close}>Cancel</Button>
+            <Button variant="primary" disabled={!msg.trim()} onClick={() => (close(), setMsg(""), toast("Thanks!", { tone: "success", icon: "checkmark.circle.fill" }))}>
+              Send
+            </Button>
+          </>
+        }
+      >
+        <Segmented fill value="idea" onChange={() => {}} options={["bug", "idea", "other"]} labels={{ bug: "Bug", idea: "Idea", other: "Other" }} />
+        <Select label="Area" value={area} onChange={setArea} options={["terminals", "agents", "windows"]} labels={{ terminals: "Terminals", agents: "Agents", windows: "Windows" }} />
+        <TextArea value={msg} onChange={setMsg} placeholder="What happened, or what would you like?" rows={4} />
+      </Dialog>
+      <ConfirmDialog open={open === "delete"} danger title="Delete “Side project”?" confirm="Delete" onCancel={close} onConfirm={close}>
+        Its 3 windows close. Terminals in it are ended.
+      </ConfirmDialog>
+      <Dialog
+        open={open === "news"}
+        onClose={close}
+        title="What's New"
+        width={560}
+        position="center"
+        divided
+        aside="You're on cmd 0.14.1"
+        actions={
+          <Button variant="primary" onClick={close}>
+            Done
+          </Button>
+        }
+      >
+        <Prose>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Fragment key={i}>
+              {i > 0 && <hr />}
+              <h3>
+                0.14.{4 - i} <small>5 October 2026</small>
+              </h3>
+              <Badge size="sm" tone="accent">
+                New
+              </Badge>
+              <ul>
+                <li>
+                  <strong>PDF viewer.</strong> PDFs open in their own window, with search and <code>⌘F</code>.
+                </li>
+                <li>Release notes scroll between the title and the actions.</li>
+              </ul>
+            </Fragment>
+          ))}
+        </Prose>
+      </Dialog>
+      <Dialog
+        open={open === "welcome"}
+        onClose={close}
+        width={480}
+        height={560}
+        position="center"
+        label="Welcome"
+        aside={<PageDots count={2} current={0} />}
+        actions={
+          <Button variant="primary" onClick={close}>
+            Get Started
+          </Button>
+        }
+      >
+        <SheetHeader icon="command.square.fill" title="Welcome to cmd" subtitle="Terminals and coding agents, side by side." />
+        <FeatureList
+          items={[
+            { icon: "rectangle.3.group", title: "A workspace per project", description: "Terminals, agents, a browser and an editor as windows." },
+            { icon: "wand.and.stars", title: "Magic widgets", description: "Ask for a window and an agent builds it." },
+          ]}
+        />
+      </Dialog>
+      <Dialog
+        open={open === "library"}
+        onClose={close}
+        title="Widget Library"
+        width={560}
+        height={420}
+        position="center"
+        divided
+        toolbar={<SearchField fill size="lg" value="" placeholder="Search widgets" onChange={() => {}} autoFocus />}
+        aside="Right-click a widget to rename, duplicate or delete it"
+        actions={
+          <Button variant="primary" icon="sparkles" onClick={close}>
+            New Widget
+          </Button>
+        }
+      >
+        <SectionHeading>Built-in</SectionHeading>
+        {Array.from({ length: 10 }, (_, i) => (
+          <p key={i} style={{ margin: 0 }}>
+            The body scrolls under the toolbar, line {i + 1}.
+          </p>
+        ))}
+      </Dialog>
+      <Presence when={polling}>{(_, o) => <PollingSheet open={o} onClose={() => setPolling(false)} />}</Presence>
+    </div>
+  );
+};
