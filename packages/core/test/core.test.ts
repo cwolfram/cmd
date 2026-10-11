@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { PROTOCOL, UNKNOWN_METHOD } from "@cmd/protocol";
+import { PROTOCOL, RPC_CODES, UNKNOWN_METHOD } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
 import { Core } from "../src/kernel/core.ts";
 import { nodePtyFactory } from "../src/terminals/panes.ts";
@@ -48,6 +48,34 @@ describe("core over the socket", () => {
     expect(conn.hello?.methods).toEqual(expect.arrayContaining(["core.hello", "pane.list", "journal.day"]));
     expect(conn.hello?.methods).toHaveLength(Object.keys(core.handlers).length);
     expect(conn.client.has("pane.list")).toBe(true);
+  });
+
+  it("answers what isn't JSON or a request, and not a notification", async () => {
+    const net = await import("node:net");
+    const sock = net.createConnection(socketPath);
+    const got: { id: unknown; error?: { code: number } }[] = [];
+    let buf = "";
+    sock.setEncoding("utf8");
+    sock.on("data", (d: string) => {
+      buf += d;
+      for (let i; (i = buf.indexOf("\n")) >= 0; buf = buf.slice(i + 1)) got.push(JSON.parse(buf.slice(0, i)));
+    });
+    sock.write('not json\n{"jsonrpc":"2.0","id":1,"method":"nope"}\n{"jsonrpc":"2.0","method":"core.hello"}\n{"jsonrpc":"2.0","id":2}\n{"jsonrpc":"2.0","id":3,"method":"core.hello"}\n');
+    await expect.poll(() => got.length).toBe(4);
+    // Replies leave as they're ready, not in the order asked.
+    expect(got.map((r) => [r.id, r.error?.code ?? "ok"]).sort((a, b) => Number(a[0]) - Number(b[0]))).toEqual([
+      [null, RPC_CODES.parse],
+      [1, RPC_CODES.unknownMethod],
+      [2, RPC_CODES.invalidRequest],
+      [3, "ok"],
+    ]);
+    sock.destroy();
+  });
+
+  it("says a turned-off feature is unavailable", async () => {
+    core.settings.set("data.record.transcripts", false);
+    await expect.poll(() => core.call("search.reindex", {}).then(() => "ran", (e) => (e as { code?: number }).code)).toBe(RPC_CODES.unavailable);
+    core.settings.set("data.record.transcripts", true);
   });
 
   it("refuses a method it doesn't have with -32601", async () => {
@@ -124,7 +152,7 @@ describe("core over the socket", () => {
     expect(r.agentId).toBeTruthy();
     const { agent } = await conn.client.call("identify", { paneId: pane.id });
     expect(agent).toMatchObject({ state: "needs_input", detail: "Allow?" });
-    await expect(conn.client.call("agent.kill", { agentId: "nope" })).rejects.toThrow(/no such agent/);
+    await expect(conn.client.call("agent.kill", { agentId: "nope" })).rejects.toMatchObject({ code: RPC_CODES.notFound });
   });
 });
 

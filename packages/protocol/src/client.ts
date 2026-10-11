@@ -1,13 +1,23 @@
 // Transport-agnostic JSON-RPC client. Node transport lives in ./node.ts.
 
 import type { CoreEvent, Method, Params, Result, RpcMessage } from "./rpc.ts";
-import { UNKNOWN_METHOD, type CoreHello } from "./version.ts";
+import { RPC_CODES, UNKNOWN_METHOD, type CoreHello, type RpcCode } from "./version.ts";
 
 export class RpcError extends Error {
   code: number;
   constructor(code: number, message: string) {
     super(message);
     this.code = code;
+  }
+
+  /** An error answer of one of RPC_CODES: `RpcError.of("notFound", "no such agent: …")`. */
+  static of(code: RpcCode, message: string): RpcError {
+    return new RpcError(RPC_CODES[code], message);
+  }
+
+  /** Which of RPC_CODES this is, or null. */
+  get kind(): RpcCode | null {
+    return (Object.keys(RPC_CODES) as RpcCode[]).find((k) => RPC_CODES[k] === this.code) ?? null;
   }
 }
 

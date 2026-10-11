@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import { EventEmitter } from "node:events";
 import type { ActivityEvent, Agent, AgentId, AgentKind, AgentState, AgentTurn, GitPlace, Methods, NameSource, PaneId, Settings, WorkspaceId } from "@cmd/protocol";
-import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";
+import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID, RpcError } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { Foreground, PaneManager } from "../terminals/panes.ts";
 import type { Store } from "../kernel/store.ts";
@@ -879,7 +879,7 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
 
   #must(id: AgentId): Agent {
     const a = this.#agents.get(id);
-    if (!a) throw new Error(`no such agent: ${id}`);
+    if (!a) throw RpcError.of("notFound", `no such agent: ${id}`);
     return a;
   }
 }

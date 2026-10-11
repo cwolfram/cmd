@@ -4,7 +4,7 @@
 
 import os from "node:os";
 import path from "node:path";
-import type { AgentKind, SearchStatus, Settings, WorkspaceId } from "@cmd/protocol";
+import { RpcError, type AgentKind, type SearchStatus, type Settings, type WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { CoreContext } from "../kernel/context.ts";
 import { checkoutOf } from "../lib/checkout.ts";
@@ -68,7 +68,7 @@ export class Search {
   }
 
   reindex(): void {
-    if (!this.#ingest) throw new Error("transcripts are off (Settings → Data)");
+    if (!this.#ingest) throw RpcError.of("unavailable", "Transcripts are off. Turn them on in Settings → Data.");
     this.#ingest.reindex();
   }
 

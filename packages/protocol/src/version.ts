@@ -27,6 +27,15 @@ export function isCurrentCore(core: { protocol?: number; build: string; root?: s
 /** JSON-RPC's code for a method the core doesn't have (an older core, or a newer client). */
 export const UNKNOWN_METHOD = -32601;
 
+/**
+ * The codes an error answer carries: JSON-RPC's own (not JSON, not a request, no such
+ * method, bad params) and cmd's for what a client may handle without reading the message
+ * (a thing that isn't there, a feature that's off, a paired device's limits). Anything
+ * else a handler throws is `failed`.
+ */
+export const RPC_CODES = { parse: -32700, invalidRequest: -32600, unknownMethod: UNKNOWN_METHOD, invalidParams: -32602, failed: -32000, denied: -32001, unavailable: -32002, notFound: -32003, conflict: -32004 } as const;
+export type RpcCode = keyof typeof RPC_CODES;
+
 export interface CoreHello {
   /** PROTOCOL of the core's build; absent from cores before it existed. */
   protocol?: number;

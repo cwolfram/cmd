@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import type { Agent, AgentState, GitPlace, Pane, Workspace } from "@cmd/protocol";
-import { APPLIES_LABEL, placeAgainst, currentKey, currentSecretKey, ENV, isSecretKey, SECRETS, type SecretDef, type SecretKey, SETTINGS_SCHEMA, isSettingKey, parseSettingValue, type SettingDef, type SettingKey } from "@cmd/protocol";
+import { APPLIES_LABEL, RpcError, type RpcCode, placeAgainst, currentKey, currentSecretKey, ENV, isSecretKey, SECRETS, type SecretDef, type SecretKey, SETTINGS_SCHEMA, isSettingKey, parseSettingValue, type SettingDef, type SettingKey } from "@cmd/protocol";
 import { connect, defaultSocketPath, type Connection } from "@cmd/protocol/node";
 import { AGENTS_HELP, agentsCommand, pickAgent } from "./agents.ts";
 import { JOURNAL_HELP, journalCommand } from "./journal.ts";
@@ -57,7 +57,8 @@ ${DATA_HELP}
                                       ai.anthropic.apiKey); never in settings.json
 ${REMOTE_HELP}
 
-env: ${ENV.socket} (default ${defaultSocketPath()})`;
+env: ${ENV.socket} (default ${defaultSocketPath()})
+exit: 0 done, 1 failed, 2 bad usage (or a core of another version), 3 not found, 4 turned off, 5 not allowed, 6 the core doesn't have it`;
 
 const COMMANDS = new Set(["ls", "identify", "new", "spawn", "send", "read", "wait", "kill", "notify", "events", "hook", "hooks", "agents", "journal", "data", "open", "actions", "search", "resume", "settings", "workspace", "remote", "help"]);
 
@@ -608,10 +609,14 @@ function fail(msg: string): number {
   return 1;
 }
 
+/** Exit codes by what the core said (RPC_CODES), so scripts can tell "not there" from "turned off" without reading the message. */
+const EXIT: Partial<Record<RpcCode, number>> = { invalidParams: 2, notFound: 3, unavailable: 4, denied: 5, unknownMethod: 6 };
+
 main().then(
   (code) => process.exit(code),
   (err) => {
     console.error(`cmd: ${(err as Error).message}`);
-    process.exit(1);
+    const kind = err instanceof RpcError ? err.kind : null;
+    process.exit((kind && EXIT[kind]) ?? 1);
   },
 );

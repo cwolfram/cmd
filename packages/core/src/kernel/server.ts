@@ -7,7 +7,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import type { CoreEvent, DataQuery, Method } from "@cmd/protocol";
-import { lineSplitter, MAX_LINE, RpcError } from "@cmd/protocol";
+import { lineSplitter, MAX_LINE, RPC_CODES, RpcError } from "@cmd/protocol";
 import { ipcPath, logger, recordCrash } from "@cmd/protocol/node";
 import { widgetRead, type WidgetIdentity } from "../data/widgets.ts";
 import { checkRemoteCall, RemoteDenied, remoteResult, type PolicyContext } from "../remote/policy.ts";
@@ -286,14 +286,16 @@ export class CoreServer {
 
   async #receive(conn: Connection, line: string): Promise<void> {
     if (!line.trim()) return;
-    let req: { id: number; method: Method; params?: unknown };
+    const answer = (id: unknown, msg: object) => conn.send(JSON.stringify({ jsonrpc: "2.0", id: id ?? null, ...msg }) + "\n");
+    let req: { id?: number; method: Method; params?: unknown };
     try {
       req = JSON.parse(line);
     } catch {
-      return;
+      return answer(null, { error: { code: RPC_CODES.parse, message: "not JSON" } });
     }
-    if (typeof req !== "object" || req === null) return;
-    const reply = (msg: object) => conn.send(JSON.stringify({ jsonrpc: "2.0", id: req.id, ...msg }) + "\n");
+    if (typeof req !== "object" || req === null || typeof req.method !== "string") return answer((req as { id?: unknown } | null)?.id, { error: { code: RPC_CODES.invalidRequest, message: "not a request: no method" } });
+    // A notification (no id) is run and not answered.
+    const reply = (msg: object) => "id" in req && req.id !== undefined && answer(req.id, msg);
     try {
       const params = (req.params ?? {}) as Record<string, unknown>;
       // A widget's data.ts: it says which widget it is, then it may read events, nothing else.
