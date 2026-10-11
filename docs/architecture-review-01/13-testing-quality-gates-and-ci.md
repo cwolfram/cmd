@@ -53,7 +53,7 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 
 ### AR1-13-02 · Add architecture fitness tests in the style of design-css.test.ts
 
-- **Status:** open
+- **Status:** in progress (gates)
 - **Severity:** medium
 - **Effort:** M (1–2 days)
 - **Where:** `vitest.config.ts:5`, `apps/desktop/test/design-css.test.ts:1-88`, `scripts/evals/journal.ts:19-34`, `apps/desktop/src/renderer/src/bridge.ts:2`, `apps/desktop/src/renderer/src/keybindings.ts:6`
