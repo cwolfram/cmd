@@ -53,7 +53,7 @@ A Magic widget is a folder under `$CMD_HOME/widgets/<id>/` (`widgets/store.ts`, 
 
 ### AR1-11-02 · Scope the widgets socket by the identity it already checks
 
-- **Status:** open
+- **Status:** in progress (widget-tokens)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1360-1372`, `packages/core/src/data/widgets.ts:20-46`, `packages/core/src/widgets/deno.ts:154-170`, `packages/core/src/magic/service.ts:596-597`
