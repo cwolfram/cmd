@@ -109,7 +109,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-05 · Pid files are trusted where the lock is the truth, and `stop-core` can kill a reused pid
 
-- **Status:** in progress (lifecycle)
+- **Status:** mostly done (lifecycle branch; pid files with a start time and ptyHostRoot are left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `scripts/stop-core.mjs:56-63`, `apps/desktop/src/main/index.ts:369-376`, `apps/desktop/src/main/index.ts:414`, `apps/desktop/src/main/index.ts:217-224`, `packages/core/src/terminals/host-main.ts:19-25`
@@ -121,10 +121,12 @@ The questions asked of this review, answered briefly: the three-process split is
 **Proposal.** Use the lock as the liveness oracle everywhere: `lock.ts` gains `isLocked(file): boolean` (try `BEGIN EXCLUSIVE` on a throwaway handle, roll back) and `index.ts` replaces `coreProcessAlive()` with it; a pid file is then only a hint for *which* pid to signal. `stop-core.mjs` verifies before signalling: connect to the socket and compare `core.hello.pid` (hosts: the hello too), else if `ps` is missing refuse with a message instead of guessing; both pid files gain a start time (`{ pid, startedAt }`) so a procinfo-backed check can compare where available. `waitForCore`'s "busy" branch requires `isLocked()`, not a live pid.
 
 **Success criteria.**
-- [ ] `lock.test.ts`: `isLocked` is true while a child holds the lock and false after it is killed.
-- [ ] `grep -n "coreProcessAlive" apps/desktop/src/main` returns nothing.
-- [ ] `stop-core.mjs` has a test: with `ps` throwing and a pid file naming the test's own pid, it signals nothing and prints why.
+- [x] `lock.test.ts`: `isLocked` is true while a child holds the lock and false after it is killed.
+- [x] `grep -n "coreProcessAlive" apps/desktop/src/main` returns nothing.
+- [x] `stop-core.mjs` has a test: with `ps` throwing and a pid file naming the test's own pid, it signals nothing and prints why.
 - [ ] After `kill -9` of a core and a reboot-like pid file (pid of a live unrelated process), the app shows `coreFailed` within `CORE_START_MS` + 5 s when the new core fails, not after 10 minutes.
+
+**Progress (2026-10-11).** `coreLocked(home)` in protocol's `instance.ts` (node-only; main may not import core, test/imports.test.ts): tries `BEGIN EXCLUSIVE` on `core.lock` and rolls back. Main uses it instead of the pid file before starting a core and in `waitForCore`'s "busy" branch, so a reused pid no longer holds off `coreFailed` for 10 minutes. The core's `acquireLock` waits 500 ms, so an app's momentary check can't make a starting core fail. `stop-core.mjs` signals a pid only when `ps` says it's a core or PTY host or, where `ps` isn't allowed (the sandbox), when the core on the socket names that pid; otherwise it leaves it and says so (`unverified`). Tests: `lock.test.ts`, `test/stop-core.test.ts` (with `ps` throwing and a pid file naming the test's own pid, nothing is signalled). Not done: the manual kill-9-and-reboot check, `{ pid, startedAt }` pid files, and `ptyHostRoot()` still trusting `ptyhost.pid` (a reused pid keeps a runtime copy longer, nothing worse).
 
 ### AR1-01-06 · One core link in main instead of four reconnect loops
 
@@ -166,7 +168,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-08 · Harden the core's side of the host link
 
-- **Status:** in progress (lifecycle)
+- **Status:** done (lifecycle branch)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/terminals/remote.ts:106`, `packages/core/src/terminals/remote.ts:181-196`, `packages/core/src/terminals/remote.ts:334-344`
@@ -178,13 +180,15 @@ The questions asked of this review, answered briefly: the three-process split is
 **Proposal.** Parse defensively (log and drop the line); give `request()` a 10 s deadline and count consecutive timeouts, declaring the host lost after three (the existing `#closed()` path then resurrects); rotate `ptyhost.out.log` like `core.out.log` in `startHost`.
 
 **Success criteria.**
-- [ ] `ptyhost.test.ts`: a fake host writing `not json\n` does not throw out of the data handler; the core logs a warning.
-- [ ] A test where the host never answers `snapshot` sees the request reject within 11 s and the backend reported lost after three.
-- [ ] `ptyhost.out.log` is truncated when over 5 MB at host start.
+- [x] `ptyhost.test.ts`: a fake host writing `not json\n` does not throw out of the data handler; the core logs a warning.
+- [x] A test where the host never answers `snapshot` sees the request reject within 11 s and the backend reported lost after three.
+- [x] `ptyhost.out.log` is truncated when over 5 MB at host start.
+
+**Progress (2026-10-11).** `parseLine` logs and drops a line that isn't JSON, before and after the hello. `request()` has a deadline (`REQUEST_MS`, 10 s; `connect(sock, { requestMs })` for tests); three timeouts in a row destroy the socket, so `#closed()` reports the host lost and its terminals are resurrected; any answer resets the count. `startHost` opens `ptyhost.out.log` with `outputMode()`, which starts it over past 5 MB. Tests in `ptyhost.test.ts` (with a 50 ms deadline).
 
 ### AR1-01-09 · The footer's "outdated" disagrees with main's restart rule, and health is polled per window
 
-- **Status:** in progress (lifecycle)
+- **Status:** done (lifecycle branch)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `apps/desktop/src/renderer/src/coreHealth.ts:21-23`, `apps/desktop/src/renderer/src/coreHealth.ts:51-63`, `apps/desktop/src/main/index.ts:171`
@@ -196,9 +200,11 @@ The questions asked of this review, answered briefly: the three-process split is
 **Proposal.** The core already pushes `core.startup`; add a `core.health` event every 5 s to subscribers that opted in (one computation, `ProcessStat` sampled once), and let the renderer derive `outdated` from `(build, root)` against `appInfo` exactly as main does, sharing the predicate through `@cmd/protocol` (`isCurrentCore(hello, app)`) so the two can never drift. Keep a client-side latency probe (one `core.info` per window is fine), drop the per-window `core.processes`.
 
 **Success criteria.**
-- [ ] One function in `packages/protocol` decides "current core", used by `main/index.ts` and `coreHealth.ts` (grep shows both import it).
-- [ ] With three windows open, `core.processes` is called at most once per 5 s (count in a core test or via `[lag]`-style counters in `core.info`).
-- [ ] A same-build core from another root shows "Core outdated · restart" in the footer.
+- [x] One function in `packages/protocol` decides "current core", used by `main/index.ts` and `coreHealth.ts` (grep shows both import it).
+- [x] With three windows open, `core.processes` is called at most once per 5 s (count in a core test or via `[lag]`-style counters in `core.info`).
+- [x] A same-build core from another root shows "Core outdated · restart" in the footer.
+
+**Progress (2026-10-11).** `isCurrentCore(core, app)` (protocol `rpc.ts`): protocol, build and code folder. Main's `checkCoreBuild` and the footer's `outdated` (`coreHealth.ts`) both use it; `core.info` gained `protocol` and the app's `appInfo` its core's `root`. `core.processes` (kernel/methods.ts) answers from one sample for `PROCESSES_FRESH_MS` (4 s), so any number of windows cost one sample and their CPU% is over the same span. Kept the per-window poll of `core.info` (its latency is the window's own) rather than adding a `core.health` event. Tests: `protocol/test/current-core.test.ts`, `core.test.ts` (two calls, one answer).
 
 ### AR1-01-10 · Tests and CI never exercise the packaged lifecycle end to end
 
