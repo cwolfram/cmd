@@ -159,7 +159,7 @@ Rebuild the FTS once through `buildFts` (it exists).
 
 ### AR1-06-07 · Make forget complete: entities, file pages and subscribers
 
-- **Status:** done (forget branch)
+- **Status:** done (abc1c768)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/data/service.ts:279-298`, `packages/core/src/data/describe.ts:26-29`, `packages/core/src/data/schema.ts:22-25`, `packages/core/src/core.ts:303-306`

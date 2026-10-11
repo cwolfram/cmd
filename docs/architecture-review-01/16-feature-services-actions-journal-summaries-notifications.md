@@ -78,7 +78,7 @@ Timers in scope, with their period and whether they are `unref`'d or paced. Only
 
 ### AR1-16-02 · Make forget and retention reach what these services derived
 
-- **Status:** done (forget branch)
+- **Status:** done (abc1c768)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/data/service.ts:279-288`, `packages/core/src/journal/store.ts:74-91`, `packages/core/src/summaries/service.ts:251`, `packages/core/src/actions/describe.ts:159`
