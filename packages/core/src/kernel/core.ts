@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { PROTOCOL, RpcError, UNKNOWN_METHOD, type AgentId, type AiModel, type AiProvider, type AppWindow, type CoreHello, type Method, type Methods, type Params, type Placement, type Result, type Settings, type Workspace } from "@cmd/protocol";
+import { RpcError, UNKNOWN_METHOD, type AgentId, type AiModel, type AiProvider, type AppWindow, type Method, type Methods, type Params, type Placement, type Result, type Settings, type Workspace } from "@cmd/protocol";
 import { logger, machineId } from "@cmd/protocol/node";
 import { createActions } from "../actions/feature.ts";
 import type { ActionsService } from "../actions/service.ts";
@@ -29,7 +29,6 @@ import { createJournal } from "../journal/feature.ts";
 import { createWatches } from "../lib/watch.ts";
 import { createMagic, type MagicService } from "../magic/service.ts";
 import { createNotifications, type NotificationCenter } from "../notifications/center.ts";
-import { REMOTE_ACCESS } from "../remote/policy.ts";
 import { createRemote, type RemoteService } from "../remote/service.ts";
 import { registerBuiltinSources } from "../search/builtin.ts";
 import { Search } from "../search/search.ts";
@@ -55,6 +54,7 @@ import { contextOf, type CoreContext } from "./context.ts";
 import { ALL, featureHandlers } from "./features.ts";
 import { sliceHandlers } from "./slices.ts";
 import { IN_CORE, type Call, type Handlers } from "./handlers.ts";
+import { coreHello } from "./hello.ts";
 import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { createSecrets, type DevKeys, type SecretsService } from "./secrets.ts";
 import { CoreServer, widgetsSocketPath, type ServerOptions } from "./server.ts";
@@ -254,7 +254,7 @@ export class Core {
   }
 
   readonly handlers: Handlers = {
-    "core.hello": (_p, { conn } = IN_CORE) => this.#hello(conn),
+    "core.hello": (_p, { conn } = IN_CORE) => coreHello(this.handlers, this.#opts, conn),
     "core.info": async () => {
       const mem = process.memoryUsage();
       const cpu = process.cpuUsage();
@@ -414,17 +414,6 @@ export class Core {
   }
 
   /** A method, as a caller inside the core (or the server, for a connection) calls it. */
-  /**
-   * The protocol, and the methods there are for the caller: a paired device hears
-   * of those a device may ever call (its scope can change while it's connected; a
-   * call beyond it is still refused, as RemoteDenied).
-   */
-  #hello(conn: Connection | null): CoreHello {
-    const methods = (Object.keys(this.handlers) as Method[]).filter((m) => !conn || conn.access === "local" || REMOTE_ACCESS[m] !== "never");
-    const app = process.env.CMD_APP_VERSION || "source";
-    return { protocol: PROTOCOL, app, methods, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") };
-  }
-
   async call<M extends Method>(method: M, params: Params<M>, call: Call = IN_CORE): Promise<Result<M>> {
     const h = this.handlers[method] as (p: Params<M>, call: Call) => Result<M> | Promise<Result<M>>;
     if (!h) throw new RpcError(UNKNOWN_METHOD, `unknown method: ${method}`);
