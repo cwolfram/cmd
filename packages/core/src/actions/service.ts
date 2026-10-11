@@ -8,6 +8,7 @@ import path from "node:path";
 import { EventEmitter } from "node:events";
 import type { DatabaseSync } from "node:sqlite";
 import type { ActionRun, ActionsList, Pane, PaneId, WorkspaceId, WorkspaceAction } from "@cmd/protocol";
+import { RPC_CODES, RpcError } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import { WatchService } from "../lib/watch.ts";
 import type { PaneManager } from "../terminals/panes.ts";
@@ -181,10 +182,12 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
    * server still running, just say which pane it is), else in a new one.
    * `restart`: stop it first (⌃C) and run it again when it has stopped.
    */
-  run(root: string, actionId: string, workspaceId: WorkspaceId, o: { restart?: boolean; fresh?: boolean } = {}): { paneId: PaneId; started: boolean } {
+  run(root: string, actionId: string, workspaceId: WorkspaceId, o: { restart?: boolean; fresh?: boolean; confirmed?: boolean } = {}): { paneId: PaneId; started: boolean } {
     const list = this.list(root);
     const found = [...list.actions, ...list.history, ...list.suggested].find((x) => x.id === actionId);
     if (!found) throw new Error(`no action ${actionId} in ${root}`);
+    // Deploys and publishes run only when the caller asked the person first, whoever calls.
+    if (found.risky && !o.confirmed) throw new RpcError(RPC_CODES.denied, `"${found.name}" is risky (${found.command}): ask before running it`);
     // An agent skill starts the agent the way the person has set it up ("claude --model opus /triage").
     const own = found.agent ? this.#o.agentCommand?.(found.agent) : null;
     const a = own ? { ...found, command: found.command.replace(/^\S+/, () => own) } : found;

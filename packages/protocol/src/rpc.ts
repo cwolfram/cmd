@@ -12,6 +12,7 @@ import type { JournalMethods } from "./journal.ts";
 import type { SqliteQuery, SqliteResult, SqliteRowsQuery, SqliteSchema } from "./sqlite.ts";
 import type { ActionsEvent, ActionsMethods } from "./actions.ts";
 import type { StatsEvent, StatsMethods } from "./stats.ts";
+import type { OperatorEvent, OperatorMethods } from "./operator.ts";
 import type { RemoteMethods } from "./remote.ts";
 import type { CoreHello } from "./version.ts";
 
@@ -80,7 +81,7 @@ export interface Placement {
 }
 
 /** Every method: the core's own, plus each feature's (declared in its own file, merged here). */
-export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, StatsMethods {
+export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, StatsMethods, OperatorMethods {
   /** What a client asks first: which protocol the core speaks and what it can do (CoreHello). */
   "core.hello": { params: {}; result: CoreHello };
   /** Diagnostics for the Settings window's Updates & About page. */
@@ -125,6 +126,12 @@ export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, 
   "pane.reset": { params: { paneId: PaneId }; result: null };
   /** Plain-text tail of the pane, as displayed. */
   "pane.read": { params: { paneId: PaneId; lines?: number }; result: { text: string } };
+  /**
+   * Wait until a terminal prints `text` (a substring of its output from now on), or, with `prompt`,
+   * until it is back at its prompt (OSC 133: the running command ended, or none started within a
+   * second and a half). `timeoutMs` defaults to 60 s, at most 10 min. `tail`: the screen's last lines then.
+   */
+  "pane.waitFor": { params: { paneId: PaneId; text?: string; prompt?: boolean; timeoutMs?: number }; result: { matched: boolean; timedOut: boolean; exitCode: number | null; tail: string } };
 
   "agent.list": { params: {}; result: Agent[] };
   "agent.spawn": {
@@ -250,6 +257,8 @@ export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, 
   /** Registered window types (built-in and plugins). */
   "window.types": { params: {}; result: WindowTypeInfo[] };
   "window.close": { params: { id: WindowId }; result: null };
+  /** Select a window and bring it into view in the app windows showing its workspace (the event window.focus). */
+  "window.select": { params: { id: WindowId }; result: null };
   /** Closed windows, newest first (workspaceId: only that workspace's). */
   "window.closed": { params: { workspaceId?: WorkspaceId }; result: ClosedWindow[] };
   /** Reopen a closed window where it was (id: that one, else the workspace's newest); null: nothing to reopen. */
@@ -475,6 +484,7 @@ export type CoreEvent =
   | { type: "widget.library"; entries: WidgetEntry[] }
   | ActionsEvent
   | StatsEvent
+  | OperatorEvent
   /** A watched file or folder changed on disk (see fs.watch). */
   | { type: "fs.changed"; path: string }
   /**

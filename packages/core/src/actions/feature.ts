@@ -62,7 +62,7 @@ export const actionsFeature = {
   id: "actions",
   handlers: (core: CoreContext): HandlerSlice<keyof ActionsMethods> => ({
     "actions.list": (p) => core.actions.list(actionsRoot(core, p.path, p.workspaceId)),
-    "actions.run": (p) => core.actions.run(p.root, p.actionId, core.place({ workspaceId: p.workspaceId }, { path: p.root }).id, { restart: p.restart, fresh: p.fresh }),
+    "actions.run": (p) => core.actions.run(p.root, p.actionId, core.place({ workspaceId: p.workspaceId }, { path: p.root }).id, { restart: p.restart, fresh: p.fresh, confirmed: p.confirmed }),
     "actions.stop": (p) => (core.actions.stop(p.root, p.actionId), null),
     "actions.pin": (p) => (core.actions.pin(p.root, p.actionId, p.pinned), null),
   }),

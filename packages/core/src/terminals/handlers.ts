@@ -3,6 +3,7 @@
 
 import type { CoreContext } from "../kernel/context.ts";
 import { IN_CORE, slice } from "../kernel/handlers.ts";
+import { waitForPane } from "./wait.ts";
 
 /** Who sizes a terminal for calls from inside the core (tests). */
 const IN_PROCESS = {};
@@ -38,5 +39,6 @@ export const paneHandlers = (core: CoreContext) =>
     "pane.clearAttention": (p) => (core.notifications.clearAttention(p.paneId), null),
     "pane.snapshot": (p) => core.panes.snapshot(p.paneId),
     "pane.read": async (p) => ({ text: await core.panes.read(p.paneId, p.lines) }),
+    "pane.waitFor": (p) => waitForPane(core.panes, p.paneId, p),
     "pane.reset": async (p) => (await core.panes.resetState(p.paneId), null),
   });

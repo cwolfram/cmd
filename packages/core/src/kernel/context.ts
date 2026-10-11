@@ -5,7 +5,7 @@
 // signature, not in closures back into Core. Each service lives where Core keeps it; reading
 // one before Core made it throws, so construction order can't go wrong quietly.
 
-import type { AgentId, AppWindow, CoreEvent, Placement, Workspace } from "@cmd/protocol";
+import type { AgentId, AppWindow, CoreEvent, Method, Params, Placement, Result, Workspace } from "@cmd/protocol";
 import type { Connection, Served } from "./connection.ts";
 import type { ActionsService } from "../actions/service.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
@@ -99,6 +99,8 @@ export interface CoreActions {
   watched(): boolean;
   /** Answers JSON-RPC on a connection: the socket's, or a paired device's session. */
   serve(conn: Connection): Served;
+  /** A method, as a caller inside the core calls it (Core.call): for features that act through the API, like the Operator. */
+  call<M extends Method>(method: M, params: Params<M>): Promise<Result<M>>;
 }
 
 export type CoreContext = Services & CoreActions;

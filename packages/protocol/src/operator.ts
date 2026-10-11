@@ -1,0 +1,86 @@
+// The Operator (docs/51-operator.md): an agent in a widget that runs the workspace through
+// cmd's own methods while you watch. One conversation per workspace, owned by the core: what
+// it says, the tools it calls (each with the window it acts on and a line on why), and the
+// approvals it waits for. The widget and the board's marks draw from operator.changed.
+
+import type { WindowId, WorkspaceId } from "./model.ts";
+
+/** What the widget, the library and the palette call it; one place to rename. */
+export const OPERATOR_TITLE = "Operator";
+
+/** A tool call's state, as the card shows it: waiting is for your approval. */
+export type OperatorToolState = "running" | "waiting" | "done" | "failed" | "denied";
+
+export type OperatorItem =
+  | { kind: "user"; id: string; at: number; text: string }
+  /** What the Operator says; it grows while it streams. */
+  | { kind: "text"; id: string; at: number; text: string }
+  | {
+      kind: "tool";
+      id: string;
+      at: number;
+      /** The tool's name ("run", "look"). */
+      tool: string;
+      /** One line for people: what this step does ("Running the tests"). */
+      why: string;
+      /** Whether it changes something (marked on the board) or only looks. */
+      acts: boolean;
+      /** The window it acts on or reads, when there is one. */
+      target: WindowId | null;
+      state: OperatorToolState;
+      input: Record<string, unknown>;
+      /** What it asks you to allow, exactly (the text to type and where). */
+      ask?: string;
+      /** The result as the model got it, or why it failed or was denied. */
+      output?: string;
+      ms?: number;
+    }
+  | { kind: "error"; id: string; at: number; text: string };
+
+export interface OperatorUsage {
+  input: number;
+  output: number;
+  cacheRead: number;
+}
+
+export interface OperatorConversation {
+  workspaceId: WorkspaceId;
+  items: OperatorItem[];
+  /** A turn is running (thinking, calling tools or waiting for you). */
+  busy: boolean;
+  usage: OperatorUsage;
+  model: string | null;
+  /** The last turn's timing: until its first tool started, and in all (docs/51, latency). */
+  latency: { firstStepMs: number | null; totalMs: number } | null;
+}
+
+/** The Operator's conversation in a workspace changed: items added or updated (by id), or its state. Part of CoreEvent (rpc.ts). */
+export type OperatorEvent = {
+  type: "operator.changed";
+  workspaceId: WorkspaceId;
+  /** New or changed items, in order; replace those with the same id. */
+  items?: OperatorItem[];
+  /** The whole conversation was cleared (operator.reset). */
+  reset?: boolean;
+  busy?: boolean;
+  usage?: OperatorUsage;
+  model?: string | null;
+  latency?: OperatorConversation["latency"];
+};
+
+/** The Operator's RPC methods, part of `Methods` (rpc.ts). */
+export interface OperatorMethods {
+  /** The workspace's conversation with the Operator; changes arrive as operator.changed. */
+  "operator.get": { params: { workspaceId: WorkspaceId }; result: OperatorConversation };
+  /**
+   * Ask the Operator something in a workspace. Starts a turn, or joins the running one (the
+   * message goes in with its next tool results). `selected`: the window the person means by "this".
+   */
+  "operator.send": { params: { workspaceId: WorkspaceId; text: string; selected?: WindowId | null }; result: null };
+  /** Stop the running turn: the model call and the tools it runs. */
+  "operator.stop": { params: { workspaceId: WorkspaceId }; result: null };
+  /** Allow or deny a tool call waiting for approval; `reason` goes back to the model with a denial. */
+  "operator.answer": { params: { workspaceId: WorkspaceId; itemId: string; allow: boolean; reason?: string }; result: null };
+  /** Start over: the conversation is forgotten (a running turn is stopped first). */
+  "operator.reset": { params: { workspaceId: WorkspaceId }; result: null };
+}

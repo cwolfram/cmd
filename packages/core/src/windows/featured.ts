@@ -3,5 +3,6 @@
 
 import { journalType } from "../journal/feature.ts";
 import { statsType } from "../stats/feature.ts";
+import { operatorType } from "../operator/feature.ts";
 
-export const FEATURE_TYPES = [journalType, statsType] as const;
+export const FEATURE_TYPES = [journalType, statsType, operatorType] as const;

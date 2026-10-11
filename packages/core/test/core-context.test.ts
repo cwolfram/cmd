@@ -16,7 +16,7 @@ import { Scheduler } from "../src/kernel/scheduler.ts";
 import { DEFAULT_SETTINGS } from "@cmd/protocol";
 
 const src = path.join(import.meta.dirname, "../src");
-const actions = { broadcast: () => {}, place: () => ({}) as never, opened: <W>(w: W) => w, watched: () => false, libraryChanged: () => {}, previewer: async () => null, serve: () => ({}) as never };
+const actions = { broadcast: () => {}, place: () => ({}) as never, opened: <W>(w: W) => w, watched: () => false, libraryChanged: () => {}, previewer: async () => null, serve: () => ({}) as never, call: async () => { throw new Error("no core"); } };
 const noAi = { status: () => ({ ready: false }), object: async () => ({}) as never, provider: () => null, on: () => {} } as unknown as CoreContext["ai"];
 const settings = { settings: { ...DEFAULT_SETTINGS }, bind: () => {} } as unknown as CoreContext["settings"];
 

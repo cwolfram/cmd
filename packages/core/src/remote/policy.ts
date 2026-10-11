@@ -43,6 +43,7 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "pane.snapshot": "view",
   "pane.reset": "control",
   "pane.read": "view",
+  "pane.waitFor": "view",
   "agent.list": "view",
   "agent.spawn": "control",
   "agent.send": "control",
@@ -96,6 +97,7 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "window.update": "control",
   "window.types": "view",
   "window.close": "control",
+  "window.select": "control",
   "window.closed": "never",
   "window.reopen": "never",
   "window.openTarget": "never",
@@ -152,6 +154,11 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "stats.query": "never",
   "stats.queryMany": "never",
   "stats.rebuild": "never",
+  "operator.get": "never", // the Operator is the Mac's for now (docs/51)
+  "operator.send": "never",
+  "operator.stop": "never",
+  "operator.answer": "never",
+  "operator.reset": "never",
   "sqlite.schema": "view",
   "sqlite.rows": "view",
   "sqlite.query": "view",
@@ -240,6 +247,7 @@ const ARGS: { [M in Method]?: Check<M> } = {
   "pane.snapshot": (p, ctx) => pane(ctx, p.paneId),
   "pane.reset": (p, ctx) => pane(ctx, p.paneId),
   "pane.read": (p, ctx) => pane(ctx, p.paneId),
+  "pane.waitFor": (p, ctx) => pane(ctx, p.paneId),
   "agent.spawn": (p, ctx) => {
     if (p.workspaceId) openWorkspace(ctx, p.workspaceId);
     if (p.callerPaneId) pane(ctx, p.callerPaneId);
@@ -271,6 +279,7 @@ const ARGS: { [M in Method]?: Check<M> } = {
     if (JSON.stringify(p.state ?? null).length > MAX_WRITE) throw new RemoteDenied("state too large");
   },
   "window.close": (p, ctx) => window(ctx, p.id),
+  "window.select": (p, ctx) => window(ctx, p.id),
   "window.clearAttention": (p, ctx) => window(ctx, p.id),
   "window.follow": (p, ctx) => {
     if (!Array.isArray(p.ids) || p.ids.length > 64) throw new RemoteDenied("follow up to 64 windows");
@@ -517,6 +526,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "window.closedChanged": // window.closed and window.reopen aren't remote
     case "actions.changed":
     case "stats.changed":
+    case "operator.changed":
     case "data.changed": // to its subscriber only, and data.* is never remote
     case "view.changed":
     case "magic.previewRequest": // sent to the app's previewer only, never broadcast

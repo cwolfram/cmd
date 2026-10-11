@@ -134,6 +134,83 @@ export function aiBackend(o: AiBackendOptions): Backend {
   };
 }
 
+// ── a conversation with tools (the Operator, docs/51) ────
+
+export interface AgentCall {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+export interface AgentRun {
+  system: string;
+  /** The conversation so far, tool calls and results included; the last one is the person's. */
+  messages: ModelMessage[];
+  tools: ToolSpec[];
+  exec: (call: AgentCall) => Promise<ToolOutput>;
+  /** Tool steps allowed before the model must answer. */
+  maxSteps: number;
+  signal?: AbortSignal;
+  onText: (delta: string) => void;
+  /** A model step starts: text after this belongs to a new message. */
+  onStep: () => void;
+}
+
+export interface AgentResult {
+  /** What this run added to the conversation (assistant and tool messages), to send again next time. */
+  messages: ModelMessage[];
+  usage: Usage;
+  model: string;
+}
+
+const CACHED = { anthropic: { cacheControl: { type: "ephemeral" as const } } };
+
+/**
+ * One run of a conversation with tools: the model answers, calling tools as it
+ * goes, until it is done or out of steps. Unlike Backend.run, history goes in
+ * and comes out as messages, so the next run sees every earlier tool call and
+ * result. Cached at the tools, the system prompt and the last message.
+ */
+export async function runAgent(o: AiBackendOptions, r: AgentRun): Promise<AgentResult> {
+  const { jsonSchema, stepCountIs, streamText, tool } = await import("ai");
+  const model = await languageModel(o);
+  const tools: ToolSet = {};
+  r.tools.forEach((spec, i) => {
+    tools[spec.name] = tool({
+      description: spec.description,
+      inputSchema: jsonSchema(spec.schema as never),
+      // The last tool carries the breakpoint that caches all of them.
+      ...(i === r.tools.length - 1 ? { providerOptions: CACHED } : {}),
+      execute: async (input: unknown, { toolCallId }: { toolCallId: string }) => r.exec({ id: toolCallId, name: spec.name, input: (input ?? {}) as Record<string, unknown> }),
+      toModelOutput: ({ output }: { output: ToolOutput }) => {
+        const text = output.isError ? `Error: ${output.output}` : output.output;
+        return output.images?.length
+          ? { type: "content" as const, value: [{ type: "text" as const, text }, ...output.images.map((data) => ({ type: "image-data" as const, data, mediaType: "image/png" }))] }
+          : { type: "text" as const, value: text };
+      },
+    });
+  });
+  const messages = r.messages.map((m, i) => (i === r.messages.length - 1 ? ({ ...m, providerOptions: CACHED } as ModelMessage) : m));
+  const result = streamText({
+    model,
+    instructions: [{ role: "system", content: r.system, providerOptions: CACHED }],
+    messages,
+    tools,
+    stopWhen: stepCountIs(r.maxSteps + 1),
+    prepareStep: ({ stepNumber }) => (stepNumber >= r.maxSteps ? { activeTools: [] } : {}),
+    abortSignal: r.signal,
+    maxOutputTokens: 16_000,
+    providerOptions: effortOptions(o),
+  });
+  for await (const part of result.fullStream) {
+    if (part.type === "start-step") r.onStep();
+    else if (part.type === "text-delta") r.onText(part.text);
+    else if (part.type === "error") throw part.error instanceof Error ? part.error : new Error(String(part.error));
+  }
+  if (r.signal?.aborted) throw r.signal.reason instanceof Error ? r.signal.reason : new Error("stopped");
+  return { messages: (await result.responseMessages) as ModelMessage[], model: o.model, usage: usageOf(await result.totalUsage) };
+}
+
 function usageOf(u: LanguageModelUsage): Usage {
   const details = (u as { inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number } }).inputTokenDetails;
   return {

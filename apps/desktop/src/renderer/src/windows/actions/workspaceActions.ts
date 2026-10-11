@@ -23,7 +23,8 @@ export async function runAction(root: string, a: WorkspaceAction, workspaceId: W
     await cmd.call("pane.write", { paneId: t.id, data: a.command + " " });
     return;
   }
-  const r = await cmd.call("actions.run", { root, actionId: a.id, workspaceId, restart: o.restart, fresh: o.fresh });
+  // Risky ones reach here only after the widget asked (the palette leaves them out).
+  const r = await cmd.call("actions.run", { root, actionId: a.id, workspaceId, restart: o.restart, fresh: o.fresh, confirmed: a.risky });
   if (!a.risky) last = { root, action: a, workspaceId };
   goTo(r.paneId, workspaceId);
 }

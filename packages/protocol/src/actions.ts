@@ -109,8 +109,9 @@ export interface ActionsMethods {
   /**
    * Run an action in its terminal when that is back at its prompt, else in a new one in the workspace.
    * A server still running isn't started twice: `started` false and its pane. `restart`: ⌃C, then run it again; `fresh`: always a new terminal.
+   * A risky action (a deploy, a publish) is refused unless `confirmed`: the caller asked the person first.
    */
-  "actions.run": { params: { root: string; actionId: string; workspaceId?: WorkspaceId; restart?: boolean; fresh?: boolean }; result: { paneId: PaneId; started: boolean } };
+  "actions.run": { params: { root: string; actionId: string; workspaceId?: WorkspaceId; restart?: boolean; fresh?: boolean; confirmed?: boolean }; result: { paneId: PaneId; started: boolean } };
   /** ⌃C to an action's running terminal. */
   "actions.stop": { params: { root: string; actionId: string }; result: null };
   /** Pin an action to the top of its folder's list; a command from history or the README is kept as one. */

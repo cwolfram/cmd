@@ -29,7 +29,7 @@ import {
   type Settings,
 } from "@cmd/protocol";
 import type { SecretsService } from "../kernel/secrets.ts";
-import { aiBackend, completeObject, completeText, type AiBackendOptions, type Backend, type CompleteRequest, type CompleteResult, type ObjectRequest, type Usage } from "./backends.ts";
+import { aiBackend, completeObject, completeText, runAgent, type AgentResult, type AgentRun, type AiBackendOptions, type Backend, type CompleteRequest, type CompleteResult, type ObjectRequest, type Usage } from "./backends.ts";
 import { FALLBACK_MODELS, KeyRejected, listModels, pickModel } from "./models.ts";
 import type { CoreContext } from "../kernel/context.ts";
 
@@ -358,6 +358,19 @@ export class AiService extends EventEmitter<{ updated: [AiStatus] }> {
     const b = this.#choose(o);
     const inner = aiBackend(b);
     return { name: inner.name, model: inner.model, run: (r) => this.#call(o, b, () => inner.run(r)) };
+  }
+
+  /**
+   * A conversation with tools (the Operator): history in, what the run added out. Logged as one
+   * call, with the last message sent and the text that came back.
+   */
+  agent(o: CallOptions & AgentRun): Promise<AgentResult> {
+    const b = this.#choose(o);
+    const last = o.messages[o.messages.length - 1];
+    return this.#call(o, b, () => runAgent(b, o), {
+      input: `${o.system}\n\n---\n\n${typeof last?.content === "string" ? last.content : JSON.stringify(last?.content ?? "")}`,
+      output: (r) => r.messages.map((m) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content))).join("\n"),
+    });
   }
 
   /** One answer as text. */

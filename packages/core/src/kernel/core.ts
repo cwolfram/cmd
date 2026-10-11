@@ -137,7 +137,7 @@ export class Core {
     place: (p, o) => this.#place(p, o),
     opened: (w) => this.#opened(w),
     watched: () => this.server.watched(),
-    serve: (conn) => this.server.serve(conn),
+    serve: (conn) => this.server.serve(conn), call: (m, p) => this.call(m, p),
   });
 
   readonly server: CoreServer;

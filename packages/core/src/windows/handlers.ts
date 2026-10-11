@@ -11,6 +11,11 @@ export const windowHandlers = (core: CoreContext) =>
     "window.update": (p) => core.windows.update(p.id, p),
     "window.types": () => core.windowTypes.info(),
     "window.close": async (p) => (await core.windowOps.close(p.id), null),
+    "window.select": (p) => {
+      if (!core.windows.list().some((w) => w.id === p.id)) throw new Error(`no window ${p.id}`);
+      core.broadcast({ type: "window.focus", id: p.id });
+      return null;
+    },
     "window.closed": (p) => core.closed.list(p.workspaceId),
     "window.reopen": (p) => core.windowOps.reopen(p),
     "window.clearAttention": (p) => {

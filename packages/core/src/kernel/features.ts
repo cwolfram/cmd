@@ -10,6 +10,7 @@ import { actionsFeature } from "../actions/feature.ts";
 import { timersFeature } from "../windows/timers.ts";
 import { statsFeature } from "../stats/feature.ts";
 import { usageFeature } from "../data/sources/usage.ts";
+import { operatorFeature } from "../operator/feature.ts";
 
 /** Services the core makes from a feature (its field), without an import of its own each. */
 export { createStats } from "../stats/feature.ts";
@@ -23,7 +24,7 @@ export interface Feature {
   dispose?(ctx: CoreContext): void;
 }
 
-export const FEATURES = [journalFeature, actionsFeature, timersFeature, usageFeature, statsFeature] as const satisfies readonly Feature[];
+export const FEATURES = [journalFeature, actionsFeature, timersFeature, usageFeature, statsFeature, operatorFeature] as const satisfies readonly Feature[];
 /** The same list, as plain Features (what loops over it need). */
 export const ALL: readonly Feature[] = FEATURES;
 
