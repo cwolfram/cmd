@@ -373,6 +373,11 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "A bar's inset, tighter than the content's: a window's title bar, a view's footer, Magic's toolbars (a title band's heading is content, on the inset)."
   },
   {
+    "name": "--page-inset",
+    "value": "var(--space-3xl)",
+    "description": "A page's inset (Page, settings beside their sidebar): twice the window's, for a page that is read more than scanned. Its View takes it as --inset."
+  },
+  {
     "name": "--inset",
     "value": "var(--space-xl)",
     "description": "A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window."

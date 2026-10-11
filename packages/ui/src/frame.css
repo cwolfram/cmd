@@ -37,6 +37,7 @@
 .ui-title-band[data-line] { box-shadow: 0 1px 0 var(--window-edge); }
 .ui-title-band h1 { margin-block: 0; font-weight: 600; font-size: var(--text-xl); letter-spacing: -0.01em; }
 .ui-page { width: 100%; max-width: var(--page-w); margin-inline: auto; }
+.ui-view:has(> .ui-view-body > .ui-page) { --inset: var(--page-inset); } /* the page and its title band; the footer keeps --bar-inset */
 /* The window's outline covers the footer's bottom edge, so its text is centred between the
    separator and the outline (padding-bottom), not in the bar's full height. */
 /* Chrome, like the toolbar: its colour and line. */
