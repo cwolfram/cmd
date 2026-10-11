@@ -10,7 +10,7 @@
 // as "Stale" with the reason; problems a build left show in a line with Fix.
 
 import { AiField, Button, Callout, CodeBlock, Inline, LinkButton, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Spinner, Stack, StatusLine, Text, toast, View, ViewState, type ViewStateSpec, WebStage } from "@cmd/ui";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { kitVersion, requestedMedia, SYSTEM_SOUNDS, widgetTokens, type AppWindow, type MagicState, type MagicStep } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import { copy, openLink, selectPane, typeInTerminal } from "../../lib/actions.ts";
@@ -466,7 +466,8 @@ function Frame({ win, src, active, html, data, kv, onPainted }: { win: AppWindow
   winRef.current = win;
   const lastAct = useRef(0);
   const lastSound = useRef(0);
-  useEffect(() => {
+  // Before paint, so a fast frame's "ready" can't arrive before anyone listens.
+  useLayoutEffect(() => {
     const often = (last: { current: number }) => {
       const now = Date.now();
       if (now - last.current < 1000) return true;
@@ -517,7 +518,8 @@ function Frame({ win, src, active, html, data, kv, onPainted }: { win: AppWindow
     if (ready && data !== undefined) post({ type: "data", data });
   }, [ready, data]);
 
-  return <iframe ref={ref} className="magic-frame" data-painted={painted === html || undefined} data-embed sandbox="allow-scripts" src={src} title={win.title} />;
+  // load comes after host.js listens (its DOMContentLoaded "ready"): a lost "ready" doesn't leave the frame empty.
+  return <iframe ref={ref} className="magic-frame" data-painted={painted === html || undefined} data-embed sandbox="allow-scripts" src={src} title={win.title} onLoad={() => setReady(true)} />;
 }
 
 // ── ready: a command to run ─────────────────────────────

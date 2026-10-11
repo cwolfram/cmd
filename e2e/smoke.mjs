@@ -1278,7 +1278,8 @@ await scenario("embedded", async () => {
     magic.push(w.id);
   }
   await menu("view.grid");
-  const frameText = (id, sel) => win.frameLocator(`.tile[data-pane="${id}"] iframe.magic-frame`).locator(sel).textContent({ timeout: 10_000 }).catch(() => null);
+  // One read waits 2 s at most: a read caught on a frame being replaced (a new CSP) tries again instead of using up until's time.
+  const frameText = (id, sel) => win.frameLocator(`.tile[data-pane="${id}"] iframe.magic-frame`).locator(sel).textContent({ timeout: 2_000 }).catch(() => null);
   const widgetText = await until(() => frameText(magic[0], "#v"), (t) => t === "Alpha data");
   check(widgetText === "Alpha data", "a Magic widget renders its data in its sandboxed frame");
 
