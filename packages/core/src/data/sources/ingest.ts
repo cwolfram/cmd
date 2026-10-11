@@ -135,6 +135,13 @@ export class TranscriptIngest extends EventEmitter<{ status: [SearchStatus]; cha
     this.#setStatus({ indexing: true, done: 0, total: 0 });
   }
 
+  /** Reads one agent's files again from the start (a parser that now keeps more of them); ids keep it idempotent. */
+  reread(agent: AgentKind): void {
+    this.#o.views.stmt(`DELETE FROM transcript_files WHERE agent = ?`).run(agent);
+    if (this.#worker) this.#send({ type: "reread", agent });
+    else this.pass();
+  }
+
   /** Reads what changed now, on this thread (inline mode; the worker does this on its own). */
   pass(): void {
     const files = scanFiles(this.#roots);

@@ -20,6 +20,11 @@ export interface EventPayloads {
   "agent.output": { turn: number; chars: number; cut: boolean };
   /** An agent's session got a name (docs/32-session-names.md); null: the person handed naming back to cmd. */
   "session.name": { name: string | null; by: NameSource; lang: string; was: string | null; reason?: string };
+  /**
+   * One model call an agent made (docs/49), from its transcript: tokens read fresh (`in`), written
+   * (`out`, `reasoning` being part of it), read from and written to the prompt cache. Once per call.
+   */
+  "agent.usage": { agent: AgentKind; model: string | null; in: number; out: number; cacheRead: number; cacheWrite: number; reasoning: number };
   /** Something the core inferred about an agent (an interrupt) or couldn't make sense of (an anomaly). */
   "agent.note": { name: "interrupt" | "anomaly"; agent: AgentKind | null; text: string };
   /** A shell command in a terminal (not an agent's), once it ended. Its output is the blob. */
@@ -88,6 +93,7 @@ export type DataEventType = keyof EventPayloads;
 export const EVENT_V: Record<DataEventType, number> = {
   "agent.hook": 1,
   "agent.note": 1,
+  "agent.usage": 1,
   "session.name": 1,
   "pane.activity": 1,
   "agent.output": 1,

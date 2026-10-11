@@ -192,23 +192,22 @@ export const BUILTIN_STATS: StatDef[] = [
   },
   {
     id: "agents.tokens",
-    version: 1,
+    version: 2,
     title: "Agent tokens",
-    description: "Tokens agents' models read and wrote, from their transcripts (Claude Code today).",
+    description: "Tokens agents' models read and wrote, per model call (agent.usage, from Claude Code's and Codex's transcripts).",
     kind: "sum",
     unit: "tokens",
-    dims: [{ id: "token", title: "Kind", label: labels(TOKENS) }, { id: "model", title: "Model" }, project],
-    class: "transcripts",
-    inputs: { types: ["transcript.message"] },
+    dims: [{ id: "token", title: "Kind", label: labels(TOKENS) }, { id: "model", title: "Model" }, agent, project],
+    class: "agents",
+    inputs: { types: ["agent.usage"] },
     compute(from, to, c) {
       const acc = new Acc();
-      const sql = `SELECT at / ${HOUR} AS h, project_id AS p, json_extract(data, '$.model') AS m,
-        sum(ifnull(json_extract(data, '$.usage.input_tokens'), 0)) AS i, sum(ifnull(json_extract(data, '$.usage.output_tokens'), 0)) AS o,
-        sum(ifnull(json_extract(data, '$.usage.cache_read_input_tokens'), 0)) AS cr, sum(ifnull(json_extract(data, '$.usage.cache_creation_input_tokens'), 0)) AS cw, count(*) AS n
-        FROM events WHERE type = 'transcript.message' AND at >= ? AND at < ? AND json_extract(data, '$.usage') IS NOT NULL GROUP BY 1, 2, 3`;
-      for (const r of rows<{ h: number; p: string | null; m: string | null; i: number; o: number; cr: number; cw: number; n: number }>(c.events, sql, from, to)) {
+      const sql = `SELECT at / ${HOUR} AS h, project_id AS p, json_extract(data, '$.model') AS m, json_extract(data, '$.agent') AS a,
+        sum(json_extract(data, '$.in')) AS i, sum(json_extract(data, '$.out')) AS o, sum(json_extract(data, '$.cacheRead')) AS cr, sum(json_extract(data, '$.cacheWrite')) AS cw, count(*) AS n
+        FROM events WHERE type = 'agent.usage' AND at >= ? AND at < ? GROUP BY 1, 2, 3, 4`;
+      for (const r of rows<{ h: number; p: string | null; m: string | null; a: string | null; i: number; o: number; cr: number; cw: number; n: number }>(c.events, sql, from, to)) {
         const h = Math.floor(r.h);
-        for (const [k, v] of [["in", r.i], ["out", r.o], ["cacheRead", r.cr], ["cacheWrite", r.cw]] as const) if (v) acc.add(h, [k, r.m, r.p], v, r.n);
+        for (const [k, v] of [["in", r.i], ["out", r.o], ["cacheRead", r.cr], ["cacheWrite", r.cw]] as const) if (v) acc.add(h, [k, r.m, r.a, r.p], v, r.n);
       }
       return acc.rows();
     },

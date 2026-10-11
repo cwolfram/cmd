@@ -67,6 +67,12 @@ export class Search {
     this.#ingest?.learnHome(agent, dir);
   }
 
+  /** One agent's transcripts read again from the start; when transcripts aren't being read now, the next reader starts there. */
+  reread(agent: AgentKind): void {
+    if (this.#ingest) this.#ingest.reread(agent);
+    else if (this.#core.views.db.prepare(`SELECT 1 FROM sqlite_master WHERE name = 'transcript_files'`).get()) this.#core.views.db.prepare(`DELETE FROM transcript_files WHERE agent = ?`).run(agent);
+  }
+
   reindex(): void {
     if (!this.#ingest) throw RpcError.of("unavailable", "Transcripts are off. Turn them on in Settings → Data.");
     this.#ingest.reindex();

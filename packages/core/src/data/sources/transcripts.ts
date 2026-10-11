@@ -15,6 +15,7 @@ import { cleanClaudePrompt, describeToolInput, headObjects, type SessionDocument
 import { identifierParts } from "../../search/query.ts";
 import type { TranscriptRoot, TranscriptSources } from "../../search/sources.ts";
 import { projectIdOf } from "../project.ts";
+import { codexUsage, usageOfMessage } from "./usage.ts";
 import type { StoreEvent as NewEvent } from "../store.ts";
 
 /** Lines shorter than this are kept whole in `data`; longer ones go to a blob with a summary inline. */
@@ -48,8 +49,6 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => !!v && typeof v === "object" && !Array.isArray(v);
 /** Claude's bookkeeping lines that say nothing about the work (docs/28 §11): not rows. */
 const CLAUDE_NOISE = new Set(["last-prompt", "atis-latch", "mode", "cost-state", "file-history-delta"]);
-/** Codex's per-call token counters: not rows either. */
-const CODEX_NOISE = new Set(["token_count"]);
 const str = (v: unknown): string | undefined => (typeof v === "string" && v ? v : undefined);
 const line1 = (s: string) => (s.split(/\r?\n/).find((l) => l.trim()) ?? "").trim().slice(0, TEXT_LINE);
 const cap = (s: string) => (s.length > BODY_CAP ? s.slice(0, BODY_CAP) : s);
@@ -168,7 +167,7 @@ export function claudeLine(line: string, n: number, file: TranscriptFile, sessio
 }
 
 /** One Codex rollout line → an event. Codex has no per-line id: `codex:<session>:<n>`; tool calls pair by call_id in data. */
-export function codexLine(line: string, n: number, file: TranscriptFile, state: { sessionId?: string; cwd?: string }): NewEvent | null {
+export function codexLine(line: string, n: number, file: TranscriptFile, state: { sessionId?: string; cwd?: string; model?: string }): NewEvent | null {
   let o: Obj;
   try {
     o = JSON.parse(line) as Obj;
@@ -179,7 +178,13 @@ export function codexLine(line: string, n: number, file: TranscriptFile, state: 
   const payload = isObj(o.payload) ? o.payload : o;
   const outer = str(o.type) ?? "unknown";
   const inner = str(payload.type);
-  if (inner && CODEX_NOISE.has(inner)) return null;
+  if (outer === "turn_context") state.model = str(payload.model) ?? state.model;
+  if (inner === "token_count") {
+    // A model call's tokens: an agent.usage fact, not a transcript line.
+    const at = o.timestamp ? Date.parse(String(o.timestamp)) : NaN;
+    const sid = state.sessionId ?? file.path;
+    return codexUsage(sid, state.model ?? null, payload, { at: Number.isFinite(at) ? at : 0, source: "transcript:codex", sessionId: `codex:${sid}`, projectId: projectIdOf(state.cwd) });
+  }
   if (outer === "session_meta") {
     state.sessionId = str(payload.id) ?? state.sessionId;
     state.cwd = str(payload.cwd) ?? state.cwd;
@@ -269,7 +274,7 @@ export function readTranscript(file: TranscriptFile, state: ReadState | null, so
 
   // Qwen's lines look like Claude's but carry Gemini-style parts: its parser reads the file whole.
   if (agent === "claude" || agent === "codex") {
-    const codex: { sessionId?: string; cwd?: string } = {};
+    const codex: { sessionId?: string; cwd?: string; model?: string } = {};
     const hint = agent !== "codex" ? file.path.split(/[\\/]/).pop()?.replace(/\.jsonl$/, "") : undefined;
     // Codex's session id is on its first line: a resumed read needs it again.
     if (agent === "codex" && start) {
@@ -287,6 +292,9 @@ export function readTranscript(file: TranscriptFile, state: ReadState | null, so
         title = e.text ?? null;
       }
       events.push(e), (sessionId = e.sessionId ?? sessionId);
+      // Claude's tokens: an agent.usage fact per message (its id collapses the message's repeated lines).
+      const usage = agent === "claude" ? usageOfMessage(e) : null;
+      if (usage) events.push(usage);
     });
     datelessLines(events, stat.mtime);
     return { events, offset, lines, agent, sessionId };

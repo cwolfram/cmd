@@ -112,8 +112,8 @@ export class StatsService {
     return [...this.#defs.values()].filter((d) => d.compute);
   }
 
-  /** A new stat, or one whose version changed: queued to build from now down to its oldest event. */
-  #plan(d: StatDef): void {
+  /** A new stat, or one whose version changed (its old buckets go), or a rebuild by the same rules (`sameRules`: hours older than the log stay): queued to build from now down to its oldest event. */
+  #plan(d: StatDef, sameRules = false): void {
     const meta = this.#db.meta(d.id);
     const floor = this.#floor(d);
     const top = hourOf(this.now()) + 1;
@@ -121,6 +121,8 @@ export class StatsService {
       if (meta.builtTo !== null && floor !== null && meta.builtTo > floor) this.#builds.set(d.id, { next: meta.builtTo, floor });
       return;
     }
+    // Another version may lay its buckets out differently: none of the old ones are kept, not even those older than the log.
+    if (meta && !sameRules) this.#db.replace(d.id, 0, top + 1, []);
     this.#db.setMeta(d.id, { version: d.version, builtTo: top, floor });
     if (floor === null) {
       this.#db.setMeta(d.id, { version: d.version, builtTo: null, floor: null });
@@ -185,7 +187,7 @@ export class StatsService {
     for (const d of ds) {
       const meta = this.#db.meta(d.id);
       this.#db.setMeta(d.id, { version: -1, builtTo: meta?.builtTo ?? null, floor: meta?.floor ?? null });
-      this.#plan(d);
+      this.#plan(d, true);
     }
     return ds.map((d) => d.id);
   }

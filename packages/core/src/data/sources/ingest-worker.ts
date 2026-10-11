@@ -21,7 +21,7 @@ export interface WorkerInit {
 }
 
 /** Core → worker. */
-export type IngestRequest = { type: "ack" } | { type: "learn"; agent: AgentKind; path: string } | { type: "home"; agent: AgentKind; dir: string } | { type: "reindex" } | { type: "pass" };
+export type IngestRequest = { type: "ack" } | { type: "learn"; agent: AgentKind; path: string } | { type: "home"; agent: AgentKind; dir: string } | { type: "reindex" } | { type: "reread"; agent: AgentKind } | { type: "pass" };
 
 /** Worker → core. */
 export type IngestMessage =
@@ -145,6 +145,10 @@ parentPort!.on("message", (m: IngestRequest) => {
     known.clear();
     void run();
     return;
+  }
+  if (m.type === "reread") {
+    for (const [p, k] of known) if (k.agent === m.agent) known.delete(p);
+    return void schedule(0);
   }
   const found = m.type === "home" ? sources.homeRoots(m.agent, m.dir, roots, locateContext()) : [sources.learn(m.agent, m.path, roots, locateContext())];
   let added = false;
