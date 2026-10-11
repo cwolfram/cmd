@@ -4,7 +4,7 @@
 // tooltip, nothing moves). Values reach the kit already formatted by the caller's `format`.
 
 import { useState, type ReactNode } from "react";
-import { Bars, Line, Plot, Rule, seriesColor, Ticks, type ChartSeries } from "./plot.tsx";
+import { Bars, Line, Plot, Rule, seriesColor, Ticks, useSize, type ChartSeries } from "./plot.tsx";
 
 type Fmt = (v: number) => string;
 const sum = (s: readonly ChartSeries[], i: number) => s.reduce((a, x) => a + (x.values[i] ?? 0), 0);
@@ -279,31 +279,34 @@ export function Calendar({ start, values, format = String, firstDay = 1, label, 
   );
 }
 
-/** When things happen: weekdays × hours of the day, five levels of one hue. `values[row][hour]`, rows in the order of `rows`. */
+/** When things happen: weekdays × hours of the day, five levels of one hue, as wide as its pane (cells stretch, rows stay short). `values[row][hour]`, rows in the order of `rows`. */
 export function PunchCard({ values, rows, format = String, label }: { values: readonly (readonly number[])[]; rows: readonly string[]; format?: Fmt; label: string }) {
   const [hover, setHover] = useState<[number, number] | null>(null);
+  const [ref, size] = useSize<HTMLDivElement>();
   const levels = heatLevels(values.flat());
-  const C = 12;
   const G = 2;
   const L = 28;
+  // Columns share the width (no narrower than 6 px); rows are as tall as a column is wide, between 12 and 20 px.
+  const W = Math.max(6, ((size.w || L + 24 * 14) - L + G) / 24 - G);
+  const H = Math.min(20, Math.max(12, W));
   const readout = hover ? <Readout value={format(values[hover[0]]![hover[1]]!)} label={`${rows[hover[0]]} ${String(hover[1]).padStart(2, "0")}:00`} /> : undefined;
   return (
     <div className="ui-chart">
       <ChartHead summary={label} readout={readout} />
-      <div className="ui-calendar">
-        <svg width={L + 24 * (C + G)} height={7 * (C + G) + 14} role="img" aria-label={label} onPointerLeave={() => setHover(null)}>
+      <div className="ui-calendar" ref={ref}>
+        <svg width={L + 24 * (W + G) - G} height={rows.length * (H + G) + 14} role="img" aria-label={label} onPointerLeave={() => setHover(null)}>
           {rows.map((r, y) => (
-            <text key={r} className="ui-plot-tick" x={0} y={y * (C + G) + C - 2}>
+            <text key={r} className="ui-plot-tick" x={0} y={y * (H + G) + H / 2 + 3}>
               {r}
             </text>
           ))}
           {[0, 6, 12, 18].map((h) => (
-            <text key={h} className="ui-plot-tick" x={L + h * (C + G)} y={7 * (C + G) + 11}>
+            <text key={h} className="ui-plot-tick" x={L + h * (W + G)} y={rows.length * (H + G) + 11}>
               {String(h).padStart(2, "0")}
             </text>
           ))}
           {values.map((row, y) =>
-            row.map((_, h) => <rect key={`${y}-${h}`} className="ui-heat" data-level={levels[y * 24 + h] ?? 0} data-state={hover && hover[0] === y && hover[1] === h ? "hover" : undefined} x={L + h * (C + G)} y={y * (C + G)} width={C} height={C} rx={2} onPointerEnter={() => setHover([y, h])} />),
+            row.map((_, h) => <rect key={`${y}-${h}`} className="ui-heat" data-level={levels[y * 24 + h] ?? 0} data-state={hover && hover[0] === y && hover[1] === h ? "hover" : undefined} x={L + h * (W + G)} y={y * (H + G)} width={W} height={H} rx={2} onPointerEnter={() => setHover([y, h])} />),
           )}
         </svg>
       </div>
