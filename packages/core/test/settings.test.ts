@@ -12,8 +12,8 @@ import { rmTemp } from "./tmp.ts";
 import { needs } from "../../../test/system.ts";
 
 describe("schema", () => {
-  it("overlays valid user values and reports invalid ones", () => {
-    const { settings, errors } = resolveSettings({
+  it("overlays valid user values and reports invalid ones and unknown keys", () => {
+    const { settings, errors, unknown } = resolveSettings({
       "font.codeSize": 15,
       "terminal.lineHeight": 9,
       "ui.defaultView": "grid",
@@ -23,7 +23,8 @@ describe("schema", () => {
     expect(settings["font.codeSize"]).toBe(15);
     expect(settings["terminal.lineHeight"]).toBe(DEFAULT_SETTINGS["terminal.lineHeight"]);
     expect(settings["ui.defaultView"]).toBe("grid");
-    expect(errors).toEqual(["terminal.lineHeight: must be ≤ 2", 'unknown setting "nope.key"']);
+    expect(errors).toEqual(["terminal.lineHeight: must be ≤ 2"]);
+    expect(unknown).toEqual(["nope.key"]);
   });
 
   it("reads renamed keys under their new name; the new name wins", () => {
@@ -105,6 +106,16 @@ describe("SettingsService", () => {
     expect(parseJsonc(fs.readFileSync(file, "utf8"))).toEqual({ "font.codeSize": 18, "terminal.fontFamily": "Iosevka" });
     svc.reset("font.code");
     expect(parseJsonc(fs.readFileSync(file, "utf8"))).toEqual({ "font.codeSize": 18 });
+  });
+
+  it("lists keys it doesn't know, and reset takes one out of the file", () => {
+    fs.writeFileSync(file, '{ "font.codeSize": 16, "canvas.zoomz": 2, "canvas.cardZoom": 0.5 }');
+    svc = new SettingsService(file);
+    expect(svc.snapshot()).toMatchObject({ errors: [], unknown: ["canvas.zoomz"] }); // canvas.cardZoom was removed: quiet
+    svc.reset("canvas.zoomz");
+    expect(parseJsonc(fs.readFileSync(file, "utf8"))).toEqual({ "font.codeSize": 16, "canvas.cardZoom": 0.5 });
+    expect(svc.snapshot().unknown).toEqual([]);
+    expect(() => svc!.reset("canvas.zoomz")).toThrow(/unknown setting/);
   });
 
   it("changes only the key it sets: comments, order and trailing commas stay", () => {

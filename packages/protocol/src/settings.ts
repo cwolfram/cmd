@@ -7,6 +7,7 @@
 // in the core, the settings.updated event in the UI).
 
 import { ACTIONS_SETTINGS } from "./actions.ts";
+import { currentKey, SETTINGS_MIGRATIONS, type SettingsMigration } from "./settings-migrations.ts";
 
 /** When a change takes effect, for keys that can't apply to what is already running. Omitted = immediately. */
 export type SettingApplies = "newTerminals" | "firstLaunch";
@@ -491,28 +492,6 @@ export const SETTINGS_SCHEMA = {
 
 export type SettingKey = keyof typeof SETTINGS_SCHEMA;
 
-/** Keys that were renamed: old settings files keep working (old → new). */
-export const RENAMED_SETTINGS: Readonly<Record<string, SettingKey>> = {
-  "search.enabled": "data.record.transcripts",
-  "terminal.fontFamily": "font.code",
-  "terminal.fontSize": "font.codeSize",
-  "magic.model": "ai.anthropic.model",
-  "magic.provider": "ai.provider",
-  "magic.anthropic.model": "ai.anthropic.model",
-  "magic.openai.model": "ai.openai.model",
-  "spaces.ownWindow": "workspaces.ownWindow",
-};
-
-/** The current name of a key (renamed keys map to their new name). */
-export const currentKey = (key: string): string => RENAMED_SETTINGS[key] ?? key;
-
-/**
- * Keys that no longer exist; ignored without an error (ui.sidebarWidth: drag the
- * sidebar edge; magic.baseUrl: only Anthropic and OpenAI are providers now;
- * ui.sidebarPadding: the app's to set).
- */
-export const REMOVED_SETTINGS: ReadonlySet<string> = new Set(["ui.sidebarWidth", "magic.baseUrl", "ui.sidebarPadding"]);
-
 export const APPLIES_LABEL: Record<SettingApplies, string> = {
   newTerminals: "new terminals only",
   firstLaunch: "first launch only",
@@ -583,17 +562,34 @@ export function parseSettingValue(key: string, raw: string): unknown {
   return raw;
 }
 
-/** Defaults overlaid with the user's valid values; invalid entries are reported and ignored. */
-export function resolveSettings(user: Record<string, unknown>): { settings: Settings; errors: string[] } {
+/**
+ * Defaults overlaid with the user's valid values, old keys and values migrated;
+ * invalid entries are reported in `errors` and ignored, keys cmd doesn't know in
+ * `unknown` (a typo, or a newer cmd's).
+ */
+export function resolveSettings(user: Record<string, unknown>, migrations: readonly SettingsMigration[] = SETTINGS_MIGRATIONS): { settings: Settings; errors: string[]; unknown: string[] } {
   const settings: Record<string, unknown> = { ...DEFAULT_SETTINGS };
   const errors: string[] = [];
+  const unknown: string[] = [];
   for (const [k, v] of Object.entries(user)) {
-    if (k.startsWith("plugins.") || REMOVED_SETTINGS.has(k)) continue; // owned by plugins / gone
-    const key = currentKey(k);
+    if (k.startsWith("plugins.")) continue; // owned by plugins
+    let key: string | null = k;
+    let value = v;
+    for (const m of migrations) {
+      if (m.from !== key) continue;
+      key = m.to;
+      if (m.value) value = m.value(value);
+      if (key === null) break;
+    }
+    if (key === null) continue; // gone
     if (key !== k && key in user) continue; // the new name wins over the old one
-    const r = validateSetting(key, v);
+    if (!isSettingKey(key)) {
+      unknown.push(k);
+      continue;
+    }
+    const r = validateSetting(key, value);
     if ("error" in r) errors.push(r.error);
     else settings[key] = r.value;
   }
-  return { settings: settings as Settings, errors };
+  return { settings: settings as Settings, errors, unknown };
 }

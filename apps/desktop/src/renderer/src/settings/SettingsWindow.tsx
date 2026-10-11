@@ -38,6 +38,7 @@ import { useAiStatus } from "../ai/status.ts";
 import { About } from "./About.tsx";
 import { Remote, useAccessModes } from "./Remote.tsx";
 import { AgentHooks } from "./AgentHooks.tsx";
+import { UnknownSettings } from "./UnknownSettings.tsx";
 import { NotifyPermission } from "./NotifyPermission.tsx";
 import { SITE_PERMISSION_WORDS, SitePermissions } from "./SitePermissions.tsx";
 import { allThemes } from "@cmd/ui/themes";
@@ -270,6 +271,7 @@ export function SettingsWindow() {
                   {e}
                 </Callout>
               ))}
+              {!q && <UnknownSettings keys={snap.unknown ?? []} onRemove={(key) => void cmd.call("settings.reset", { key }).catch((err: Error) => setError(err.message))} />}
               <div>{body}</div>
             </Stack>
           </Page>

@@ -64,6 +64,8 @@ export interface SettingsSnapshot {
   overrides: SettingKey[];
   /** Validation problems in the user's file (those entries are ignored). */
   errors: string[];
+  /** Keys in the user's file cmd doesn't know (a typo, or a newer cmd's); `settings.reset` removes one. Absent from older cores. */
+  unknown?: string[];
   path: string;
 }
 

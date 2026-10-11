@@ -440,6 +440,7 @@ async function run({ client, closed }: Connection): Promise<number> {
       }
       console.log(`\n* = set in ${snap.path}`);
       for (const e of snap.errors) console.error(`warning: ${e}`);
+      for (const k of snap.unknown ?? []) console.error(`warning: unknown setting "${k}", ignored (cmd settings reset ${k} removes it)`);
       return 0;
     }
     case "events": {

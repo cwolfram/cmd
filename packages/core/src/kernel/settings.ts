@@ -98,7 +98,9 @@ export class SettingsService extends EventEmitter<{ updated: [SettingsSnapshot] 
     return this.#write(key, r.value);
   }
 
+  /** Back to the default; also removes a key cmd doesn't know from the file. */
   reset(key: string): SettingsSnapshot {
+    if (!isSettingKey(currentKey(key)) && Object.hasOwn(this.#raw, key)) return this.#write(key, undefined);
     key = currentKey(key);
     if (!isSettingKey(key)) throw new Error(`unknown setting "${key}"`);
     return this.#write(key, undefined);
@@ -123,7 +125,8 @@ export class SettingsService extends EventEmitter<{ updated: [SettingsSnapshot] 
     const resolved = resolveSettings(this.#raw);
     errors = [...errors, ...resolved.errors];
     for (const e of errors) log.warn(e);
-    return { settings: resolved.settings, overrides: overridesOf(this.#raw), errors, path: this.path };
+    if (resolved.unknown.length) log.warn(`${this.#name}: settings cmd doesn't know, ignored`, resolved.unknown);
+    return { settings: resolved.settings, overrides: overridesOf(this.#raw), errors, unknown: resolved.unknown, path: this.path };
   }
 
   get #name(): string {
@@ -166,7 +169,7 @@ export class SettingsService extends EventEmitter<{ updated: [SettingsSnapshot] 
 
   #fromRaw(raw: Record<string, unknown>): SettingsSnapshot {
     const r = resolveSettings(raw);
-    return { settings: r.settings, overrides: overridesOf(raw), errors: r.errors, path: "" };
+    return { settings: r.settings, overrides: overridesOf(raw), errors: r.errors, unknown: r.unknown, path: "" };
   }
 }
 

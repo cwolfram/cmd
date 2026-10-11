@@ -266,7 +266,7 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
   /**
    * Reduces new events into the agent's state; the first time, also the pane's
    * earlier unclaimed ones (hooks often fire before the process is detected).
-   * Returns whether the agent's state now comes from events.
+   * Returns whether the agent's state now comes from events. An event the reducer can't take is noted and skipped (past it in the saved turn too), not retried.
    */
   #ingest(paneId: PaneId, fresh: { raw: RawEvent; ev: ActivityEvent }[], agent: Agent | null): boolean {
     if (!agent) return false;
@@ -287,8 +287,6 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
       try {
         this.#applyReduction(agent, red, red.apply(ev), ev, live.has(ev.id));
       } catch (err) {
-        // One event the reducer can't take costs this agent that event, not the core and not its later ones:
-        // noted in the log, and marked as reduced (the saved turn too), so neither the next tick nor a restart takes it again.
         log.error(`agent ${agent.id.slice(0, 8)}: could not apply ${ev.kind} event ${ev.id}`, err);
         this.emit("activity", this.activity.note("anomaly", `could not apply ${ev.kind} event ${ev.id}: ${(err as Error)?.message ?? err}`, ev.at, paneId, agent.id, agent.kind));
         red.replayedTo = ev.id;
@@ -316,10 +314,7 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
     return true;
   }
 
-  /**
-   * A reducer for an agent, resumed from its last saved turn (a core restart) and the events after it.
-   * A turn saved in a format this version can't read is left as it is: the reducer starts the next one.
-   */
+  /** A reducer for an agent, resumed from its last saved turn (a core restart; after it if unreadable) and the events after it. */
   #reducerFor(agent: Agent): ActivityReducer {
     const saved = this.activity.lastTurn(agent.id);
     const red = new ActivityReducer(agent.id, saved ? saved.index + 1 : 0, { agentKind: agent.kind, agentVersion: agent.version ?? null, derivedBy: this.activity.recordedBy });

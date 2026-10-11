@@ -13,6 +13,7 @@ export * from "./version.ts";
 export * from "./attention.ts";
 export * from "./workspace.ts";
 export * from "./settings.ts";
+export * from "./settings-migrations.ts";
 export * from "./jsonc.ts";
 export * from "./client.ts";
 export * from "./magic.ts";
