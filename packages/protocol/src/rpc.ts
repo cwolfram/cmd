@@ -466,6 +466,12 @@ export interface Methods extends JournalMethods, ActionsMethods {
    * without settings, UI state or secrets. After it the session receives the
    * events the policy lets through.
    */
+  /**
+   * A device has read `received` characters of what its session sent (in all). From its
+   * first ack the Mac keeps at most a window of output unread by it, and resyncs a
+   * terminal past that, instead of the relay dropping a slow phone (AR1-12-07).
+   */
+  "remote.ack": { params: { received: number }; result: null };
   "remote.bootstrap": {
     params: {};
     result: {

@@ -214,6 +214,11 @@ export class RemoteService {
     };
   }
 
+  /** What each open session's device has unread or waiting (session.ts's window), for diagnostics and tests. */
+  queued(): number[] {
+    return [...this.#channels.values()].filter((c) => c.open).map((c) => c.queued);
+  }
+
   sessions(): RemoteSession[] {
     const names = new Map(this.#o.store.remoteDevices().map((d) => [d.id, d.name]));
     return [...this.#channels.values()]

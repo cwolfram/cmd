@@ -102,12 +102,21 @@ export class Connection {
       const s = await session;
       established = true;
       const client = new RpcClient((line) => void s.send(line));
-      s.onLine((l) => client.receive(l));
+      // What was read, acked every 64 KiB (remote.ack): the Mac holds output past a window instead of the relay dropping a slow phone.
+      let received = 0;
+      let acked = 0;
+      s.onLine((l) => {
+        received += l.length + 1;
+        client.receive(l);
+        if (received - acked >= 65_536 && client.has("remote.ack")) (acked = received), void client.call("remote.ack", { received }).catch(() => {});
+      });
       client.onEvent((e) => this.#events.forEach((fn) => fn(e)));
       this.client = client;
       this.#retry = 0;
       // What the Mac serves, so client.has() can tell a feature its cmd doesn't have yet (a Mac without the list has all of them).
       await client.hello().catch(() => {});
+      // The first ack turns the window on for this session (a Mac without remote.ack has none).
+      if (client.has("remote.ack") && client.core?.methods) void client.call("remote.ack", { received }).catch(() => {});
       const boot = await client.call("remote.bootstrap", {});
       this.#set({ kind: "online", boot });
       // The name a list of Macs shows; it follows a renamed Mac.

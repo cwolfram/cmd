@@ -50,6 +50,11 @@ export class ConnectionWriter {
     this.#maxBuffered = o.maxBuffered ?? MAX_BUFFERED;
   }
 
+  /** Output waiting to go (UTF-16 units). */
+  get pending(): number {
+    return this.#pendingBytes;
+  }
+
   /** A reply: straight out (replies and events are joined by seq, not by order). */
   send(line: string): void {
     this.#write(line);

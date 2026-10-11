@@ -1,8 +1,10 @@
 // One device's channel on the relay link, host side: the Noise handshake (IK for
 // a paired device, IKpsk1 for pairing, which waits for the person on the Mac),
 // then a Connection the core serves like a socket client. Its writer coalesces
-// terminal output per pane and, when the device falls behind, drops it and asks
-// the device to resync from a snapshot instead of buffering without bound.
+// terminal output per pane. A device acks what it read (remote.ack, every 64 KiB);
+// past WINDOW unread the Mac holds its output, and past the same again drops it and
+// asks the device to resync from a snapshot, so a slow phone gets fewer screens
+// instead of the relay cutting it off for buffering too much (SSH's channel window).
 
 import type { CoreEvent, RemoteScope } from "@cmd/protocol";
 import { fingerprint, frame, Handshake, LineOpener, PROLOGUE, sealLine, unframe, utf8, Wire, type Bytes, type KeyPair, type Transport } from "@cmd/remote-crypto";
@@ -11,6 +13,12 @@ import { ConnectionWriter } from "../kernel/writer.ts";
 
 /** Merge a pane's output for this long before sending it. */
 const COALESCE_MS = 30;
+/**
+ * Output a device may have unread (characters sent past what it acked, remote.ack) before
+ * the Mac holds its terminals' output; held output past the same again is dropped for a
+ * pane.resync. A session that never acks (an older web client) has no window.
+ */
+export const WINDOW = 256 * 1024;
 /** How long a session waits for the device's first message after the handshake. */
 export const CONFIRM_MS = 10_000;
 
@@ -141,8 +149,16 @@ export class HostChannel {
     this.#state = "open";
     this.since = Date.now();
     this.#host.seen(this.deviceId!);
-    this.#served = this.#host.serve(new RemoteConnection(this.#transport!, this.scope!, this.deviceId!, (b) => this.#send(b), () => this.close()), this);
+    this.#conn = new RemoteConnection(this.#transport!, this.scope!, this.deviceId!, (b) => this.#send(b), () => this.close());
+    this.#served = this.#host.serve(this.#conn, this);
     this.#host.opened(this);
+  }
+
+  #conn: RemoteConnection | null = null;
+
+  /** What the Mac holds for this device (unread and waiting output), 0 before the session opens. */
+  get queued(): number {
+    return this.#conn?.queued ?? 0;
   }
 
   close(): void {
@@ -179,6 +195,9 @@ class RemoteConnection implements Connection {
   #close: () => void;
   #out: Promise<void> = Promise.resolve();
   #writer: ConnectionWriter;
+  /** Characters sent, and how many the device said it read (null: it never acks, no window). */
+  #sent = 0;
+  #acked: number | null = null;
 
   constructor(t: Transport, access: RemoteScope, deviceId: string, send: (b: Bytes) => void, close: () => void) {
     this.#t = t;
@@ -186,8 +205,33 @@ class RemoteConnection implements Connection {
     this.deviceId = deviceId;
     this.#send = send;
     this.#close = close;
-    // The relay link has no backpressure of its own yet (AR1-12-07): never "backed up", nothing buffered.
-    this.#writer = new ConnectionWriter({ write: (line) => (this.#seal(line), true), buffered: () => 0, close: () => this.close() }, { coalesceMs: COALESCE_MS });
+    this.#writer = new ConnectionWriter(
+      {
+        write: (line) => {
+          this.#seal(line);
+          this.#sent += line.length;
+          return this.unread < WINDOW;
+        },
+        buffered: () => this.unread,
+        close: () => this.close(),
+      },
+      { coalesceMs: COALESCE_MS, maxPending: WINDOW },
+    );
+  }
+
+  /** Sent and not acked yet (0 for a device that doesn't ack). */
+  get unread(): number {
+    return this.#acked === null ? 0 : this.#sent - this.#acked;
+  }
+
+  /** What the Mac holds for this device: unread output and output waiting to go. */
+  get queued(): number {
+    return this.unread + this.#writer.pending;
+  }
+
+  ack(received: number): void {
+    this.#acked = Math.max(this.#acked ?? 0, Math.min(received, this.#sent));
+    if (this.unread < WINDOW) this.#writer.drain();
   }
 
   send(line: string): void {

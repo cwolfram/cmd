@@ -25,6 +25,7 @@ export const remoteHandlers = (core: CoreContext) =>
     "remote.setup": () => core.remote.setup(),
     "remote.revoke": (p) => (core.remote.revoke(p.id), null),
     "remote.setScope": (p) => core.remote.setScope(p.id, p.scope),
+    "remote.ack": (p, { conn } = IN_CORE) => (conn?.ack?.(p.received), null),
     "remote.bootstrap": (_, { conn } = IN_CORE) => {
       const result: Result<"remote.bootstrap"> = {
         panes: core.panes.list(),

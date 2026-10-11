@@ -175,6 +175,7 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "remote.revoke": "never",
   "remote.setScope": "never",
   "remote.bootstrap": "view",
+  "remote.ack": "view",
 };
 
 export class RemoteDenied extends Error {}
@@ -272,6 +273,9 @@ const ARGS: { [M in Method]?: Check<M> } = {
     if (p.history !== undefined && (!Array.isArray(p.history) || p.history.length > 20)) throw new RemoteDenied("too much history");
     for (const h of p.history ?? []) [h.code, h.request, h.summary].forEach(text);
     if (p.failed !== undefined) [p.failed.code, p.failed.error].forEach(text);
+  },
+  "remote.ack": (p) => {
+    if (typeof p.received !== "number" || !Number.isFinite(p.received) || p.received < 0) throw new RemoteDenied("bad count");
   },
   "fs.list": (p, ctx) => allowedPath(ctx, p.path),
   "fs.read": (p, ctx) => allowedPath(ctx, p.path),

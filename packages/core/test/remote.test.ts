@@ -15,12 +15,13 @@ import { until } from "../../../test/system.ts";
 const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cmd-remote-")));
 let relay: Relay;
 let core: Core;
+const ptys = fakeFactory();
 /** Events a local client (the desktop app) sees. */
 const events: CoreEvent[] = [];
 
 beforeAll(async () => {
   relay = await startRelay({ log: () => {} });
-  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home: dir });
+  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: ptys.factory, pollMs: 0, home: dir });
   core.serve({ access: "local", send: () => {}, event: (e) => events.push(e), close: () => {} }).receive(JSON.stringify({ id: 1, method: "events.subscribe", params: {} }));
   core.settings.set("remote.relay", relay.url);
   core.settings.set("remote.client", "https://client.test");
@@ -180,6 +181,38 @@ describe("remote access", () => {
     expect(size().sizedBy).toBe("Test Phone");
     c.ws.close();
     await expect.poll(() => size()).toMatchObject({ cols: 130, rows: 42, sizedBy: null });
+  });
+
+  it("holds a slow phone's output within its window and resyncs it, instead of the relay dropping it", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const got: CoreEvent[] = [];
+    let read = 0;
+    (await c.session).onLine((l) => (read += l.length + 1));
+    client.onEvent((e) => got.push(e));
+    await client.call("remote.bootstrap", {});
+    const pane = await core.call("pane.create", {});
+    await client.call("window.follow", { ids: [pane.id] });
+    await client.call("remote.ack", { received: read }); // its window starts; it reads on, but acks nothing more
+    const pty = ptys.ptys.at(-1)!;
+    const chunk = "y\r\n".repeat(21_846); // 64 KiB
+    let most = 0;
+    for (let i = 0; i < 320; i++) {
+      pty.output(chunk);
+      if (i % 16 === 0) {
+        await new Promise((r) => setTimeout(r, 5));
+        most = Math.max(most, ...core.remote.queued());
+      }
+    }
+    await new Promise((r) => setTimeout(r, 100));
+    most = Math.max(most, ...core.remote.queued());
+    expect(most).toBeLessThan(512 * 1024);
+    // It catches up: what was dropped is a resync, and it's still connected (the relay didn't cut it off).
+    await client.call("remote.ack", { received: read });
+    await expect.poll(() => got.some((e) => e.type === "pane.resync" && e.paneId === pane.id)).toBe(true);
+    expect(c.closed()).toBe(false);
+    expect(read).toBeLessThan(4 * 1024 * 1024);
+    c.ws.close();
   });
 
   it("refuses unknown devices", async () => {

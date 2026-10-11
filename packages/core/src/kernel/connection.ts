@@ -15,6 +15,8 @@ export interface Connection {
   send(line: string): void;
   /** Events, when the connection handles them differently from other lines (a remote session coalesces output). */
   event?(e: CoreEvent, line: string): void;
+  /** The client has read this much of what was sent (remote.ack; a remote session's flow control). */
+  ack?(received: number): void;
   close(): void;
 }
 
