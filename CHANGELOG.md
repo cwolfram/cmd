@@ -2,6 +2,19 @@
 
 What changed in each cmd release, newest first. cmd shows the releases since your last update in What's New. Written at release time by the changelog skill (`.claude/skills/changelog/SKILL.md`).
 
+## 0.27.2 — 2026-10-12
+
+### Improved
+
+- Charts and dashboards read easier, with steadier lines, numbers in the UI font and more room between sections.
+- Sparklines and punch cards fill the whole width of their pane.
+
+### Fixed
+
+- ⌥ keys type characters like @, [ and | on German and most European layouts, so you can type @ into Claude Code and Codex.
+- Scrollbars stay with their window while it resizes or moves.
+- The Stats window counts cmd's stalls correctly instead of showing the longest one's length.
+
 ## 0.27.1 — 2026-10-11
 
 ### Improved
