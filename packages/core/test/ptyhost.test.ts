@@ -7,8 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Core } from "../src/kernel/core.ts";
-import { HOST_PROTOCOL, PtyHost } from "../src/terminals/host.ts";
-import { HostMismatch, RemoteBackend } from "../src/terminals/remote.ts";
+import { HOST_METHODS, HOST_PROTOCOL, MIN_CORE, PtyHost } from "../src/terminals/host.ts";
+import { HostMismatch, MIN_HOST, RemoteBackend, hostCompatible } from "../src/terminals/remote.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until as untilWhat } from "../../../test/system.ts";
@@ -127,6 +127,71 @@ describe("PTY host", () => {
     await new Promise<void>((r) => old.listen(sock, r));
     await expect(RemoteBackend.connect(sock)).rejects.toBeInstanceOf(HostMismatch);
     old.close();
+  });
+
+  it("uses a host of another protocol within the window both accept", async () => {
+    const sent: string[] = [];
+    const fake = (hello: Record<string, unknown>) => {
+      const sock = path.join(dir, `v${n++}.sock`);
+      const server = net.createServer((c) =>
+        c.on("data", (d) => {
+          for (const line of String(d).split("\n").filter(Boolean)) {
+            const m = JSON.parse(line) as { id?: number; m: string };
+            sent.push(m.m);
+            if (m.m === "hello") c.write(JSON.stringify({ id: m.id, r: { instance: "dev", pid: 1, startedAt: 0, terms: [], ...hello } }) + "\n");
+            else if (m.id !== undefined) c.write(JSON.stringify({ id: m.id, r: "zsh" }) + "\n");
+          }
+        }),
+      );
+      return new Promise<{ sock: string; server: net.Server }>((r) => server.listen(sock, () => r({ sock, server })));
+    };
+    // A newer host that still serves this core, without one of today's methods: used, and asked only what it has.
+    const newer = await fake({ protocol: HOST_PROTOCOL + 1, minCore: HOST_PROTOCOL, methods: HOST_METHODS.filter((m) => m !== "process") });
+    const b = await RemoteBackend.connect(newer.sock);
+    expect(b.has("snapshot")).toBe(true);
+    expect(b.has("process")).toBe(false);
+    await expect(b.request("process", { id: "x" })).rejects.toThrow(/has no process/);
+    expect(await b.request("read", { id: "x", lines: 1 })).toBe("zsh");
+    expect(sent).toEqual(["hello", "read"]);
+    b.dispose();
+    newer.server.close();
+    // A host from before minCore and methods (the oldest this core uses): kept, and it has everything.
+    const old = await fake({ protocol: MIN_HOST });
+    const o = await RemoteBackend.connect(old.sock);
+    expect(HOST_METHODS.every((m) => o.has(m))).toBe(true);
+    o.dispose();
+    old.server.close();
+    // Too old for this core, or too new for it: replaced.
+    for (const hello of [{ protocol: MIN_HOST - 1 }, { protocol: HOST_PROTOCOL + 1, minCore: HOST_PROTOCOL + 1 }]) {
+      const f = await fake(hello);
+      await expect(RemoteBackend.connect(f.sock)).rejects.toBeInstanceOf(HostMismatch);
+      f.server.close();
+    }
+    expect(hostCompatible({ protocol: HOST_PROTOCOL })).toBe(true);
+  });
+
+  it("isn't taken over by a core it can't serve", async () => {
+    const { sock } = await startHost();
+    const a = await RemoteBackend.connect(sock);
+    const lost: string[] = [];
+    a.onReplaced(() => lost.push("replaced"));
+    const c = net.createConnection(sock);
+    const reply = await new Promise<{ r: { minCore: number; methods: string[] } }>((resolve) => {
+      c.on("data", (d) => resolve(JSON.parse(String(d).split("\n")[0])));
+      c.write(JSON.stringify({ id: 0, m: "hello", p: { protocol: MIN_CORE - 1 } }) + "\n");
+    });
+    expect(reply.r).toMatchObject({ minCore: MIN_CORE, methods: [...HOST_METHODS] });
+    // It isn't the host's core: the first one still is.
+    const asked = await new Promise<string>((resolve) => {
+      c.on("data", (d) => resolve(String(d)));
+      c.write(JSON.stringify({ id: 1, m: "read", p: { id: "x", lines: 1 } }) + "\n");
+    });
+    expect(asked).toContain("say hello first");
+    expect(lost).toEqual([]);
+    c.destroy();
+    // Every method it lists, it answers (about a terminal it doesn't have, here).
+    for (const m of HOST_METHODS.filter((m) => m !== "spawn" && m !== "shutdown")) await expect(a.request(m, { id: "nope" })).rejects.toThrow("no such terminal: nope");
+    a.dispose();
   });
 
   it("won't use a host whose code folder is gone (a removed worktree)", async () => {

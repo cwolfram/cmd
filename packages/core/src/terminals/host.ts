@@ -2,9 +2,11 @@
 // local.ts) and serves them to the core over a Unix socket, so they keep running
 // while the core restarts (new code, an update, a crash). The core is its only
 // client; a core that says hello takes over from the previous one. It is kept
-// small and changes rarely on purpose: the core checks HOST_PROTOCOL and replaces
-// a host that speaks another version (its terminals are then resurrected, see
-// restore.ts). Entry point: host-main.ts.
+// small and changes rarely on purpose. It outlives cores, so after an update a new
+// core meets the old host: hello says which protocol each speaks, and the core
+// replaces a host only outside the window both accept (HOST_PROTOCOL, MIN_CORE
+// here, MIN_HOST in remote.ts); its terminals are then resurrected (restore.ts).
+// Entry point: host-main.ts.
 //
 // Newline-delimited JSON. Core → host: { id?, m, p } (no id: no reply). Host →
 // core: { id, r } or { id, e }, and events { ev: "data", t, d } / { ev: "exit", t, c },
@@ -21,14 +23,31 @@ import type { PtyFactory } from "./pty.ts";
 import type { TermSpawn } from "./types.ts";
 
 /**
- * Bump on any change to the messages; a core never talks to a host of another
- * version, it replaces it. Also bumped to replace hosts running a broken build:
- * 2 retires node-pty 1.1.0, which leaked a pseudo-terminal per shell on macOS.
+ * The messages' version. Bump it on any change, additions included (a method,
+ * a field); the core uses an addition only with a host that has it (its
+ * protocol, or `RemoteBackend.has(method)`), so a host of an older build keeps
+ * its terminals. 2 retired node-pty 1.1.0, which leaked a pseudo-terminal per
+ * shell on macOS (MIN_HOST in remote.ts keeps such hosts out); 3: hello says
+ * minCore and methods.
  */
-export const HOST_PROTOCOL = 2;
+export const HOST_PROTOCOL = 3;
+
+/**
+ * The oldest core protocol this host can serve. Raise it only when a core of an
+ * older protocol would misread the host (a message removed or changed); that core
+ * then replaces the host instead.
+ */
+export const MIN_CORE = 2;
+
+/** What the host answers, listed in its hello since protocol 3 (a host of 2 serves all of these). */
+export const HOST_METHODS = ["spawn", "write", "resize", "kill", "process", "snapshot", "read", "reset", "shutdown"] as const;
 
 export interface HostHello {
   protocol: number;
+  /** MIN_CORE; absent from hosts before it existed (they served only their own protocol). */
+  minCore?: number;
+  /** HOST_METHODS; absent from hosts before it existed. */
+  methods?: string[];
   instance: string;
   pid: number;
   /** Epoch ms. */
@@ -114,6 +133,21 @@ export class PtyHost {
 
   #handle(conn: net.Socket, m: string, p: Record<string, unknown>): unknown {
     if (m === "hello") {
+      const hello: HostHello = {
+        protocol: HOST_PROTOCOL,
+        minCore: MIN_CORE,
+        methods: [...HOST_METHODS],
+        instance: this.backend.instance,
+        pid: process.pid,
+        startedAt: STARTED_AT,
+        root: path.resolve(import.meta.dirname, "../../../.."),
+        terms: this.backend.list().map((t) => ({ id: t.id, pid: t.pid, cols: t.cols, rows: t.rows })),
+      };
+      // A core this host can't serve hears the hello but doesn't take the host over: it reads minCore and replaces the host.
+      if (typeof p.protocol === "number" && p.protocol < MIN_CORE) {
+        log.warn(`a core of protocol ${p.protocol} said hello; this host serves ${MIN_CORE} and later`);
+        return hello;
+      }
       if (this.#owner && this.#owner !== conn) {
         log.info("a new core took over");
         // The previous core hears why, so it doesn't take the terminals back.
@@ -122,14 +156,6 @@ export class PtyHost {
       }
       this.#owner = conn;
       clearTimeout(this.#idle);
-      const hello: HostHello = {
-        protocol: HOST_PROTOCOL,
-        instance: this.backend.instance,
-        pid: process.pid,
-        startedAt: STARTED_AT,
-        root: path.resolve(import.meta.dirname, "../../../.."),
-        terms: this.backend.list().map((t) => ({ id: t.id, pid: t.pid, cols: t.cols, rows: t.rows })),
-      };
       log.info("core connected", { terminals: hello.terms.length });
       return hello;
     }

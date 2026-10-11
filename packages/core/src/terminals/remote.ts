@@ -8,10 +8,23 @@ import net from "node:net";
 import path from "node:path";
 import { lineSplitter } from "@cmd/protocol";
 import { ipcPath, logDir, logger, recordCrash } from "@cmd/protocol/node";
-import { HOST_PROTOCOL, type HostHello } from "./host.ts";
+import { HOST_METHODS, HOST_PROTOCOL, type HostHello } from "./host.ts";
 import type { Snapshot, Term, TermBackend, TermSpawn } from "./types.ts";
 
 const log = logger("ptyhost");
+
+/**
+ * The oldest host protocol this core can use. Raise it when the core needs what
+ * older hosts don't have and can't do without, or to retire hosts of a broken
+ * build (2: node-pty 1.1.0 leaked a pseudo-terminal per shell).
+ */
+export const MIN_HOST = 2;
+
+/** Whether this core can use a host that said `hello`: it is new enough for us, and we for it. */
+export function hostCompatible(hello: Pick<HostHello, "protocol" | "minCore">): boolean {
+  // A host from before minCore served only its own protocol.
+  return hello.protocol >= MIN_HOST && (hello.minCore ?? hello.protocol) <= HOST_PROTOCOL;
+}
 
 class RemoteTerm implements Term {
   readonly id: string;
@@ -121,7 +134,7 @@ export class RemoteBackend implements TermBackend {
           const msg = JSON.parse(line) as { id?: number; r?: HostHello; e?: string };
           if (msg.id !== 0) return void early.push(line);
           if (msg.e || !msg.r) return (sock.destroy(), reject(new Error(msg.e ?? "no hello")));
-          if (msg.r.protocol !== HOST_PROTOCOL || hostCodeGone(msg.r.root)) {
+          if (!hostCompatible(msg.r) || hostCodeGone(msg.r.root)) {
             sock.destroy();
             return reject(new HostMismatch(msg.r));
           }
@@ -193,10 +206,16 @@ export class RemoteBackend implements TermBackend {
     this.#onReplaced.push(fn);
   }
 
+  /** Whether the host answers `m`: a host of an older build may not (one of protocol 2 lists none and has them all). */
+  has(m: string): boolean {
+    return (this.hello.methods ?? (HOST_METHODS as readonly string[])).includes(m);
+  }
+
   /** `read` maps the reply as it arrives, before any message after it (a terminal's next output). */
   request(m: string, p: Record<string, unknown>, read?: (r: unknown) => unknown): Promise<unknown> {
     const id = this.#nextId++;
     return new Promise((resolve, reject) => {
+      if (!this.has(m)) return reject(new Error(`the PTY host (protocol ${this.hello.protocol}) has no ${m}`));
       if (!this.#sock.writable) return reject(new Error("the PTY host is gone"));
       this.#pending.set(id, { resolve: read ? (r) => resolve(read(r)) : resolve, reject });
       this.#sock.write(JSON.stringify({ id, m, p }) + "\n");
@@ -279,8 +298,8 @@ export class HostMismatch extends Error {
   readonly hello: HostHello;
   constructor(hello: HostHello) {
     super(
-      hello.protocol !== HOST_PROTOCOL
-        ? `the PTY host (pid ${hello.pid}) speaks protocol ${hello.protocol}, this core ${HOST_PROTOCOL}`
+      !hostCompatible(hello)
+        ? `the PTY host (pid ${hello.pid}) speaks protocol ${hello.protocol} (serves cores from ${hello.minCore ?? hello.protocol}), this core ${HOST_PROTOCOL} (uses hosts from ${MIN_HOST})`
         : `the PTY host (pid ${hello.pid}) runs from ${hello.root}, which is gone`,
     );
     this.hello = hello;
