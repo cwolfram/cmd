@@ -47,8 +47,16 @@ export function workbenchCatalog(repo: string): Plugin {
     }, 150);
   };
 
+  // When the dev server last handled a changed file, and last sent the page an update for
+  // one: scripts/workbench.mjs reads them (/__workbench/hmr) to wait for an edit to land.
+  const hmr = { heard: 0, sent: 0 };
+
   return {
     name: "workbench-catalog",
+    handleHotUpdate({ modules }) {
+      hmr.heard = Date.now();
+      if (modules.length) hmr.sent = hmr.heard;
+    },
     apply: "serve",
     resolveId: (id) => (id === ID ? RESOLVED : undefined),
     async load(id) {
@@ -64,6 +72,7 @@ export function workbenchCatalog(repo: string): Plugin {
     configureServer(server) {
       // The kit is outside the renderer's root: watch it for new story files too.
       server.watcher.add(path.join(repo, "packages/ui/src"));
+      server.middlewares.use("/__workbench/hmr", (_req, res) => (res.setHeader("Content-Type", "application/json"), res.end(JSON.stringify(hmr))));
       for (const ev of ["add", "change", "unlink"] as const) server.watcher.on(ev, (file) => changed(server, file));
     },
   };

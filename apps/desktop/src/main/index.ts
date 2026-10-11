@@ -559,7 +559,7 @@ function openUtility(page: UtilityPage, o: { title: string; width: number; heigh
   });
   utility.set(page, win);
   win.on("closed", () => utility.get(page) === win && utility.delete(page));
-  // `pnpm workbench --headless`: an agent drives it without taking over the screen.
+  // `pnpm workbench --headless`: an agent drives it without taking over the screen (no window, no Dock icon: whenReady).
   win.once("ready-to-show", () => (page !== "workbench" || !process.env.CMD_WORKBENCH_HIDDEN) && win.show());
   const search = at ? `?${page === "workbench" ? "story" : "page"}=${encodeURIComponent(at)}` : "";
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/${page}.html${search}`);
@@ -967,7 +967,7 @@ app.whenReady().then(async () => {
   });
   // First: the window loads its bundle while the menu is built and the core is
   // checked or started; the preload connects once that is done (core-checked).
-  if (workbenchOnly) openWorkbench();
+  if (workbenchOnly) (process.env.CMD_WORKBENCH_HIDDEN && app.dock?.hide(), openWorkbench());
   else workspaces.restore();
   // Decoding and setting it takes ~80 ms on this thread: not while the first window starts (dev builds only).
   if (devIcon) setTimeout(() => app.dock?.setIcon(devIcon), 1000);

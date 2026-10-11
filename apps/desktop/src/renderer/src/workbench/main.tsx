@@ -15,6 +15,14 @@ import { Workbench } from "./Workbench.tsx";
 
 installErrorReporting();
 bootTheme();
+
+// Read by scripts/workbench.mjs, which waits for an edit to reach the window before a shot:
+// when the page last took an update (or loaded), one on its way, and the compile error that stopped one.
+const hmr = document.body.dataset;
+hmr.hmrAt = String(Math.round(performance.timeOrigin));
+import.meta.hot?.on("vite:beforeUpdate", () => (hmr.hmrPending = "1"));
+import.meta.hot?.on("vite:afterUpdate", () => (delete hmr.hmrPending, delete hmr.hmrError, (hmr.hmrAt = String(Date.now()))));
+import.meta.hot?.on("vite:error", (e: { err: { message: string } }) => (delete hmr.hmrPending, (hmr.hmrError = e.err.message)));
 installScrollbars({ always: cmd.scrollBars === "always" });
 installTooltips();
 

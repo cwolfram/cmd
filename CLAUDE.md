@@ -23,7 +23,7 @@ pnpm cmd <args>              # run the CLI from source
 pnpm tokens                  # build packages/ui/tokens/*.tokens.json (DTCG) into tokens.css and tokens.gen.ts; --check fails when stale
 pnpm design-debt             # lower apps/desktop/test/design-debt.json after removing literal colours/sizes from a stylesheet
 pnpm layout-debt             # lower test/layout-debt.json after moving loose files into folders or splitting a long file
-pnpm workbench [target]      # the UI Workbench (docs/48): every component and story in the real app, read from the sources; --headless, ls, goto, shot (--themes all), audit (prototype skill)
+pnpm workbench [target]      # the UI Workbench (docs/48): every component and story in the real app, read from the sources; --headless, ls, goto, shot (--themes all), audit (prototype skill). Start it once per task: it is live (HMR), shot waits for your last edit, and it runs beside typecheck, tests and e2e (dev builds go to apps/desktop/out-dev)
 pnpm release <ver|patch|minor>  # needs the version's CHANGELOG.md section (changelog skill); bump, tag v<ver>, push; CI publishes the GitHub release
 ```
 

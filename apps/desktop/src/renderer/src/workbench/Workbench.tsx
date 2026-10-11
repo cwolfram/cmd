@@ -92,11 +92,28 @@ function useStoryModule(story: StoryInfo | undefined): { mod: StoryModule | null
     let live = true;
     void loaders[story.id]?.().then(
       (m) => live && setGot({ id: story.id, mod: m, error: null }),
-      (e: unknown) => live && setGot({ id: story.id, mod: null, error: e instanceof Error ? e.message : String(e) }),
+      (e: unknown) => void loadError(e).then((error) => live && setGot({ id: story.id, mod: null, error })),
     );
     return () => void (live = false);
   }, [story?.id, story?.file]); // eslint-disable-line react-hooks/exhaustive-deps
   return story && got?.id === story.id ? got : { mod: null, error: null };
+}
+
+/**
+ * Why a story's file didn't load. The browser only says the import failed; the dev server
+ * answers the module's URL with the compile error (in its error page's script), so ask it.
+ */
+async function loadError(e: unknown): Promise<string> {
+  const message = e instanceof Error ? e.message : String(e);
+  const url = /dynamically imported module: (\S+)/.exec(message)?.[1];
+  if (!url) return message;
+  try {
+    const page = await (await fetch(url)).text();
+    const json = /const error = (\{.*\})\s*$/m.exec(page)?.[1];
+    return json ? (JSON.parse(json) as { message: string }).message : message;
+  } catch {
+    return message;
+  }
 }
 
 export function Workbench() {
@@ -137,7 +154,9 @@ export function Workbench() {
     document.body.dataset.ready = ready;
     document.body.dataset.variants = names.join(",");
     document.body.dataset.mount = params.mount ?? "";
-  }, [ready, names.join(), params.mount, params.story, params.component]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (error) document.body.dataset.loadError = error;
+    else delete document.body.dataset.loadError;
+  }, [ready, error, names.join(), params.mount, params.story, params.component]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="wb" data-backdrop={params.backdrop === "window" ? "window" : undefined}>
@@ -177,7 +196,7 @@ export function Workbench() {
             <article className="wb-page">
               <Head title={story.title} file={story.file} doc={story.doc} />
               <Callout tone="danger" title="This story's file didn't load">
-                {error} The dev server's output says why (an import that isn't there, a syntax error).
+                <pre className="wb-error">{error}</pre>
               </Callout>
             </article>
           ) : !story ? (

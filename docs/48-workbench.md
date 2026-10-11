@@ -75,7 +75,8 @@ The window becomes the gallery's layout, built from the kit (`Split`, `List`, `V
 
 - **`ls [--json]`:** components, stories, variants, and coverage, so agents stop guessing ids.
 - **`shot --themes all`:** one image of themes mode, replacing the Python contact-sheet snippet in the prototype skill.
-- **`--headless`:** the window isn't shown (`show: false`), so an agent can run the UI Workbench without taking over the user's screen; several can run at once (each already picks a free DevTools port).
+- **`--headless`:** the window isn't shown (`show: false`) and the app leaves the Dock, so an agent can run the UI Workbench without taking over the user's screen; several can run at once (each already picks a free DevTools port).
+- **Stays up for the whole task** (built later): dev builds go to `apps/desktop/out-dev` (`scripts/dev-electron.mjs`), so typecheck, tests, `pnpm e2e` and `pnpm build` run beside it; before every `goto`/`shot` the script waits until the window has the newest edit to the renderer or the kit (the catalog plugin's `/__workbench/hmr` says when the dev server handled a change and sent an update, the page when it took one), and a shot after an edit that doesn't compile prints the compiler's error. Agents used to stop and restart it every round, with a `sleep` after each edit.
 - **A clear "the UI Workbench isn't running" error** when `workbench.json` is missing or stale, instead of ENOENT or a CDP connection error.
 - `goto`, `shot`, `matrix`, `audit`, `eval`, `stop` stay; their targets and theme lists come from the catalog and the registry.
 

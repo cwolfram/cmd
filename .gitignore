@@ -1,6 +1,7 @@
 node_modules/
 dist/
 out/
+out-dev/
 .cmd-dev*
 *.log
 .DS_Store

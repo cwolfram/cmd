@@ -12,7 +12,7 @@ const root = path.join(import.meta.dirname, "..");
 const BASELINE = path.join(import.meta.dirname, "layout-debt.json");
 const LONG = 600;
 const SOURCE = /\.(ts|tsx|mjs|js)$/;
-const SKIP = new Set(["node_modules", "test", "build", "dist", "out"]);
+const SKIP = new Set(["node_modules", "test", "build", "dist", "out", "out-dev"]);
 
 /** The files directly in a folder, or its entries of every kind. */
 const flat = (dir: string) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).filter((e) => e.isFile() && SOURCE.test(e.name)).map((e) => e.name);

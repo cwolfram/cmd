@@ -61,7 +61,7 @@ const packageOf = (rel: string) => Object.values(PACKAGES).find((p) => rel.start
 /** Shipped code: under a package's src/ (tests, configs and scripts are not). */
 const shipped = (rel: string) => /^(packages|apps)\/[^/]+\/src\//.test(rel) && !/\.(test|story)\.tsx?$/.test(rel);
 
-const SKIP = new Set(["node_modules", "out", "dist", "build", "native"]);
+const SKIP = new Set(["node_modules", "out", "out-dev", "dist", "build", "native"]);
 function files(dir: string, out: string[] = []): string[] {
   if (!fs.existsSync(path.join(root, dir))) return out;
   for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {

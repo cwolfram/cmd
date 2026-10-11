@@ -18,7 +18,9 @@ pnpm workbench <target>                 # run in the background; it stays in the
 pnpm workbench <target> --headless      # the same without showing the window: for your own checks
 ```
 
-It starts `electron-vite dev` on its own instance (`.cmd-dev/workbench`, or `$CMD_WORKBENCH_HOME`: own core, settings, no API keys) with the DevTools port open, and opens the UI Workbench instead of the app window. Wait until it answers before driving it (`pnpm workbench goto <target>` succeeds). `pnpm workbench stop` quits it with its core and PTY host; closing its window quits it too. **Give the user's window and your headless one different `CMD_WORKBENCH_HOME`s**: stopping or restarting one instance never touches another.
+It starts `electron-vite dev` on its own instance (`.cmd-dev/workbench`, or `$CMD_WORKBENCH_HOME`: own core, settings, no API keys) with the DevTools port open, and opens the UI Workbench instead of the app window (headless: no window and no Dock icon). Wait until it answers before driving it (`pnpm workbench goto <target>` succeeds). `pnpm workbench stop` quits it with its core and PTY host; closing its window quits it too. **Give the user's window and your headless one different `CMD_WORKBENCH_HOME`s**: stopping or restarting one instance never touches another.
+
+**Start it once and keep it running for the whole task.** It is live: every edit to a component, story, stylesheet or the kit reaches the window by HMR, and `goto`/`shot` first wait until the window has your last edit (no `sleep` after an edit). It builds into `apps/desktop/out-dev`, not `out/`, so `pnpm typecheck`, `pnpm test`, `pnpm e2e`, `pnpm build` and commits all run beside it: never stop it (or `rm -rf apps/desktop/out`) for a check or a commit. Restart it only after editing main, the preload or the catalog's extractor (`catalog/extract.ts`), or when `goto` says it isn't running.
 
 A target is a story, by its path (`shell/feedback`, `ui/overlay`; the old file-name ids like `feedback` still work), or a component (`ui/Button`). `pnpm workbench ls` lists them all, read from the sources (no window needed); `--json` for the whole catalog.
 
@@ -57,7 +59,7 @@ Stories stay in the repo after the work: they are the component's spec, and the 
 
 1. Write or update the story, and point the window at it: `pnpm workbench goto <target> [variant] [--theme id]`.
 2. Edit the component or the kit. HMR updates the user's window.
-3. Look before you report: `pnpm workbench shot <target> <variant> --theme <id>`, then Read the PNG. Say what you changed and what you see, in a line or two.
+3. Look before you report: `pnpm workbench shot <target> <variant> --theme <id>` right after the edit, then Read the PNG. Say what you changed and what you see, in a line or two. An edit that doesn't compile comes back from `shot` with the compiler's error (and the shot is of the code before it); fix it and shoot again, no restart.
 4. The user reacts to the window ("more air", "the borders don't connect", "Save buttons feel retro"). Expect several rounds per piece, and keep each round small and fast.
 5. Commit on the branch when a round lands.
 
@@ -82,7 +84,7 @@ pnpm workbench stop
 - **zsh doesn't split `$var`**: `for s in "feedback Filled"; do pnpm workbench shot $s` passes one argument. Write the arguments out, or use `${=s}`.
 - `eval` is for interactions and measurements: paste a key, hover a link, read a computed colour (`getComputedStyle(el).boxShadow`), or list page errors. `globalThis.workbenchCatalog` is the catalog, `workbenchAudit()` the audit.
 - Change the instance's settings live by writing `<instance>/settings.json` (window radius, outline, shadow, theme); write `{}` to reset.
-- Editing the catalog's extractor (`catalog/extract.ts`) needs a restart; components and stories update live.
+- Editing the catalog's extractor (`catalog/extract.ts`), main or the preload needs a restart; components, stories, stylesheets and the kit update live, and every command waits for them.
 
 Zoom into joins and edges with `Image.NEAREST` upscaling (Pillow) when the question is about single pixels.
 

@@ -25,7 +25,7 @@ One Node major runs everything: Electron's, which runs the packaged core. `.node
 
 ```sh
 pnpm install
-pnpm dev                     # Electron with HMR; starts a core if none is running
+pnpm dev                     # Electron with HMR; starts a core if none is running (builds into apps/desktop/out-dev; pnpm build, e2e and dist use out/)
 pnpm test                    # vitest: the unit project, then the system one (--project unit|system)
 pnpm typecheck
 pnpm e2e                     # build if stale, drive the app via Playwright in 3 shards; E2E_SHOTS=1 for screenshots in .cmd-dev/shots

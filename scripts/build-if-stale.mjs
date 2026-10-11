@@ -36,7 +36,9 @@ const newer = sources.find((f) => {
   }
 });
 
-if (newer) {
-  console.log(`building (${oldestOut ? `${newer} changed` : "no build yet"})`);
+// A dev run used to write main and preload into out/ without a renderer (dev now uses out-dev).
+const partial = oldestOut && !fs.existsSync(path.join(out, "renderer/index.html"));
+if (newer || partial) {
+  console.log(`building (${partial ? "out/ has no renderer" : oldestOut ? `${newer} changed` : "no build yet"})`);
   execFileSync("pnpm", ["build"], { cwd: root, stdio: "inherit" });
 } else console.log("build is up to date");
