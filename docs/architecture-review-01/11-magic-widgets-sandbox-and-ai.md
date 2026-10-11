@@ -53,7 +53,7 @@ A Magic widget is a folder under `$CMD_HOME/widgets/<id>/` (`widgets/store.ts`, 
 
 ### AR1-11-02 · Scope the widgets socket by the identity it already checks
 
-- **Status:** in progress (widget-tokens)
+- **Status:** done (widget-tokens branch)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1360-1372`, `packages/core/src/data/widgets.ts:20-46`, `packages/core/src/widgets/deno.ts:154-170`, `packages/core/src/magic/service.ts:596-597`
@@ -65,10 +65,13 @@ A Magic widget is a folder under `$CMD_HOME/widgets/<id>/` (`widgets/store.ts`, 
 **Proposal.** Build the C4 policy as docs/28 describes, starting with the widget row. The identity forces `workspaceId` (or requires a granted `events: "all-workspaces"`), restricts types to a declared and granted list (`events: ["command", "agent.*"]`), excludes `transcript.*`, `ai.*`, `user.*` and `remote.*` unless granted, and never returns content. Issue a token only when the manifest declares `events`. Delete it when `runData` settles. Put the policy in the query layer so the remote client (doc 12) and agents use the same table. The data layer's own design is doc 06's scope; this issue is the widget row and the token lifecycle.
 
 **Success criteria.**
-- [ ] A test: a widget in workspace A queries without `workspaceId` and gets only A's events; asking for `transcript.message` without a grant throws.
-- [ ] A widget whose manifest has no `events` gets no `CMD_WIDGET_TOKEN` in its env (test on `denoRunArgs`/`runData` options).
-- [ ] `widgetTokens.check(token)` returns null right after the run that got it finished (test).
-- [ ] `packages/core/src/data/policy.ts` exists and `#widgetCall` routes through it.
+- [x] A test: a widget in workspace A queries without `workspaceId` and gets only A's events; asking for `transcript.message` without a grant throws.
+- [x] A widget whose manifest has no `events` gets no `CMD_WIDGET_TOKEN` in its env (test on `denoRunArgs`/`runData` options).
+- [x] `widgetTokens.check(token)` returns null right after the run that got it finished (test).
+- [x] `packages/core/src/data/policy.ts` exists and `#widgetCall` routes through it.
+
+**Progress (2026-10-11).** Most of it landed with AR1-06-05 (317c7afa): `data/policy.ts`, the token's workspace forced on every query, classes readable only when the manifest declares them, rows cut to the table's fields (`widget-data-policy.test.ts`). Left was the token's life: `runSocket` (data/widgets.ts) gives a data.ts run the widgets socket and a token only when its manifest declares `events`, and its `done()` (in a `finally` around `runData`) revokes the token (`WidgetTokens.revoke`) when the run settles. Test in `widget-data-policy.test.ts`. The grant side (a person granting `events`, not the model's manifest) is AR1-11-01.
+
 
 ### AR1-11-03 · Close the network in the sandbox profile and the agent's `fetch`
 

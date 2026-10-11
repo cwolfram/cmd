@@ -45,6 +45,7 @@ import type { Previewer } from "../widgets/preview.ts";
 import { WidgetSecrets } from "../widgets/secrets.ts";
 import type { VerifyContext } from "../widgets/verify.ts";
 import type { CoreContext } from "../kernel/context.ts";
+import { runSocket, type WidgetTokens } from "../data/widgets.ts";
 
 const log = logger("magic");
 
@@ -65,8 +66,8 @@ export interface WidgetNotification {
 }
 
 export interface MagicServiceOptions {
-  /** The core's widgets socket and a token per data.ts run, so widgets can read the event log (docs/28 §4). */
-  widgetSocket?: { path: string; token: (widgetId: string, workspaceId: string | null, events: string[]) => string } | null;
+  /** The core's widgets socket and the tokens of data.ts runs, so widgets that declare `events` can read the event log (docs/28 §4). */
+  widgetSocket?: { path: string; tokens: Pick<WidgetTokens, "issue" | "revoke"> } | null;
   windows: MagicWindows;
   settings: () => Settings;
   /** Show a widget's notification (data.ts notify()). */
@@ -654,7 +655,8 @@ export class MagicService {
     else {
       const secrets = this.widgetSecrets.get(s.widgetId!);
       const sock = this.#o.widgetSocket;
-      const r = await runData(this.store.dir(s.widgetId!), m.manifest, { ...deno, cwd: this.#cwd(w), config: { ...configValues(m.manifest, s.config), ...secrets }, socket: sock ? { path: sock.path, token: sock.token(s.widgetId!, w.workspaceId ?? null, m.manifest.permissions.events) } : null });
+      const run = runSocket(sock?.tokens ?? { issue: () => "", revoke: () => {} }, sock?.path ?? null, { widgetId: s.widgetId!, workspaceId: w.workspaceId ?? null, events: m.manifest.permissions.events });
+      const r = await runData(this.store.dir(s.widgetId!), m.manifest, { ...deno, cwd: this.#cwd(w), config: { ...configValues(m.manifest, s.config), ...secrets }, socket: run.socket }).finally(run.done);
       ok = r.ok;
       data = r.data;
       retryAfter = r.retryAfter;
@@ -929,7 +931,7 @@ export function createMagic(
   o: Pick<MagicServiceOptions, "backend" | "stateDir" | "deno" | "installDeno"> & { widgetSocket: string | null },
 ): MagicService {
   return new MagicService({
-    widgetSocket: o.widgetSocket ? { path: o.widgetSocket, token: (widgetId, workspaceId, events) => core.widgetTokens.issue({ widgetId, workspaceId, events }) } : null,
+    widgetSocket: o.widgetSocket ? { path: o.widgetSocket, tokens: core.widgetTokens } : null,
     windows: core.windows,
     settings: () => core.settings.settings,
     ai: core.ai,

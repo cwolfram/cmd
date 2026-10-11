@@ -10,7 +10,7 @@ import { connect } from "@cmd/protocol/node";
 import type { DataEvent, NewDataEvent } from "@cmd/protocol";
 import { Core, widgetsSocketPath } from "../src/kernel/core.ts";
 import { POLICY, clampQuery } from "../src/data/policy.ts";
-import { widgetQuery } from "../src/data/widgets.ts";
+import { runSocket, widgetQuery, WidgetTokens } from "../src/data/widgets.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 
@@ -138,5 +138,16 @@ describe("the widget data policy", () => {
     expect(q.types).not.toContain("transcript.");
     expect(q.types).not.toContain("agent.");
     expect(clampQuery({ kind: "widget", workspaceId: "A", declared: [] }, { limit: -5 }, { fallback: 200, max: 1000 }).limit).toBe(1);
+  });
+
+  it("gives a run a token only when its manifest declares events, and takes it back when the run ends", () => {
+    const tokens = new WidgetTokens();
+    const none = runSocket(tokens, "/tmp/widgets.sock", { widgetId: "w", workspaceId: "s", events: [] });
+    expect(none.socket).toBeNull();
+    const run = runSocket(tokens, "/tmp/widgets.sock", { widgetId: "w", workspaceId: "s", events: ["commands"] });
+    expect(run.socket?.path).toBe("/tmp/widgets.sock");
+    expect(tokens.check(run.socket!.token)).toMatchObject({ widgetId: "w", workspaceId: "s" });
+    run.done();
+    expect(tokens.check(run.socket!.token)).toBeNull();
   });
 });

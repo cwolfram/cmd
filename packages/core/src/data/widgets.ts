@@ -1,9 +1,10 @@
 // Widgets reading the event log (docs/28 §4, scenario S6): a widget's data.ts
 // talks to the core over its own socket (widgets.sock), says which widget it
 // is with a token issued for that run, and may then query events, read-only,
-// within the policy (policy.ts). Tokens are short-lived and single-run; the
-// token says the widget, its workspace and the classes its manifest declares,
-// which is all the policy needs: nothing the widget passes in a query widens it.
+// within the policy (policy.ts). Only a widget whose manifest declares `events`
+// gets one, and it's revoked when the run ends; the token says the widget, its
+// workspace and the classes its manifest declares, which is all the policy needs:
+// nothing the widget passes in a query widens it.
 
 import { randomBytes } from "node:crypto";
 import type { DataEvent, DataQuery } from "@cmd/protocol";
@@ -19,6 +20,16 @@ export interface WidgetIdentity {
 /** Most rows one query may return a widget. */
 export const WIDGET_QUERY_LIMIT = 1000;
 
+/**
+ * The widgets socket for one run of a widget's data.ts: none for a manifest that
+ * declares no `events` (it has nothing to read), else a token, which `done()` revokes.
+ */
+export function runSocket(tokens: Pick<WidgetTokens, "issue" | "revoke">, path: string | null, id: WidgetIdentity): { socket: { path: string; token: string } | null; done: () => void } {
+  if (!path || !id.events.length) return { socket: null, done: () => {} };
+  const token = tokens.issue(id);
+  return { socket: { path, token }, done: () => tokens.revoke(token) };
+}
+
 export class WidgetTokens {
   #tokens = new Map<string, WidgetIdentity & { expires: number }>();
 
@@ -28,6 +39,11 @@ export class WidgetTokens {
     const token = randomBytes(24).toString("base64url");
     this.#tokens.set(token, { ...id, expires: Date.now() + ttlMs });
     return token;
+  }
+
+  /** A run is over: its token stops working at once, not when it would have expired. */
+  revoke(token: string): void {
+    this.#tokens.delete(token);
   }
 
   /** The widget behind a token, or null for an unknown or expired one. */
