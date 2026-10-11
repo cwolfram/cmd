@@ -241,7 +241,7 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 
 ### AR1-06-10 · Mint event ids in one place and refuse cross-type upserts
 
-- **Status:** done (data-cleanups branch)
+- **Status:** done (8a526d5d)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/data/store.ts:182-201`, `packages/core/src/data/views/activity.ts:103`, `packages/core/src/core.ts:379,519,638,656`, `apps/desktop/src/renderer/src/App.tsx:555`
@@ -281,7 +281,7 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 
 ### AR1-06-12 · Flag imported events as redacted when the worker redacted them
 
-- **Status:** done (data-cleanups branch)
+- **Status:** done (8a526d5d)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/src/data/service.ts:174-190`, `packages/core/src/data/sources/ingest-worker.ts:81`
