@@ -158,7 +158,7 @@ Answers to this review's questions, in brief:
 
 ### AR1-14-07 · Write down the package graph and fix the five places that bend it
 
-- **Status:** in progress (gates)
+- **Status:** done (gates branch)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/package.json` (devDependencies), `packages/core/src/widgets/preview.ts:146-152`, `apps/desktop/package.json` (`@codemirror/theme-one-dark`), `packages/cli/src/main.ts:11-13`, `packages/core/test/remote.test.ts`, `apps/desktop/src/renderer/src/keybindings.ts:6`
@@ -186,10 +186,12 @@ Doc 13 owns the gate. This issue defines what the gate enforces.
 Then: declare `playwright` as an optional peer dependency of core (`peerDependenciesMeta`) or pass the previewer in from the CLI; move `@strudel/*` to the root `devDependencies` next to `scripts/jam`; drop `@codemirror/theme-one-dark`; make the CLI's heavy subcommands `await import()` on dispatch; move the four shared types to `desktop/src/shared/`. On the question "should `@cmd/cli` depend on `@cmd/core`": yes, for offline commands (Magic builds, fixtures), but only through subpath exports and lazily.
 
 **Success criteria.**
-- [ ] A dependency-cruiser (or equivalent) config with the rules above exists and passes.
-- [ ] `cmd --version` loads no file under `packages/core/` (same load counter).
-- [ ] `grep -n "strudel" packages/core/package.json` and `grep -n "theme-one-dark" apps/desktop/package.json` return nothing.
-- [ ] `grep -rln "from \"\.\./.*main/" apps/desktop/src/renderer` returns nothing.
+- [x] A dependency-cruiser (or equivalent) config with the rules above exists and passes.
+- [x] `cmd --version` loads no file under `packages/core/` (same load counter).
+- [x] `grep -n "strudel" packages/core/package.json` and `grep -n "theme-one-dark" apps/desktop/package.json` return nothing.
+- [x] `grep -rln "from \"\.\./.*main/" apps/desktop/src/renderer` returns nothing.
+
+**Progress (2026-10-11).** The graph is `ALLOWED` in `test/imports.test.ts` (AR1-13-02) instead of dependency-cruiser. The bends: `playwright` is core's optional peer (`peerDependenciesMeta`); the `@strudel/*` devDependencies moved to the root's, beside `scripts/jam`; `@codemirror/theme-one-dark` is gone; the CLI loads `magic.ts`, `widget.ts` and the core's activity view and fixtures only for the commands that use them, so `cmd help` and a hook load 33 files instead of 74 and none of the core's (there is no `cmd --version`; measured on `cmd help` and `cmd hook`), 60 ms instead of 86; the renderer's types from `main/` (and `ASKED`, a value) live in `apps/desktop/src/shared/ipc.ts`, main re-exports them. Left in the baseline: the two core tests that import the relay (`remote.test.ts`, `snapshot-order.test.ts`); moving them to `apps/relay/test` would only trade that for a relative reach into core.
 
 ### AR1-14-08 · Decide what Windows is, and make the docs and installer say it
 

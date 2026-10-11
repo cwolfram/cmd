@@ -53,7 +53,7 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 
 ### AR1-13-02 · Add architecture fitness tests in the style of design-css.test.ts
 
-- **Status:** in progress (gates)
+- **Status:** done (gates branch)
 - **Severity:** medium
 - **Effort:** M (1–2 days)
 - **Where:** `vitest.config.ts:5`, `apps/desktop/test/design-css.test.ts:1-88`, `scripts/evals/journal.ts:19-34`, `apps/desktop/src/renderer/src/bridge.ts:2`, `apps/desktop/src/renderer/src/keybindings.ts:6`
@@ -68,10 +68,12 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 3. `registries.test.ts`: every `Methods` key has a handler and a CLI or renderer caller; every `WindowType` registered in core has a renderer view; every command id with a shortcut is a menu item (extend `commands.test.ts`).
 
 **Success criteria.**
-- [ ] The three test files exist and pass in `pnpm test`, adding under 1 s to the suite
-- [ ] Adding `import { Core } from "@cmd/core"` to any renderer file fails `imports.test.ts`
-- [ ] Adding a line to a file already over 600 lines fails `file-size.test.ts`, and splitting it fails until the baseline is lowered
-- [ ] A `Methods` entry without a handler or caller fails `registries.test.ts`
+- [x] The three test files exist and pass in `pnpm test`, adding under 1 s to the suite
+- [x] Adding `import { Core } from "@cmd/core"` to any renderer file fails `imports.test.ts`
+- [x] Adding a line to a file already over 600 lines fails `file-size.test.ts`, and splitting it fails until the baseline is lowered
+- [x] A `Methods` entry without a handler or caller fails `registries.test.ts`
+
+**Progress (2026-10-11).** In the root `test/` (vitest's `include` has it), no new dependency: `imports.test.ts` reads every import and re-export with a regex, resolves relative paths to the part of the repo they land in, and checks shipped code against `ALLOWED` (types allowed separately), plus three rules for every file: a package never imports an app, one package reaches another only through `@cmd/x` and its exports (the repo's own scripts/, e2e/ and test/ aren't packages and may), and no `@cmd/x/src/…`. Its baseline is a list of the breaks left, `imports-debt.json` (28 today: core tests importing the relay, cross-package test helpers, the Workbench catalog's node: imports in the renderer, `shared/app-url.ts`'s node: imports). The file sizes were already `layout.test.ts`'s (AR1-17-01); it now also locks each long file's lines. `registries.test.ts`: every method has a caller (all 147 do today, so no baseline), every core window type a renderer view. All three run in about 0.15 s; `pnpm layout-debt` updates both baselines. Each box was checked by breaking it: a renderer `import { Core } from "@cmd/core"`, a line added to `tracker.ts`, a `core.unused` method.
 
 ### AR1-13-03 · Give the renderer a component test layer
 
