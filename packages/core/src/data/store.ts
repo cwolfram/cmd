@@ -185,7 +185,7 @@ export class DataStore {
    * identities fill in what was null, `seq` stays. Returns the row's seq and
    * whether it was new.
    */
-  record(e: StoreEvent): { seq: number; inserted: boolean } {
+  record(e: StoreEvent): { seq: number; inserted: boolean; changed: boolean } {
     const raw = e.content == null ? null : typeof e.content === "string" ? Buffer.from(e.content, "utf8") : e.content;
     const blob = raw ? hashOf(raw) : null;
     const data = JSON.stringify(e.data ?? null);
@@ -197,7 +197,7 @@ export class DataStore {
     }
     // Handed in again with nothing new (a transcript read again, an archived copy): nothing written, not even
     // the blob's count. Every row written is a page in the WAL, and a re-read of the whole log churned gigabytes.
-    if (before && unchanged(before, e, data, blob)) return { seq: before.seq, inserted: false };
+    if (before && unchanged(before, e, data, blob)) return { seq: before.seq, inserted: false, changed: false };
     if (raw) this.#storeBlob(raw, blob!);
     const sameText = !!before && before.text === (e.text ?? null) && before.blob === blob;
     const r = before ? this.#update(before.seq, e, data, blob) : this.#stmt(
@@ -212,7 +212,7 @@ export class DataStore {
       if (before) this.#ftsDelete(before.seq);
       if (e.text || e.body) this.#ftsInsert(r.seq, e.text ?? null, e.body ?? null, ftsKind(e.type, e.sessionId ?? before?.session_id));
     }
-    return { seq: r.seq, inserted: !before };
+    return { seq: r.seq, inserted: !before, changed: true };
   }
 
   /**

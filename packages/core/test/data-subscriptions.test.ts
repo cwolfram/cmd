@@ -60,6 +60,27 @@ describe("data subscriptions", () => {
     expect(received.filter((e) => e.id === id).flatMap((e) => e.events as DataEvent[]).length).toBe(2);
   });
 
+  it("sends nothing for an event recorded again unchanged (a window's visit)", async () => {
+    const { id } = await conn.client.call("data.subscribe", { query: { types: ["browser.visit"] } });
+    const visit = { id: "visit:w1:1", at: 40, type: "browser.visit", source: "browser", windowId: "w1", text: "Docs", data: { url: "https://example.com/", title: "Docs", windowId: "w1" } } as const;
+    core.data.record(visit);
+    core.data.record(visit);
+    await settle();
+    core.data.record(visit);
+    await settle();
+    expect(received.filter((e) => e.id === id).flatMap((e) => e.events.map((x: DataEvent) => x.id))).toEqual(["visit:w1:1"]);
+  });
+
+  it("says when a burst was too big for one message, and sends the query's result instead", async () => {
+    const { id } = await conn.client.call("data.subscribe", { query: { types: ["note"], at: [1000, 2000], limit: 50 } });
+    core.data.recordAll(Array.from({ length: 600 }, (_, i) => ({ id: `burst-${i}`, at: 1000 + i, type: "note", source: "cmd", text: `n${i}`, data: { by: "user", agentSession: null } }) as const));
+    await settle();
+    const mine = received.filter((e) => e.id === id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ reset: true, truncated: true });
+    expect(mine[0]!.events).toHaveLength(50);
+  });
+
   it("matches full text too", async () => {
     const { id } = await conn.client.call("data.subscribe", { query: { types: ["note"], text: "quokka" } });
     core.data.record({ id: "n3", at: 30, type: "note", source: "cmd", text: "a quokka appeared", body: "a quokka appeared", data: { by: "user", agentSession: null } });

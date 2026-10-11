@@ -7,7 +7,7 @@
 import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
-import type { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { DATA_CLASSES, DATA_FLAGS, classOf, type DataClass, type DataClassInfo, type DataEvent, type DataQuery, type DataStats, type NewDataEvent, type Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
@@ -176,10 +176,10 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
     const cap = DATA_CLASSES[c].cap;
     if (cap && typeof content === "string" && content.length > cap) (content = content.slice(0, cap)), (flags |= DATA_FLAGS.cut);
     const stored: StoreEvent = { ...e, text, body, data, content, flags };
-    const { seq } = this.store.record(stored);
+    const { seq, changed } = this.store.record(stored);
     this.#entities(e);
     const ev = this.store.get(e.id) ?? ({ ...stored, seq } as unknown as DataEvent);
-    this.emit("recorded", ev);
+    if (changed) this.emit("recorded", ev); // the same again (a window's visit re-recorded) is no news
     return ev;
   }
 
@@ -188,15 +188,19 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
     return this.recordBatch(events).length;
   }
 
-  /** Whether an event's words match a full-text expression (for subscriptions with `text`). */
-  textMatches(seq: number, expression: string): boolean {
+  /** Which of these events' words match a full-text expression (for subscriptions with `text`): one query per batch. */
+  textMatching(seqs: number[], expression: string): Set<number> {
+    if (!seqs.length) return new Set();
     try {
-      // Not `rowid = ? AND MATCH`: on a contentless table FTS5 takes the rowid lookup and can't check the match, so it says yes to everything.
-      return !!this.store.db.prepare(`SELECT 1 WHERE ? IN (SELECT rowid FROM events_fts WHERE events_fts MATCH ?)`).get(seq, this.store.textExpression(expression));
+      // Not `rowid IN (…) AND MATCH`: on a contentless table FTS5 takes the rowid lookup and can't check the match, so it says yes to everything.
+      this.#textStmt ??= this.store.db.prepare(`SELECT value AS seq FROM json_each(?) WHERE value IN (SELECT rowid FROM events_fts WHERE events_fts MATCH ?)`);
+      const rows = this.#textStmt.all(JSON.stringify(seqs), this.store.textExpression(expression)) as { seq: number }[];
+      return new Set(rows.map((r) => r.seq));
     } catch {
-      return false;
+      return new Set();
     }
   }
+  #textStmt: StatementSync | null = null;
 
   /**
    * Like recordAll, returning the events that are new to the log (for views fed from a batch).

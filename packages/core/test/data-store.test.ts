@@ -29,11 +29,11 @@ describe("DataStore", () => {
     const hits = () => (s.db.prepare(`SELECT COUNT(*) AS n FROM events_fts WHERE events_fts MATCH 'flaky'`).get() as { n: number }).n;
     expect(s.record(e).inserted).toBe(true);
     const [c0, h0] = [changes(), hits()];
-    expect(s.record({ ...e })).toEqual({ seq: 1, inserted: false });
+    expect(s.record({ ...e })).toEqual({ seq: 1, inserted: false, changed: false });
     expect(changes()).toBe(c0); // not a row written, the blob's count included
     expect(hits()).toBe(h0);
     // Something new: the span grows, an identity fills in, the index follows the text.
-    expect(s.record({ ...e, until: 30, agentId: "ag" })).toEqual({ seq: 1, inserted: false });
+    expect(s.record({ ...e, until: 30, agentId: "ag" })).toEqual({ seq: 1, inserted: false, changed: true });
     expect(s.query({})[0]).toMatchObject({ until: 30, agentId: "ag" });
     s.record({ ...e, text: "the steady test", body: "the steady test raced" });
     expect(hits()).toBe(0);

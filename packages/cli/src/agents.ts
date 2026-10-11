@@ -5,9 +5,10 @@
 
 import fs from "node:fs";
 import os from "node:os";
-import type { ActivityEvent, Agent, AgentTurn, Pane, TurnRow } from "@cmd/protocol";
+import type { ActivityEvent, Agent, AgentTurn, DataEvent, Pane, TurnRow } from "@cmd/protocol";
 import { ENV, matchAgents } from "@cmd/protocol";
 import type { Connection } from "@cmd/protocol/node";
+import { readAfter } from "./data.ts";
 // The core's activity view and fixtures load when a command needs them, not with every `cmd`.
 const activityView = () => import("@cmd/core/activity/view");
 const fixtures = () => import("@cmd/core/activity/fixture");
@@ -112,11 +113,16 @@ export async function agentsCommand(client: Client, closed: Promise<void>, pos: 
       evs.forEach(print);
       if (!opt.follow) return 0;
       // A live query over the log: the agent's (or pane's) hook events and the core's notes, as they're recorded.
-      const { id } = await client.call("data.subscribe", { query: { types: ACTIVITY, agentId: t.agentId, paneId: t.agentId ? undefined : t.paneId, limit: 1 } });
+      const query = { types: ACTIVITY, agentId: t.agentId, paneId: t.agentId ? undefined : t.paneId };
+      const { id, events: now } = await client.call("data.subscribe", { query: { ...query, limit: 1 } });
       const { toActivity } = await activityView();
+      let last = now.at(-1)?.seq ?? 0;
+      const show = (d: DataEvent) => ((last = Math.max(last, d.seq)), print(toActivity(d, !!opt.raw)));
       client.onEvent((e) => {
-        if (e.type !== "data.changed" || e.id !== id || e.reset) return; // reset: some were forgotten, the rest printed already
-        for (const d of e.events) print(toActivity(d, !!opt.raw));
+        if (e.type !== "data.changed" || e.id !== id) return;
+        if (e.truncated) return void readAfter(client, { ...query, after: last }, show); // a burst: the rest by seq
+        if (e.reset) return; // some were forgotten, the rest printed already
+        e.events.forEach(show);
       });
       await client.call("events.subscribe", { types: ["data.changed"] });
       await closed;

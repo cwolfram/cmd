@@ -63,6 +63,17 @@ function queryOf(opt: Record<string, unknown>): DataQuery {
 
 const line = (e: DataEvent) => `${when(e.at)}  ${e.type.padEnd(18)} ${e.projectId ? tilde(e.projectId.slice(4)).split("/").pop()!.padEnd(16) : " ".repeat(16)} ${(e.text ?? "").replace(/\s+/g, " ").slice(0, 100)}`;
 
+/** A follower's catch-up after a data.changed said it was cut (truncated): every event after `query.after`, in pages, by seq. */
+export async function readAfter(client: Client, query: DataQuery, print: (e: DataEvent) => void): Promise<void> {
+  let after = query.after ?? 0;
+  for (;;) {
+    const page = await client.call("data.query", { query: { ...query, after, by: "seq", order: "asc", limit: 1000 } });
+    page.forEach(print);
+    if (page.length < 1000) return;
+    after = page.at(-1)!.seq;
+  }
+}
+
 export async function dataCommand(client: Client, pos: string[], opt: Record<string, unknown>): Promise<number> {
   const [sub, ...rest] = pos;
   const json = !!opt.json;
@@ -173,10 +184,14 @@ export async function dataCommand(client: Client, pos: string[], opt: Record<str
       }
       // The newest 50 first (by when they happened, oldest of them on top), then what's recorded.
       const { id, events } = await client.call("data.subscribe", { query: { limit: 50, ...queryOf(opt), by: "time", order: "desc" } });
-      for (const e of events.reverse()) console.log(json ? JSON.stringify(e) : line(e));
+      let last = 0;
+      const print = (e: DataEvent) => ((last = Math.max(last, e.seq)), console.log(json ? JSON.stringify(e) : line(e)));
+      events.reverse().forEach(print);
       client.onEvent((e) => {
-        if (e.type !== "data.changed" || e.id !== id || e.reset) return; // reset: some were forgotten, the rest printed already
-        for (const ev of e.events) console.log(json ? JSON.stringify(ev) : line(ev));
+        if (e.type !== "data.changed" || e.id !== id) return;
+        if (e.truncated) return void readAfter(client, { ...queryOf(opt), after: last }, print); // a burst: the rest by seq
+        if (e.reset) return; // some were forgotten, the rest printed already
+        e.events.forEach(print);
       });
       await client.call("events.subscribe", { types: ["data.changed"] });
       await new Promise(() => {}); // until Ctrl-C

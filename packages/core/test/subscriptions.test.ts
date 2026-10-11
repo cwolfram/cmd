@@ -20,7 +20,7 @@ function setup() {
   const sent: [Connection, CoreEvent][] = [];
   const rows = [session("s1"), session("s2")];
   const subs = new Subscriptions({
-    data: { textMatches: () => true } as never,
+    data: { textMatching: (seqs: number[]) => new Set(seqs), query: () => [event(1, "note")] } as never,
     sessions: { list: () => rows } as never,
     agents: {} as never,
     workspaces: { of: () => "w" } as never,
@@ -33,6 +33,16 @@ function setup() {
 afterEach(() => vi.useRealTimers());
 
 describe("subscriptions", () => {
+  it("say a burst too big for one message was cut, with the query's result again", () => {
+    vi.useFakeTimers();
+    const { subs, sent, conn } = setup();
+    subs.addData(conn, "a", { types: ["note"] });
+    subs.dataChanged(Array.from({ length: 600 }, (_, i) => event(i + 1, "note")));
+    vi.advanceTimersByTime(60);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]![1]).toMatchObject({ type: "data.changed", id: "a", reset: true, truncated: true, events: [{ seq: 1 }] });
+  });
+
   it("send what matches, a few at a time, one data.changed per subscription", () => {
     vi.useFakeTimers();
     const { subs, sent, conn } = setup();

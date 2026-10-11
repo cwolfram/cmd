@@ -480,9 +480,11 @@ export type CoreEvent =
   /**
    * Events recorded or updated since the last one, for a data.subscribe subscription (merge by id).
    * reset: events are the query's whole result and replace what the subscriber has (events were forgotten);
-   * removed: the seqs of the forgotten events, when there weren't too many to list.
+   * removed: the seqs of the forgotten events, when there weren't too many to list;
+   * truncated: more changed at once than one message carries (an import, a transcript chunk): events are the
+   * query's whole result (reset), and a client that follows every event reads the rest with data.query `after`.
    */
-  | { type: "data.changed"; id: string; events: DataEvent[]; reset?: boolean; removed?: number[] }
+  | { type: "data.changed"; id: string; events: DataEvent[]; reset?: boolean; removed?: number[]; truncated?: boolean }
   /**
    * Rows of a view that changed, for a data.subscribeView subscription (turns by agent and index, sessions by key).
    * reset: the rows are the query's whole result and replace what the subscriber has (the view was rebuilt, workspaces changed).

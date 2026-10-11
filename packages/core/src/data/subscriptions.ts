@@ -10,6 +10,9 @@ import { matchesQuery } from "./match.ts";
 import { projectIdOf } from "./project.ts";
 import type { ActivityView } from "./views/activity.ts";
 
+/** Events one data.changed carries; more at once (an import, a transcript chunk) sends the query's result again, marked truncated. */
+const MAX_CHANGED = 500;
+
 type Row = TurnRow | SessionInfo;
 type SubsCore = Pick<CoreContext, "data" | "sessions" | "agents" | "workspaces" | "server">;
 
@@ -71,7 +74,14 @@ export class Subscriptions {
   /** New or updated events against every subscription; what matches is sent a few at a time, as one data.changed per subscription. */
   dataChanged(events: DataEvent[]): void {
     if (!this.#dataSubs.size) return;
-    const text = (seq: number, expr: string) => this.#core.data.textMatches(seq, expr);
+    // Full-text matches once per batch and expression, not one query per event and subscription.
+    const matched = new Map<string, Set<number>>();
+    const seqs = events.map((e) => e.seq);
+    const text = (seq: number, expr: string) => {
+      let m = matched.get(expr);
+      if (!m) matched.set(expr, (m = this.#core.data.textMatching(seqs, expr)));
+      return m.has(seq);
+    };
     for (const [conn, subs] of this.#dataSubs) {
       for (const [id, q] of subs) {
         const hits = events.filter((e) => matchesQuery(q, e, text));
@@ -87,7 +97,14 @@ export class Subscriptions {
       this.#dataFlush = setTimeout(() => {
         this.#dataFlush = null;
         for (const [conn, pending] of this.#dataPending) {
-          for (const [id, evs] of pending) this.#core.server.send(conn, { type: "data.changed", id, events: evs.slice(-500) } satisfies CoreEvent);
+          for (const [id, evs] of pending) {
+            if (evs.length <= MAX_CHANGED) this.#core.server.send(conn, { type: "data.changed", id, events: evs } satisfies CoreEvent);
+            else {
+              // More than one message carries: the query's result again, and a follower reads the rest by seq.
+              const q = this.#dataSubs.get(conn)?.get(id);
+              if (q) this.#core.server.send(conn, { type: "data.changed", id, events: this.#core.data.query(q), reset: true, truncated: true } satisfies CoreEvent);
+            }
+          }
         }
         this.#dataPending.clear();
       }, 50);
