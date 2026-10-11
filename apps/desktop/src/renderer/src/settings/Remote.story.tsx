@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import type { RemoteAccessCheck } from "@cmd/protocol";
 import { FormSection } from "@cmd/ui";
 import { Setup, SetupWait, type ChecksState } from "./Remote.tsx";
-import "./settings.css";
 
 const DNS = "https://login.tailscale.com/admin/dns";
 const HOST = "silverboi2.tail79ddb.ts.net";
