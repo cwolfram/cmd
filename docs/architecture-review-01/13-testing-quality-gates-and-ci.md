@@ -159,7 +159,7 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 
 ### AR1-13-07 · Turn on the strictness flags that are already nearly free
 
-- **Status:** done (strict branch)
+- **Status:** done (ada18c8a)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `tsconfig.base.json:1-16`, `packages/cli/src/data.ts:161`

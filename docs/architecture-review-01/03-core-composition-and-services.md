@@ -204,7 +204,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 ### AR1-03-06 · Give RPC errors codes and stop dropping malformed requests silently
 
-- **Status:** mostly done (strict branch; most handlers still throw plain errors)
+- **Status:** mostly done (973e630c; most handlers still throw plain errors)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/core.ts:1313-1358`, `packages/core/src/core.ts:1179-1183`, `packages/protocol/src/rpc.ts`

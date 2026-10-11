@@ -1,6 +1,6 @@
 # Architecture review 01
 
-**Overall: 5/10** · 2026-10-10 · reviewed against commit `ddb7832` · 16 systems plus repo layout, 169 issues (2 critical, 37 high, 80 medium, 50 low; 55 done)
+**Overall: 5/10** · 2026-10-10 · reviewed against commit `ddb7832` · 16 systems plus repo layout, 169 issues (2 critical, 37 high, 80 medium, 50 low; 57 done)
 
 cmd's foundations hold up: one core that owns all state, a PTY host that outlives it, a typed RPC contract, an event log with views, a token-driven UI kit, and a scheduler with a stall watchdog. A week of shipping on top of them has left three kinds of debt. **The read side has no single policy.** Phones, widgets and model-written code each reach files and the event log through their own checks, and two of those checks leak. **Terminal and event streams have no positions.** Snapshots and live output can't be joined exactly, and nothing pushes back on a fast producer. **Every feature edits the same central files.** `core.ts`, `App.tsx`, `WindowsView.tsx`, `tracker.ts` and five append-only registries absorb every change, and nothing stops them from growing.
 
