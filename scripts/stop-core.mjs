@@ -25,6 +25,8 @@ const alive = (pid) => {
 
 /** Pids that were alive but not ours to signal (EPERM). */
 export const refused = [];
+/** Pids a pid file named that nothing could confirm are a core or PTY host (no ps, no answer on the socket): left alone. */
+export const unverified = [];
 
 /** SIGTERM (the core shuts down cleanly), then SIGKILL after `graceMs`. */
 export async function stopPid(pid, graceMs = 3000) {
@@ -63,13 +65,18 @@ const isReleaseCore = (cmdline) => {
   return c.includes("--instance=release") || (!c.includes("--instance=") && /\/cmd\/runtime\//.test(c));
 };
 
-/** A pid file left by a crash may name a reused pid: check it is a core where we can. */
-function looksLikeCore(pid) {
+const psCommand = (pid) => execFileSync("ps", ["-o", "command=", "-p", String(pid)], { encoding: "utf8" });
+
+/**
+ * A pid file left by a crash or a reboot may name a reused pid: whether `pid` is a
+ * core or PTY host by its command line; null when ps can't say (a sandbox denies it).
+ */
+function looksLikeCore(pid, ps = psCommand) {
   if (process.platform === "win32") return true;
   try {
-    return isCore(execFileSync("ps", ["-o", "command=", "-p", String(pid)], { encoding: "utf8" }));
+    return isCore(ps(pid));
   } catch {
-    return alive(pid); // no ps (sandboxed) or no such process
+    return alive(pid) ? null : false;
   }
 }
 
@@ -108,22 +115,31 @@ export async function askPids(home) {
   }
 }
 
-async function stopOne(home, terminals) {
+async function stopOne(home, terminals, ps) {
   let pid = corePid(home);
   let host = terminals ? corePid(home, "ptyhost") : null;
+  let asked;
+  const ask = async () => (asked ??= await askPids(home));
   if (!pid || (terminals && !host)) {
-    const asked = await askPids(home);
-    pid ??= asked?.core ?? null;
-    if (terminals) host ??= asked?.host ?? null;
+    pid ??= (await ask())?.core ?? null;
+    if (terminals) host ??= (await ask())?.host ?? null;
   }
-  const stopped = pid && looksLikeCore(pid) ? await stopPid(pid) : false;
-  return (host && looksLikeCore(host) ? await stopPid(host) : false) || stopped;
+  // Signalled only when its command line says it's one, or (without ps) the core on the socket names that pid.
+  const verified = async (p, which) => {
+    const byPs = looksLikeCore(p, ps);
+    if (byPs !== null) return byPs;
+    if ((await ask())?.[which] === p) return true;
+    unverified.push(p);
+    return false;
+  };
+  const stopped = pid && (await verified(pid, "core")) ? await stopPid(pid) : false;
+  return (host && (await verified(host, "host")) ? await stopPid(host) : false) || stopped;
 }
 
-/** Stops the core whose state dir is `home` and those of the instances inside it (with `terminals`, their PTY hosts too); true if one was running. */
-export async function stopCore(home = cmdHome(), { terminals = false } = {}) {
+/** Stops the core whose state dir is `home` and those of the instances inside it (with `terminals`, their PTY hosts too); true if one was running. `ps`: tests. */
+export async function stopCore(home = cmdHome(), { terminals = false, ps = psCommand } = {}) {
   let stopped = false;
-  for (const h of [home, ...nestedHomes(home)]) stopped = (await stopOne(h, terminals)) || stopped;
+  for (const h of [home, ...nestedHomes(home)]) stopped = (await stopOne(h, terminals, ps)) || stopped;
   return stopped;
 }
 
@@ -153,6 +169,7 @@ if (path.resolve(process.argv[1] ?? "") === import.meta.filename) {
     const terminals = args.includes("--terminals");
     const what = terminals ? "the core and terminals" : "the core (its terminals keep running; --terminals stops them)";
     const stopped = await stopCore(home, { terminals });
+    if (unverified.length) console.error(`left pid ${unverified.join(", ")} alone: its pid file says it's ${home}'s core or PTY host, but ps isn't allowed here and the core doesn't answer to confirm it (a pid reused after a crash or a reboot?)`);
     if (refused.length) {
       console.error(`couldn't stop pid ${refused.join(", ")} of ${home}: not allowed from here (a sandbox?), run this outside it`);
       process.exitCode = 1;

@@ -14,7 +14,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { KIT_FILES, PROTOCOL, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
-import { cmdHome, connect, CORE_REFUSED_EXIT, coreRefusal, coreSocketPath, enterInstance, foreignHome, foreignHomeText, hasDevMarker, initLog, instanceName, isOwnCore, installCrashHandlers, ipcPath, logDir, logger, sourceBuildId } from "@cmd/protocol/node";
+import { cmdHome, connect, CORE_REFUSED_EXIT, coreLocked, coreRefusal, coreSocketPath, enterInstance, foreignHome, foreignHomeText, hasDevMarker, initLog, instanceName, isOwnCore, installCrashHandlers, ipcPath, logDir, logger, sourceBuildId } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
 import { contextTemplate } from "./menu-template.ts";
 import { SETTINGS_TITLEBAR_HEIGHT, TOPBAR_HEIGHT, trafficLights } from "../shared/chrome.ts";
@@ -391,20 +391,9 @@ let lastSpawn: { state: SpawnState; at: number } | null = null;
 /** Why the last core this app started refused its state dir, shown instead of the generic failure (coreFailed). */
 let lastRefusal: ReturnType<typeof coreRefusal> = null;
 
-/** A core process is alive for this state dir (sync check of its pid file). */
-function coreProcessAlive(): boolean {
-  try {
-    process.kill(Number(fs.readFileSync(path.join(cmdHome(), "core.pid"), "utf8")), 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// No core running: start one now, before Electron is ready, so it boots alongside
-// the app instead of after the window. (A stale pid file just means ensureCore
-// finds nothing to connect to and starts one then.)
-let coreSpawned = !coreProcessAlive() && (spawnCore(), true);
+// No core running (none holds the instance's lock; a pid file can name a reused pid):
+// start one now, before Electron is ready, so it boots alongside the app instead of after the window.
+let coreSpawned = !coreLocked() && (spawnCore(), true);
 
 // Settles once ensureCore is done (either way). The preload connects only then: before,
 // the socket may still be served by a core about to be restarted for its build, and calls
@@ -438,7 +427,7 @@ async function waitForCore(): Promise<void> {
     if (lastSpawn?.state === "refused") throw new Error(`core refused to start: ${lastRefusal?.text}; see ${coreLog()}`);
     const waited = Date.now() - t0;
     if (waited > CORE_START_MS) {
-      const busy = coreProcessAlive() || lastSpawn?.state === "starting" || lastSpawn?.state === "locked";
+      const busy = coreLocked() || lastSpawn?.state === "starting" || lastSpawn?.state === "locked";
       if (!busy || waited > CORE_BUSY_MS) throw new Error(`core did not start; see ${coreLog()}`);
       if (!said) (said = true), log.info("a core is running but not answering yet (busy starting): waiting for it");
       if (lastSpawn?.state === "locked" && Date.now() - lastSpawn.at > 10_000) spawnCore();

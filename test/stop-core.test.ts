@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { Core } from "../packages/core/src/index.ts";
 import { fakeFactory } from "../packages/core/test/fake-pty.ts";
 // @ts-expect-error: a plain .mjs script, no types
-import { askPids, nestedHomes } from "../scripts/stop-core.mjs";
+import { askPids, nestedHomes, stopCore, unverified } from "../scripts/stop-core.mjs";
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cmd-stop-"));
 afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -35,5 +35,16 @@ describe("stop-core", () => {
     } finally {
       await core.close();
     }
+  });
+
+  it("leaves a pid it can't confirm alone: without ps, a pid file naming some other process", async () => {
+    const home = path.join(dir, "stale");
+    fs.mkdirSync(home, { recursive: true });
+    fs.writeFileSync(path.join(home, "core.pid"), String(process.pid)); // alive, and no core: this test
+    const noPs = () => {
+      throw new Error("ps: not allowed");
+    };
+    expect(await stopCore(home, { ps: noPs })).toBe(false);
+    expect(unverified).toContain(process.pid);
   });
 });

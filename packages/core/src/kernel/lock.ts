@@ -13,7 +13,8 @@ export interface InstanceLock {
 
 /** Take the lock, or null if another process holds it. */
 export function acquireLock(file: string): InstanceLock | null {
-  const db = new DatabaseSync(file, { timeout: 0 });
+  // A moment's wait: an app checking whether a core runs (coreLocked) holds it that long.
+  const db = new DatabaseSync(file, { timeout: 500 });
   try {
     db.exec("PRAGMA locking_mode = EXCLUSIVE; BEGIN EXCLUSIVE;");
   } catch {

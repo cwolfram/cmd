@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { ENV } from "./rpc.ts";
 
 export type InstanceName = "release" | "dev";
@@ -214,4 +215,24 @@ export function coreRefusal(lines: readonly string[]): { reason: CoreRefusalReas
     if (m) return { reason: m[1] as CoreRefusalReason, text: m[2]! };
   }
   return null;
+}
+
+/**
+ * Whether a core holds the instance's lock (`<home>/core.lock`, core/src/kernel/lock.ts):
+ * the truth about whether one runs, where a pid file can name a pid reused after a
+ * crash or a reboot. It takes the lock for a moment to tell (a core starting meanwhile waits for it).
+ */
+export function coreLocked(home = cmdHome()): boolean {
+  const file = path.join(home, "core.lock");
+  if (!fs.existsSync(file)) return false;
+  let db: DatabaseSync | null = null;
+  try {
+    db = new DatabaseSync(file, { timeout: 0 });
+    db.exec("BEGIN EXCLUSIVE; ROLLBACK;");
+    return false;
+  } catch {
+    return true;
+  } finally {
+    db?.close();
+  }
 }

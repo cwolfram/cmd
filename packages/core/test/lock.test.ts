@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { coreLocked } from "@cmd/protocol/node";
 import { acquireLock } from "../src/kernel/lock.ts";
 import { rmTemp } from "./tmp.ts";
 
@@ -42,6 +43,21 @@ describe("instance lock", () => {
     expect(acquireLock(file)).toBeNull();
     h.child.kill("SIGKILL");
     await h.exited;
+    const lock = acquireLock(file);
+    expect(lock).not.toBeNull();
+    lock!.release();
+  });
+
+  it("tells an app whether a core runs (coreLocked), without stopping one from starting meanwhile", async () => {
+    const file = path.join(dir, "core.lock");
+    expect(coreLocked(dir)).toBe(false);
+    const h = holder(file);
+    await h.held;
+    expect(coreLocked(dir)).toBe(true);
+    h.child.kill("SIGKILL");
+    await h.exited;
+    expect(coreLocked(dir)).toBe(false);
+    // The check leaves no lock behind: a core takes it right after.
     const lock = acquireLock(file);
     expect(lock).not.toBeNull();
     lock!.release();
