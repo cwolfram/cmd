@@ -146,7 +146,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-07 · Give both handshakes a protocol version and a compatibility rule
 
-- **Status:** in progress (handshake)
+- **Status:** done (handshake branch, not merged yet)
 - **Severity:** low
 - **Effort:** M
 - **Where:** `packages/core/src/terminals/host.ts:28`, `packages/core/src/terminals/remote.ts:109`, `packages/protocol/src/rpc.ts:79`, `packages/core/src/core.ts:71`
@@ -158,9 +158,11 @@ The questions asked of this review, answered briefly: the three-process split is
 **Proposal.** Host: hello carries `{ protocol, minCore }`; the core accepts `protocol >= MIN_HOST && minCore <= HOST_PROTOCOL`, treats `unknown method` as "feature absent", and bumps `MIN_HOST` only for breaking changes (node-pty swaps). Core RPC: add `protocol: number` to `core.hello` and a `CORE_PROTOCOL` constant next to `Methods`, bumped by the rule "a removed or changed method or event bumps it"; `connect()` in `protocol/node.ts` exposes `hello` so the CLI prints "this cmd is older/newer than its core; restart the core from the app" instead of a method error; the app keeps hash equality for its own core.
 
 **Success criteria.**
-- [ ] `ptyhost.test.ts`: a host at protocol N serves a core requiring N−1 features without being replaced; a host below `MIN_HOST` is replaced.
-- [ ] `core.hello` result has `protocol`; a CLI test calling a core that reports a lower protocol gets the version message.
-- [ ] A changelog/skill note says when to bump `MIN_HOST` vs `HOST_PROTOCOL` vs `CORE_PROTOCOL`.
+- [x] `ptyhost.test.ts`: a host at protocol N serves a core requiring N−1 features without being replaced; a host below `MIN_HOST` is replaced.
+- [x] `core.hello` result has `protocol`; a CLI test calling a core that reports a lower protocol gets the version message.
+- [x] A changelog/skill note says when to bump `MIN_HOST` vs `HOST_PROTOCOL` vs `CORE_PROTOCOL`.
+
+**Progress (2026-10-11).** The host's hello carries `minCore` (`MIN_CORE` in `host.ts`, the oldest core it serves) and `methods` (`HOST_METHODS`); the core's `hostCompatible()` accepts any host from `MIN_HOST` (`remote.ts`) whose `minCore` it meets (a host without `minCore` serves only its own protocol), and `RemoteBackend.has()`/`request()` ask a host only what it lists. A core the host can't serve gets the hello but doesn't take the host over, so it replaces the host rather than stranding it. `HOST_PROTOCOL` 3 (the hello's two fields); the RPC side is `PROTOCOL` (AR1-02-03), so there is no separate `CORE_PROTOCOL`. Tests in `ptyhost.test.ts`: a newer host that still serves the core is used and asked only what it has, a protocol-2 host without the fields is used, one below `MIN_HOST` or above the core's reach is replaced, a too-old core doesn't take a host over, and every listed method is answered. The bump rules are in DEVELOPMENT.md, "Versions on the wire".
 
 ### AR1-01-08 · Harden the core's side of the host link
 

@@ -32,7 +32,7 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 ### AR1-02-01 · Give the local socket flow control and a frame limit
 
-- **Status:** in progress (handshake)
+- **Status:** mostly done (handshake branch, not merged yet; the renderer's ACK and pausing the PTY are left)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/core.ts:1280`, `packages/core/src/core.ts:1546-1554`, `packages/protocol/src/client.ts:62-72`, `apps/desktop/src/renderer/src/terminals.ts:589-593`, `packages/core/src/panes.ts:420-428`
@@ -49,10 +49,12 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 **Success criteria.**
 - [ ] A test runs `yes` into a pane with a subscriber that never reads; the core's RSS stays under 100 MB over 30 s and the subscriber receives `pane.resync` (`packages/core/test/flow-control.test.ts`).
-- [ ] `grep -n "sock.write(line)" packages/core/src/core.ts` returns nothing; all socket writes go through one writer that checks the return value.
-- [ ] `lineSplitter` rejects a line over the limit (test), and splitting a 5 MB line fed in 64 KiB chunks takes under 50 ms (test with `performance.now()`).
-- [ ] `pnpm e2e` has a scenario that pauses the renderer (CDP `Debugger.pause`) for 5 s during heavy output and shows the terminal resynced, not frozen or garbled.
-- [ ] `scripts/perf/stress-core.mjs` reports no `[lag]` over 100 ms attributed to `rpc`/broadcast during the output phase.
+- [x] `grep -n "sock.write(line)" packages/core/src/core.ts` returns nothing; all socket writes go through one writer that checks the return value.
+- [x] `lineSplitter` rejects a line over the limit (test), and splitting a 5 MB line fed in 64 KiB chunks takes under 50 ms (test with `performance.now()`).
+- [x] `pnpm e2e` has a scenario that pauses the renderer (CDP `Debugger.pause`) for 5 s during heavy output and shows the terminal resynced, not frozen or garbled.
+- [x] `scripts/perf/stress-core.mjs` reports no `[lag]` over 100 ms attributed to `rpc`/broadcast during the output phase.
+
+**Progress (2026-10-11).** Every connection writes through `kernel/writer.ts` (`ConnectionWriter`): replies and events go straight out while the socket keeps up; while `sock.write` says it's backed up, a pane's output waits merged per pane until `drain`, past `MAX_PENDING` (1 MB) it is dropped for `pane.resync`, and a client with `MAX_BUFFERED` (64 MB) unread is cut. The remote session's coalescing writer is the same class with `coalesceMs: 30`. `lineSplitter` scans each chunk once and takes `max`/`tooLong`; the core refuses a message over `MAX_LINE` (16 MB). The app's windows now handle `pane.resync` (one snapshot at a time per terminal, through the same gate as at startup), as the web client did. Tests: `writer.test.ts`, `protocol/test/lines.test.ts` (a 5 MB line in 64 KiB chunks well under 50 ms), `flow-control.test.ts` (a subscriber pauses while a pane prints 32 MB; once it reads again it gets a resync and less than a quarter of the output, and the test fails without the writer: it measures what the client gets, not RSS); e2e `resync` (the window is paused with CDP `Debugger.pause` until 20 MB have printed, is told to resync, then shows what the core shows). `stress-core.mjs --only P0,P2` against a fresh core: 30 chatty terminals, p95 19 ms, max 50 ms, no `[lag]` lines. Left: the renderer's ACK (`pane.ack` from xterm's write callback) and pausing the PTY on it, and backpressure on the PTY host's own socket (theme 2, with AR1-12-07).
 
 ### AR1-02-02 · Make event-versus-reply ordering a guarantee, or stop relying on it
 
@@ -82,7 +84,7 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 
 ### AR1-02-03 · Negotiate protocol version and capabilities in `core.hello`
 
-- **Status:** in progress (handshake)
+- **Status:** done (handshake branch, not merged yet)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/protocol/src/rpc.ts:79`, `packages/core/src/core.ts:71`, `packages/core/src/core.ts:592`, `apps/desktop/src/renderer/src/store.ts:555,572-576`, `apps/web/src/model.ts:19-21,43-51`, `packages/protocol/src/instance.ts:119-130`, `packages/cli/src/main.ts:158-166`
@@ -98,11 +100,13 @@ Clients: the Electron preload (`preload/index.ts`, 244 lines) opens the socket i
 **Proposal.** Make `core.hello` the negotiation: `{ protocol: number; app: string (CMD_APP_VERSION); build; root; stateDir; methods: Method[]; events: CoreEvent["type"][] }`, with `PROTOCOL` a constant in `rpc.ts` bumped on any incompatible change (a removed field, a renamed method; additions never bump). `RpcClient` gains `hello()` that stores the method set and a typed `has(method)`; `connect()` in `node.ts` and the web `Connection` call it first. Policy per client: the app restarts a core whose `protocol` differs (already does by build); the CLI prints "cmd 0.26 talking to a core of 0.24: run the cmd in `$CMD_HOME/bin`" when `protocol` differs and otherwise degrades per `has()`; the web client keeps its `Legacy` shims only behind `has("workspace.list")` and deletes them one release after. Remove `VERSION` from `core.ts`. The `REMOTE_ACCESS` table already enumerates every method, so `methods` costs nothing to produce.
 
 **Success criteria.**
-- [ ] `grep -n 'VERSION = "0.0.1"' packages/core/src/core.ts` returns nothing; `core.hello` returns `protocol`, `app`, `methods`.
-- [ ] `grep -rn "older core\|older code\|Legacy" apps/desktop/src/renderer/src/store.ts apps/web/src/model.ts` returns nothing (the probes are replaced by `has()`).
-- [ ] A test connects an `RpcClient` to a core whose hello lacks a method and asserts `has()` is false and `call()` fails with `-32601` before any socket write.
-- [ ] `cmd ls` against a core with a different `protocol` prints the one-line explanation and exits 2 (CLI test with a fake server).
-- [ ] CHANGELOG/DEVELOPMENT.md say when `PROTOCOL` is bumped.
+- [x] `grep -n 'VERSION = "0.0.1"' packages/core/src/core.ts` returns nothing; `core.hello` returns `protocol`, `app`, `methods`.
+- [x] `grep -rn "older core\|older code\|Legacy" apps/desktop/src/renderer/src/store.ts apps/web/src/model.ts` returns nothing (the probes are replaced by `has()`).
+- [x] A test connects an `RpcClient` to a core whose hello lacks a method and asserts `has()` is false and `call()` fails with `-32601` before any socket write.
+- [x] `cmd ls` against a core with a different `protocol` prints the one-line explanation and exits 2 (CLI test with a fake server).
+- [x] CHANGELOG/DEVELOPMENT.md say when `PROTOCOL` is bumped.
+
+**Progress (2026-10-11).** `PROTOCOL` and `UNKNOWN_METHOD` in protocol `rpc.ts`, `CoreHello` (`protocol`, `app`, `methods`; `version` is gone) built by `kernel/hello.ts`; a paired device's hello lists what a device may ever call (its scope can change while connected). `connect()` asks the hello first (`{ hello: false }` for the hook) and keeps it as `conn.hello`; `RpcClient.has()` answers from it and `call()` refuses an unlisted method with `-32601` before sending (`packages/protocol/test/client.test.ts`); the core answers an unknown method with `-32601` (`core.test.ts`). The CLI says when the core speaks another protocol and exits 2 (`cli/src/skew.ts`, `cli/test/skew.test.ts` with a fake core). Main restarts its own core of another protocol; the renderer refuses one it couldn't restart and asks `has()` for `remote.status` and `window.closed` (preload `has`, `protocol`); the web client says hello first, and its Spaces shims for Macs on 0.23 are deleted. DEVELOPMENT.md, "Versions on the wire", says when to bump. Not done: the hello's list of event types (nothing reads it yet).
 
 ### AR1-02-04 · Type the errors and validate params at the boundary
 
