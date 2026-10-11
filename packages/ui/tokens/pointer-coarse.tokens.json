@@ -118,5 +118,9 @@
   "page-inset": {
     "$description": "A page on a phone: the same margin as everything else.",
     "$value": "{space.4}"
+  },
+  "inset-narrow": {
+    "$description": "A phone is narrow: it keeps the phones' margin.",
+    "$value": "{space.4}"
   }
 }

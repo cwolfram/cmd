@@ -49,6 +49,8 @@
   --bar-inset: var(--space-3);
   /* A page's inset (Page, settings beside their sidebar): twice the window's, for a page that is read more than scanned. Its View takes it as --inset. */
   --page-inset: var(--space-8);
+  /* The content inset in a narrow window (below 360px, the kit's narrow size class): a small tile keeps its width for content. The View's parts take it as --inset. */
+  --inset-narrow: var(--space-3);
   /* A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window. */
   --inset: var(--space-4);
   /* Reading width for prose: a document's column (Measure). */

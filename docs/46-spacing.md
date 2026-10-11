@@ -1,6 +1,6 @@
 # Spacing system
 
-**Status:** partly built: steps 1–3 (the scale, roles, windows on them, `audit --all`) on branch `spacing`; grid heights and size classes not yet.
+**Status:** built: steps 1–5 on branch `spacing` (2026-10-11); density and counting `--space-*` at a view's edges not yet.
 
 One unit, a numeric scale of it, and roles on top that components read, so a change of inset or density is one token and every window follows. Builds on docs/40-window-design.md (the tokens, the kit, the audit) and the `window-design` skill (the rules). Written 2026-10-11, after a day of fixing spacing window by window.
 
@@ -57,7 +57,7 @@ What follows from the roles is written once:
 
 Roles change with where they are, never in a view:
 
-- **Window size class** (container query on the window, the sizes `AllSizes` already renders): compact below 420px `--inset` 12, regular 16, a `Page` 32. A small tile stops wasting a sixth of its width.
+- **Window size class** (the kit's container classes, on the View): narrow below 360px `--inset-narrow` 12, regular 16, a `Page` 32. A small tile stops wasting a sixth of its width. Built: the View's body, title band, toolbar and footer take `--inset-narrow` as `--inset` in a narrow view; phones keep 16.
 - **Pointer** (`pointer-coarse.tokens.json`, the phone client): as now, larger rows and controls, `--page-inset` 16.
 - **Density** (a later setting, if wanted): `--unit` 3.5px (compact) or 4.5px (roomy) scales every step and role at once.
 
@@ -74,7 +74,7 @@ Each step lands green (`pnpm typecheck && pnpm test`, e2e, audit) and in its own
 1. **Scale.** `--unit`, the numeric steps, `Space` as numbers in `Stack`/`Inline`; rename every `--space-<size>` and `gap="…"`/`pad="…"` mechanically (2xs→0-5, xs→1, sm→1-5, md→2, lg→3, xl→4, 2xl→6, 3xl→8). No pixel moves. Magic's kit 3 and prompt follow.
 2. **Roles.** Add the role tokens at today's values; move the kit's CSS onto them (lists, rows, headings, bars, dialogs, controls, toolbar). No pixel moves except where two lists disagreed.
 3. **Windows.** Each built-in window and widget onto roles and kit pieces: no `--space-*` at its edges, `pad="inset"` for panes, the audit clean at every size. Done 2026-10-11: `audit --all` is clean; the JSON window's tree is on the inset like the Files tree; the files sidebar panel's rows moved 14 → 16px. Left as their own: tables and trees to their header row (6–7px), the SQLite query field (8px, a bar-like row over its grid).
-4. **Grid heights** (visual, one at a time with Jan in the Workbench): rows, headings, toolbar, footer, title bar.
-5. **Size classes** (visual): compact windows on 12px.
+4. **Grid heights.** Built: toolbar 32, footer and window bar 28, title bar 40 (Settings' traffic lights follow). Not moved: the app's top bar (38, app chrome), table rows and headers (24, 26), `--row-h-sm` and toolbar items (22), `--control-h-sm` (20).
+5. **Size classes.** Built: narrow windows on 12px.
 
 Density is left for later.
