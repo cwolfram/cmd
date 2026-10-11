@@ -8,7 +8,7 @@ import { ACTIONS_TITLE } from "@cmd/protocol";
 import type { WindowType, WindowTypes } from "./types.ts";
 import { databaseOf, isSqliteFile } from "../sqlite/service.ts";
 import { scopedWidget } from "./scoped.ts";
-import { journalType } from "../journal/feature.ts";
+import { FEATURE_TYPES } from "./featured.ts";
 
 export const expandHome = (p: string) => p.replace(/^~(?=$|\/)/, os.homedir());
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
@@ -723,7 +723,7 @@ export function registerBuiltins(types: WindowTypes): void {
   types.register(navigatorType);
   types.register(commandsType);
   types.register(notificationsType);
-  types.register(journalType);
+  for (const t of FEATURE_TYPES) types.register(t);
   types.register(resourcesType);
   types.register(eventsType);
   types.register(timerType);

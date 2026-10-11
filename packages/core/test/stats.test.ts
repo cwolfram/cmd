@@ -8,6 +8,7 @@ import { bucketIndex, ranking, shift, startOf, toSeries, windowOf } from "../src
 import { commandName } from "../src/stats/builtin.ts";
 import { Acc, binOf, HOUR, quantile, spanHours, type StatRow } from "../src/stats/stat.ts";
 import { fakeFactory } from "./fake-pty.ts";
+import { blockBar, formatCompact, formatDelta, formatDuration, formatValue, sparkline } from "@cmd/protocol";
 
 const DAY = 24 * HOUR;
 const row = (hour: number, keys: string[], n: number, sum = 0): StatRow => ({ hour, keys, n, sum, min: null, max: null, bins: null });
@@ -41,6 +42,21 @@ describe("stat helpers", () => {
     expect(commandName("ls -la")).toBe("ls");
     expect(commandName("git")).toBe("git");
     expect(commandName(null)).toBe("");
+  });
+});
+
+describe("stat formats", () => {
+  it("writes durations, compact numbers and deltas the same in every locale", () => {
+    expect([formatDuration(0), formatDuration(450), formatDuration(48_000), formatDuration(3 * 3600_000 + 12 * 60_000), formatDuration(3 * 3600_000 + 12 * 60_000, true), formatDuration(26 * 3600_000)]).toEqual(["0", "450ms", "48s", "3h 12m", "3h", "1d 2h"]);
+    expect([formatCompact(1234), formatCompact(2_345_678), formatCompact(123_456_789)]).toEqual(["1.2K", "2.3M", "123M"]);
+    expect([formatValue(12_345, "tokens"), formatValue(6.12, "percent"), formatValue(999, "count")]).toEqual(["12.3K", "6.1%", "999"]);
+    expect([formatDelta(118, 100), formatDelta(96, 100), formatDelta(5, 0), formatDelta(0, 0), formatDelta(6.1, 7.3, "percent"), formatDelta(0, 0, "percent")]).toEqual(["+18%", "−4%", "new", "", "−1.2 pt", ""]);
+  });
+
+  it("draws sparklines and bars in block characters", () => {
+    expect(sparkline([0, 7, null, 14])).toBe("▁▅ █");
+    expect(blockBar(0.5, 4)).toBe("██");
+    expect(blockBar(1 / 16, 2)).toBe("▏");
   });
 });
 

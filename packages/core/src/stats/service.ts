@@ -344,7 +344,7 @@ export class StatsService {
     const d = this.#must(q.stat);
     const now = this.now();
     const w = windowOf(q.range ?? "7d", q.grain, now);
-    const filter = { ...(q.filter ?? {}), ...(q.workspaceId ? { workspace: q.workspaceId } : {}) };
+    const filter = { ...(q.filter ?? {}), ...this.#scope(d, q.workspaceId) };
     if (d.ratio) return this.#ratio(d, q, w, filter, now);
     const measure = q.measure ?? defaultMeasure(d);
     const src = d;
@@ -420,6 +420,16 @@ export class StatsService {
       res.ranking = [...by.entries()].filter(([, e]) => e.d > 0).map(([key, e]) => ({ key, label: label(key), value: (100 * e.n) / e.d })).sort((a, b) => b.value - a.value).slice(0, q.top);
     }
     return res;
+  }
+
+  /** A workspace as a filter: on the stat's workspace dimension, else on its project (the workspace's folder's repository), else none. */
+  #scope(d: StatDef, workspaceId: string | undefined): Record<string, string> {
+    if (!workspaceId) return {};
+    const src = d.ratio ? this.#must(d.ratio.of) : d;
+    if (src.dims.some((x) => x.id === "workspace")) return { workspace: workspaceId };
+    const root = this.#core.workspaces.get(workspaceId)?.root;
+    const project = root && src.dims.some((x) => x.id === "project") ? projectIdOf(root) : null;
+    return project ? { project } : {};
   }
 
   #dimIdx(d: StatDef, id: string): number {

@@ -6,8 +6,12 @@ import type { StatsMethods } from "@cmd/protocol";
 import type { Feature } from "../kernel/features.ts";
 import type { CoreContext } from "../kernel/context.ts";
 import type { HandlerSlice } from "../kernel/handlers.ts";
+import { scopedWidget } from "../windows/scoped.ts";
 import { BUILTIN_STATS } from "./builtin.ts";
 import { StatsService, type StatsCore } from "./service.ts";
+
+/** The Stats widget (registered with the built-in types through windows/featured.ts). */
+export const statsType = scopedWidget("stats", "Stats", "chart.bar.xaxis", "How you and your agents used cmd: time, turns, commands and what failed, tokens, commits.");
 
 /** The service (`core.stats`). It reads nothing until start(): the core makes it before the services it reads. */
 export function createStats(core: StatsCore): StatsService {

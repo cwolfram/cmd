@@ -4,7 +4,6 @@
 
 import type { StatUnit } from "./stats.ts";
 
-const compact = new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 });
 const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const one = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
 
@@ -29,6 +28,14 @@ export function formatBytes(b: number): string {
   return `${i ? one.format(b) : whole.format(b)} ${units[i]}`;
 }
 
+/** 1.2K, 3.4M, 2.1B: the same letters in every locale (Intl's compact notation varies: "1.7m", "1,7 Mio."). */
+export function formatCompact(v: number): string {
+  const a = Math.abs(v);
+  const [d, s] = a >= 1e9 ? [1e9, "B"] : a >= 1e6 ? [1e6, "M"] : a >= 1e3 ? [1e3, "K"] : [1, ""];
+  const x = v / d;
+  return `${Math.abs(x) >= 100 || !s ? whole.format(x) : one.format(x)}${s}`;
+}
+
 /** A value in its unit; `short` for ticks and tight places (compact everywhere). */
 export function formatValue(v: number, unit: StatUnit, short = false): string {
   switch (unit) {
@@ -39,13 +46,14 @@ export function formatValue(v: number, unit: StatUnit, short = false): string {
     case "percent":
       return `${v < 10 && v > 0 && !short ? one.format(v) : whole.format(v)}%`;
     default:
-      return Math.abs(v) >= 10_000 || (short && Math.abs(v) >= 1000) ? compact.format(v) : v % 1 ? one.format(v) : whole.format(v);
+      return Math.abs(v) >= 10_000 || (short && Math.abs(v) >= 1000) ? formatCompact(v) : v % 1 ? one.format(v) : whole.format(v);
   }
 }
 
 /** The change from `prev` to `cur`: "+18%", "−4%", "new" (from nothing), "" (nothing either time); percentages change by points. */
 export function formatDelta(cur: number, prev: number, unit?: StatUnit): string {
   if (unit === "percent") {
+    if (!cur && !prev) return "";
     const d = cur - prev;
     return Math.abs(d) < 0.05 ? "±0" : `${d > 0 ? "+" : "−"}${one.format(Math.abs(d))} pt`;
   }

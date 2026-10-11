@@ -220,6 +220,7 @@ const SCENARIOS = {
   markdown: [],
   json: [],
   "window-kinds": ["browser", "files", "text", "markdown"],
+  stats: ["terminals"],
   "error-boundary": ["markdown", "terminals"],
   untitled: [],
   embedded: ["browser", "terminals"],
@@ -1152,6 +1153,34 @@ await scenario("window-kinds", async () => {
   await still();
   await shot(win, "10-window-kinds.png");
   check((await win.locator(".tile.kind-browser").count()) === 1 && (await win.locator(".tile.kind-files").count()) === 1 && (await win.locator(".tile.kind-text").count()) === 1 && (await win.locator(".tile.kind-markdown").count()) === 1, "browser, file, text and Markdown windows take part in the grid");
+});
+
+// The Stats widget (docs/49): opens on the core's stats, every number opens its detail with
+// Back, and a command run in a terminal reaches the count without reopening anything.
+await scenario("stats", async () => {
+  const call = (m, p = {}) => win.evaluate(([m, p]) => window.cmd.call(m, p), [m, p]);
+  const catalog = await call("stats.catalog");
+  check(catalog.some((s) => s.id === "commands.runs") && catalog.some((s) => s.id === "agents.time"), `the core lists its stats (${catalog.length})`);
+  const w = await call("window.open", { kind: "stats", input: {} });
+  await menu("view.grid");
+  const tile = win.locator(`.tile[data-pane="${w.id}"]`);
+  const stats = await until(() => tile.locator(".ui-stat").count(), (n) => n >= 6);
+  await still();
+  await shot(win, "11-stats.png");
+  check(stats >= 6, `the Stats widget shows its headline numbers (${stats})`);
+  await tile.locator("button.ui-stat", { has: win.locator(".ui-stat-label", { hasText: /^Commands$/ }) }).click();
+  const back = tile.locator(".ui-tb-label", { hasText: /^Stats$/ });
+  const opened = await until(() => back.isVisible(), Boolean);
+  await back.click();
+  const closed = await until(() => tile.locator("button.ui-stat").count(), (n) => n >= 6);
+  check(opened && closed >= 6, "a number opens its detail, and Back returns to the page");
+  const runs = async () => (await call("stats.query", { stat: "commands.runs", range: "today" })).total;
+  const before = await runs();
+  const paneId = (await call("pane.list"))[0].id;
+  await call("pane.write", { paneId, data: "true\r" });
+  const after = await until(runs, (n) => n > before, 15_000);
+  check(after > before, `a command run in a terminal is counted (${before} → ${after})`);
+  await call("window.close", { id: w.id });
 });
 
 // A window whose view throws shows a fallback in its own tile (ErrorBoundary in
