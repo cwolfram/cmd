@@ -121,6 +121,7 @@ export const SETTINGS_PAGES: Page[] = [
       { items: ["remote.enabled"] },
       { title: "Connection", items: ["remote.access", "remote.relay", "remote.client", "remote.tailscale.port", "remote.url", "remote.port"] },
       { title: "Devices", items: ["remote.deviceExpiryDays"] },
+      { title: "Notifications", items: ["remote.push.when", "remote.push.awayMinutes", "remote.pushDetails"] },
     ],
   },
   {

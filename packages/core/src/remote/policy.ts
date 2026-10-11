@@ -18,6 +18,7 @@ import type { PaneManager } from "../terminals/panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WindowManager } from "../windows/index.ts";
 import type { WindowTypes } from "../windows/types.ts";
+import { validEndpoint } from "./webpush.ts";
 
 /** view: any paired device; control: control-scope devices; never: only the Mac. */
 export type Access = "view" | "control" | "never";
@@ -180,6 +181,10 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "remote.setScope": "never",
   "remote.bootstrap": "view",
   "remote.ack": "view",
+  "push.subscribe": "view", // notifications are about what view scope already shows
+  "push.unsubscribe": "view",
+  "push.visible": "view",
+  "ui.presence": "never", // the Mac's own app
 };
 
 export class RemoteDenied extends Error {}
@@ -202,10 +207,18 @@ export const MAX_WRITE = 64 * 1024;
 export const MAX_WATCHES = 32;
 
 /** Reachable methods whose params are empty: nothing to check. Every other reachable method has an ARGS entry (remote-policy.test.ts). */
-export const NO_ARGS: ReadonlySet<Method> = new Set<Method>(["core.hello", "pane.list", "agent.list", "window.types", "window.list", "workspace.list", "remote.bootstrap"]);
+export const NO_ARGS: ReadonlySet<Method> = new Set<Method>(["core.hello", "pane.list", "agent.list", "window.types", "window.list", "workspace.list", "remote.bootstrap", "push.unsubscribe"]);
 
 type Check<M extends Method> = (p: Params<M>, ctx: PolicyContext) => void;
 const ARGS: { [M in Method]?: Check<M> } = {
+  "push.subscribe": (p) => {
+    if (typeof p.endpoint !== "string" || !validEndpoint(p.endpoint)) throw new RemoteDenied("not a push service this Mac sends to");
+    const k = p.keys as { p256dh?: unknown; auth?: unknown } | undefined;
+    if (typeof k?.p256dh !== "string" || typeof k.auth !== "string" || k.p256dh.length > 100 || k.auth.length > 40) throw new RemoteDenied("bad subscription keys");
+  },
+  "push.visible": (p) => {
+    if (typeof p.visible !== "boolean") throw new RemoteDenied("visible must be true or false");
+  },
   "pane.create": (p, ctx) => {
     if (p.workspaceId) openWorkspace(ctx, p.workspaceId);
     if (p.callerPaneId) pane(ctx, p.callerPaneId);

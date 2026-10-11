@@ -1,5 +1,6 @@
 // The host's identity for remote access: its static X25519 key (devices pin it
-// at pairing) and its routes: one on the relay, one per direct access mode
+// at pairing), its VAPID key for Web Push (browsers pin it when they subscribe)
+// and its routes: one on the relay, one per direct access mode
 // (docs/38), so switching modes doesn't reuse a route on another origin. Kept in $CMD_HOME/remote/host.json,
 // mode 0600 like secrets.json, so dev and release instances have separate keys
 // and devices. TODO: the login Keychain (`security add-generic-password`) first,
@@ -9,6 +10,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { exportKeyPair, generateKeyPair, importKeyPair, type KeyPair } from "@cmd/remote-crypto";
+import { generateVapidKeys, type VapidKeys } from "./webpush.ts";
 
 export interface HostIdentity {
   key: KeyPair;
@@ -26,6 +28,8 @@ interface File {
   relay?: string;
   /** Direct access mode → its route. */
   direct?: Record<string, string>;
+  /** Web Push (P-256); made the first time a device asks. */
+  vapid?: VapidKeys;
 }
 
 export class HostKeys {
@@ -74,6 +78,16 @@ export class HostKeys {
     this.#doc = { ...this.#doc, direct: { ...this.#doc.direct, [mode]: route } };
     this.#save();
     return route;
+  }
+
+  /** The VAPID key pair; made the first time. */
+  vapid(): VapidKeys {
+    if (!this.#doc) throw new Error("host key not loaded");
+    if (!this.#doc.vapid) {
+      this.#doc = { ...this.#doc, vapid: generateVapidKeys() };
+      this.#save();
+    }
+    return this.#doc.vapid!;
   }
 
   #save(): void {

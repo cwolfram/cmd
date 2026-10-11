@@ -408,6 +408,8 @@ export interface RemoteDevice {
   /** Unpaired when unseen until then (remote.deviceExpiryDays). */
   expiresAt: number;
   connected: boolean;
+  /** It subscribed to notifications (Web Push). */
+  push: boolean;
 }
 
 /** A device connected right now (a device can have several, e.g. two tabs). */

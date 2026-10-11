@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { RpcClient, RpcError, UNKNOWN_METHOD, type CoreEvent, type RemotePairRequest } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type DeviceSession, type KeyPair } from "@cmd/remote-crypto";
 import { startRelay, type Relay } from "../../../apps/relay/src/relay.ts";
@@ -11,6 +11,7 @@ import { Core } from "../src/kernel/core.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until } from "../../../test/system.ts";
+import { decryptPush, receiverKeys } from "./push-receiver.ts";
 
 const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cmd-remote-")));
 let relay: Relay;
@@ -18,8 +19,19 @@ let core: Core;
 const ptys = fakeFactory();
 /** Events a local client (the desktop app) sees. */
 const events: CoreEvent[] = [];
+/** What the core posted to push services, and what they answer. */
+const pushes: { url: string; body: Uint8Array; headers: Record<string, string> }[] = [];
+let pushStatus = 201;
+/** The push services (the core posts with the global fetch); anything else goes out as usual. */
+const realFetch = globalThis.fetch;
+const pushFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+  if (typeof url !== "string" || !/^https:\/\/(web\.push\.apple\.com|fcm\.googleapis\.com)\//.test(url)) return realFetch(url, init);
+  pushes.push({ url, body: init!.body as Uint8Array, headers: init!.headers as Record<string, string> });
+  return new Response(null, { status: pushStatus });
+}) as typeof fetch;
 
 beforeAll(async () => {
+  vi.stubGlobal("fetch", pushFetch);
   relay = await startRelay({ log: () => {} });
   core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: ptys.factory, pollMs: 0, home: dir });
   core.serve({ access: "local", send: () => {}, event: (e) => events.push(e), close: () => {} }).receive(JSON.stringify({ id: 1, method: "events.subscribe", params: {} }));
@@ -31,6 +43,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  vi.unstubAllGlobals();
   await core?.close();
   await relay?.close();
   rmTemp(dir);
@@ -215,6 +228,122 @@ describe("remote access", () => {
     c.ws.close();
   });
 
+  it("pushes the Mac's notifications to a device that subscribed", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const boot = await client.call("remote.bootstrap", {});
+    expect(boot.push).toMatchObject({ subscribed: false });
+    expect(boot.push!.key).toMatch(/^B[A-Za-z0-9_-]{86}$/); // uncompressed P-256
+    // Only the browsers' push services, and only from a device.
+    await expect(client.call("push.subscribe", { endpoint: "https://192.168.1.1/hook", keys: { p256dh: "x", auth: "y" } })).rejects.toThrow(/push service/);
+    await expect(core.call("push.subscribe", { endpoint: "https://web.push.apple.com/x", keys: { p256dh: "x", auth: "y" } })).rejects.toThrow(/paired devices/);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://web.push.apple.com/abc", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    expect(core.remote.devices()[0]!.push).toBe(true);
+    expect((await client.call("remote.bootstrap", {})).push).toMatchObject({ subscribed: true });
+
+    // Only what the Mac shows as a notification (alert) is pushed.
+    await core.call("notify.send", { title: "Build", body: "Done in 4m" });
+    await expect.poll(() => pushes.length).toBe(1);
+    expect(pushes[0]!.url).toBe("https://web.push.apple.com/abc");
+    expect(pushes[0]!.headers).toMatchObject({ Urgency: "high", "Content-Encoding": "aes128gcm" });
+    expect(pushes[0]!.headers.Authorization).toMatch(/^vapid t=.+, k=/);
+    const sent = JSON.parse(decryptPush(pushes[0]!.body, browser.private, browser.auth));
+    expect(sent).toMatchObject({ host: Buffer.from(hostKey).toString("base64url"), title: "Build", body: "Done in 4m", urgent: true });
+
+    // While the client is in front, it shows notifications itself.
+    await client.call("push.visible", { visible: true });
+    await core.call("notify.send", { body: "seen in the app" });
+    await client.call("push.visible", { visible: false });
+    await core.call("notify.send", { body: "in the background" });
+    await expect.poll(() => pushes.length).toBe(2);
+    expect(JSON.parse(decryptPush(pushes[1]!.body, browser.private, browser.auth)).body).toBe("in the background");
+
+    // Remote access off: nothing leaves the Mac.
+    await core.call("remote.disable", {});
+    await core.call("notify.send", { body: "quiet" });
+    await core.call("remote.enable", {});
+    await until("the relay link online", () => core.remote.status().state === "online");
+    expect(pushes).toHaveLength(2);
+
+    // The push service says the subscription is gone: it's dropped.
+    pushStatus = 410;
+    await core.call("notify.send", { body: "again" });
+    await expect.poll(() => core.remote.devices()[0]!.push).toBe(false);
+    pushStatus = 201;
+    c.ws.close();
+  });
+
+  it("stops pushing to a device that unsubscribed", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://fcm.googleapis.com/fcm/send/xyz", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    await client.call("push.unsubscribe", {});
+    expect(core.remote.devices()[0]!.push).toBe(false);
+    const before = pushes.length;
+    await core.call("notify.send", { body: "nobody" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(pushes).toHaveLength(before);
+    c.ws.close();
+  });
+
+  it("knows when nobody's at the Mac, from the app's reports", async () => {
+    // No app: away.
+    expect(core.remote.push.away()).toBe(true);
+    const sent: string[] = [];
+    const app = core.serve({ access: "local", send: (l) => void sent.push(l), close: () => {} });
+    const presence = async (idleSeconds: number, locked: boolean) => {
+      const n = sent.length;
+      app.receive(JSON.stringify({ id: Date.now(), method: "ui.presence", params: { idleSeconds, locked } }));
+      await expect.poll(() => sent.length).toBe(n + 1);
+    };
+    await presence(0, false);
+    expect(core.remote.push.away()).toBe(false);
+    await presence(0, true);
+    expect(core.remote.push.away()).toBe(true); // locked
+    await presence(4 * 60, false);
+    expect(core.remote.push.away()).toBe(false);
+    // 5 min without input (remote.push.awayMinutes), counting typing in an earlier test here.
+    expect(core.remote.push.away(Date.now() + 5 * 60_000 + 1000)).toBe(true);
+    // Typing in a terminal here is input too.
+    const pane = await core.call("pane.create", {});
+    app.receive(JSON.stringify({ id: 1, method: "pane.write", params: { paneId: pane.id, data: "l" } }));
+    await expect.poll(() => core.remote.push.away(Date.now() + 4 * 60_000)).toBe(false);
+    // The app quit: away.
+    app.closed();
+    expect(core.remote.push.away()).toBe(true);
+  });
+
+  it("pushes as remote.push.when and remote.pushDetails say", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://web.push.apple.com/when", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    const app = core.serve({ access: "local", send: () => {}, close: () => {} });
+    app.receive(JSON.stringify({ id: 1, method: "ui.presence", params: { idleSeconds: 0, locked: false } }));
+    await expect.poll(() => core.remote.push.away()).toBe(false);
+    const n = pushes.length;
+    // At the Mac: "away" waits, "always" doesn't, "never" never does.
+    await core.call("notify.send", { body: "you're here" });
+    core.settings.set("remote.push.when", "always");
+    await core.call("notify.send", { body: "always" });
+    core.settings.set("remote.push.when", "never");
+    await core.call("notify.send", { body: "never" });
+    // Away (the app quit), without details: the title alone.
+    core.settings.set("remote.push.when", "away");
+    core.settings.set("remote.pushDetails", false);
+    app.closed();
+    await core.call("notify.send", { title: "api · needs you", body: "Allow “rm -rf build”?" });
+    await expect.poll(() => pushes.length).toBe(n + 2);
+    const read = (i: number) => JSON.parse(decryptPush(pushes[i]!.body, browser.private, browser.auth));
+    expect(read(n).body).toBe("always");
+    expect(read(n + 1)).toMatchObject({ title: "api · needs you", body: "" });
+    core.settings.set("remote.pushDetails", true);
+    await client.call("push.unsubscribe", {});
+    c.ws.close();
+  });
+
   it("refuses unknown devices", async () => {
     const c = await connect(route, { hostKey, device: await generateKeyPair() });
     await expect.poll(c.closed).toBe(true);
@@ -232,6 +361,6 @@ describe("remote access", () => {
   it("logs what happened, as events in the log", async () => {
     const kinds = (await core.call("remote.log", { limit: 500 })).map((r) => r.kind);
     expect(core.data.query({ types: ["remote.audit"], limit: 500 }).length).toBe(kinds.length);
-    for (const k of ["enabled", "paired", "session", "denied", "pair-denied", "handshake-failed", "revoked"]) expect(kinds).toContain(k);
+    for (const k of ["enabled", "paired", "session", "denied", "pair-denied", "handshake-failed", "revoked", "push-on", "push-gone", "push-off"]) expect(kinds).toContain(k);
   });
 });

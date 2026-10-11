@@ -1,7 +1,8 @@
 // Settings → Remote Access (docs/13-remote-access.md, "Experience"): one switch,
 // then a pairing code right away, the way linked devices work in Signal and
 // WhatsApp. Below it: who is connected now and what they're watching, the paired
-// devices (access, last seen, unpair), recent activity, and how phones connect:
+// devices (access, last seen, notifications, unpair), when they get this Mac's
+// notifications, recent activity, and how phones connect:
 // one of the core's access modes (remote.modes, docs/38), with the settings that
 // mode names. A device asking to pair is answered right here as well. A mode
 // with a setup checklist (Tailscale, your own URL) shows it, with "Check Again";
@@ -56,6 +57,9 @@ const LOG_TEXT: Record<string, string> = {
   revoked: "Unpaired",
   scope: "Access changed",
   expired: "Unpaired (unused)",
+  "push-on": "Notifications on",
+  "push-off": "Notifications off",
+  "push-gone": "Notifications stopped by the device",
 };
 
 function ago(t: number): string {
@@ -146,6 +150,14 @@ export function Remote({ status, settings, pair, row }: { status: RemoteStatus |
             Pair a Device…
           </Button>
         </FormActions>
+      )}
+
+      {devices.length > 0 && (
+        <FormSection title="Notifications">
+          {row("remote.push.when")}
+          {settings["remote.push.when"] === "away" && row("remote.push.awayMinutes")}
+          {settings["remote.push.when"] !== "never" && row("remote.pushDetails")}
+        </FormSection>
       )}
 
       <Activity key={devices.length + sessions.length} />
@@ -346,7 +358,7 @@ function DeviceRow({ d }: { d: RemoteDevice }) {
   };
   const seen = d.connected ? "Connected" : `Last seen ${ago(d.lastSeenAt)}`;
   return (
-    <FormRow title={d.name} description={`${seen} · paired ${day(d.pairedAt)}`}>
+    <FormRow title={d.name} description={`${seen} · paired ${day(d.pairedAt)}${d.push ? " · notifications on" : ""}`}>
       <Segmented value={d.scope} options={["view", "control"]} labels={{ view: "View only", control: "Control" }} onChange={(v) => void cmd.call("remote.setScope", { id: d.id, scope: v as RemoteScope })} />
       <Button onClick={() => void unpair()}>
         Unpair

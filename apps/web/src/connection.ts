@@ -1,11 +1,14 @@
 // The session with the Mac: a WebSocket to the relay or to the Mac itself, the
 // Noise handshake (@cmd/remote-crypto), then JSON-RPC over it with the same
 // RpcClient the desktop uses. Reconnects with backoff, and right away when the page comes back
-// (iOS freezes WebSockets in the background), then bootstraps again.
+// (iOS freezes WebSockets in the background), then bootstraps again. Each
+// session checks this device's notifications (push.ts) and tells the Mac
+// whether the page is in front, so it doesn't push what the page shows.
 
 import { RpcClient, type CoreEvent, type Result } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import { deviceName, loadIdentity, macKey, saveIdentity, touchIdentity, type Identity } from "./identity.ts";
+import { syncPush } from "./push.ts";
 
 export type Phase =
   | { kind: "connecting" }
@@ -29,7 +32,14 @@ export class Connection {
   #retry = 0;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #closed = false;
-  #wake = () => document.visibilityState === "visible" && this.#ws === null && this.#connectNow();
+  #wake = () => {
+    this.#visible();
+    if (document.visibilityState === "visible" && this.#ws === null) this.#connectNow();
+  };
+  /** Tell the Mac whether this page is in front (cores before push don't know the call). */
+  #visible = () => {
+    if (this.phase.kind === "online" && this.phase.boot.push) void this.client?.call("push.visible", { visible: document.visibilityState === "visible" }).catch(() => {});
+  };
 
   constructor(id: Identity) {
     this.#id = id;
@@ -119,6 +129,8 @@ export class Connection {
       if (client.has("remote.ack") && client.core?.methods) void client.call("remote.ack", { received }).catch(() => {});
       const boot = await client.call("remote.bootstrap", {});
       this.#set({ kind: "online", boot });
+      this.#visible();
+      void syncPush(this, boot.push).catch((err: Error) => console.warn(`notifications: ${err.message}`));
       // The name a list of Macs shows; it follows a renamed Mac.
       const name = boot.host?.name;
       if (name && name !== this.#id.name) void touchIdentity(this.key, { name }).then(() => (this.#id = { ...this.#id, name }), () => {});

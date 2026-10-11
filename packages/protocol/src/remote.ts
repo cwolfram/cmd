@@ -52,6 +52,16 @@ export interface RemoteMethods {
       host: { name: string };
       /** The Mac's theme settings, so the phone looks the same (cores before 0.25 leave it out). */
       theme: RemoteTheme;
+      /** Web Push: the Mac's VAPID key (base64url) and whether this device is subscribed; older cores leave it out. */
+      push?: { key: string; subscribed: boolean };
     };
   };
+  /** A paired device's push subscription (PushSubscription.toJSON()); replaces the one it had. Remote sessions only. */
+  "push.subscribe": { params: { endpoint: string; keys: { p256dh: string; auth: string } }; result: null };
+  /** This device gets no more pushes. Remote sessions only. */
+  "push.unsubscribe": { params: {}; result: null };
+  /** The app on this Mac: is the screen locked, and how long since the last input (for remote.push.when "away"). Its connection's: gone when it closes. */
+  "ui.presence": { params: { idleSeconds: number; locked: boolean }; result: null };
+  /** Whether this session's page is in front: while one is, its device shows notifications itself and gets no push. Remote sessions only. */
+  "push.visible": { params: { visible: boolean }; result: null };
 }

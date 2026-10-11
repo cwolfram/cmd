@@ -4,7 +4,8 @@
 // pairing links, asks the Mac to approve new devices, keeps the device list,
 // and runs one HostChannel per connected device. It knows modes only through
 // the registry. Sessions are served by the core like socket clients, held to
-// policy.ts. Every pairing, session, revoke, denied call and failed handshake is
+// policy.ts. Devices that subscribed get the Mac's notifications as Web Push
+// (push.ts). Every pairing, session, revoke, denied call and failed handshake is
 // logged (scope "remote") and kept in the remote_log table.
 
 import crypto from "node:crypto";
@@ -20,6 +21,7 @@ import { exec as loginExec } from "../terminals/loginpath.ts";
 import { registerBuiltinModes } from "./access/builtin.ts";
 import { AccessModes, unknownMode, type AccessMode, type AccessRun, type Check, type ModeContext } from "./access/mode.ts";
 import { HostKeys } from "./keys.ts";
+import { RemotePush } from "./push.ts";
 import { webClientDir } from "./webroot.ts";
 import type { Transport } from "./transport.ts";
 import { HostChannel, type ChannelHost } from "./session.ts";
@@ -50,6 +52,8 @@ export interface RemoteServiceOptions {
 }
 
 export class RemoteService {
+  /** The Mac's notifications on paired devices (push.ts). */
+  readonly push: RemotePush;
   /** The audit log without an event log (tests). */
   #memoryLog: { at: number; kind: string; deviceId: string | null; detail: string | null }[] = [];
   #o: RemoteServiceOptions;
@@ -79,6 +83,14 @@ export class RemoteService {
   constructor(o: RemoteServiceOptions) {
     this.#o = o;
     this.#keys = new HostKeys(o.stateDir ? path.join(o.stateDir, "remote") : null);
+    this.push = new RemotePush({
+      store: o.store,
+      settings: o.settings,
+      keys: () => (this.#key ? { host: this.#key.publicKey, vapid: this.#keys.vapid() } : null),
+      looking: () => new Set([...this.#channels.values()].filter((c) => c.open && c.visible).map((c) => c.deviceId)),
+      audit: (kind, deviceId, detail) => this.audit(kind, deviceId, detail),
+      changed: () => this.#changed(),
+    });
     this.#modes = o.modes ?? builtinModes();
     this.#unwatchModes = this.#modes.onChange(() => this.#bind());
     this.#bind();
@@ -264,6 +276,12 @@ export class RemoteService {
     this.#o.broadcast({ type: "remote.input", deviceId: s.deviceId, name, paneId });
   }
 
+  /** A session's page came to the front or left it (push.visible). */
+  visible(conn: Connection, visible: boolean): void {
+    const s = this.#sessions.get(conn);
+    if (s) s.visible = visible;
+  }
+
   devices(): RemoteDevice[] {
     this.#expire();
     const ttl = this.#ttl();
@@ -276,6 +294,7 @@ export class RemoteService {
       lastSeenAt: d.lastSeenAt,
       expiresAt: d.lastSeenAt + ttl,
       connected: live.has(d.id),
+      push: !!d.push,
     }));
   }
 
@@ -459,10 +478,14 @@ function builtinModes(): AccessModes {
 /** The Mac's theme as paired phones draw it (they never get settings.updated). */
 export const remoteTheme = (s: Settings): RemoteTheme => ({ appearance: s["theme.appearance"], dark: s["theme.dark"], light: s["theme.light"] });
 
-/** Remote access (`core.remote`): the audit log as events in the core's log, sessions served like the socket's, phones told when the theme changes. */
-export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast">, stateDir: string | null): RemoteService {
+/**
+ * Remote access (`core.remote`): the audit log as events in the core's log, sessions served
+ * like the socket's, phones told when the theme changes, and the Mac's notifications pushed
+ * to devices that subscribed.
+ */
+export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast" | "notifications" | "server">, stateDir: string | null): RemoteService {
   core.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => core.broadcast({ type: "theme.updated", theme: remoteTheme(core.settings.settings) }));
-  return new RemoteService({
+  const remote = new RemoteService({
     store: core.store,
     audit: {
       record: (kind, deviceId, detail) => core.data.record({ id: eventId("remote.audit"), at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
@@ -473,4 +496,7 @@ export function createRemote(core: Pick<CoreContext, "store" | "data" | "setting
     serve: (conn) => core.serve(conn),
     broadcast: (e) => core.broadcast(e),
   });
+  core.notifications.on("notification", (n) => remote.push.notify(n));
+  core.server.onClosed((conn) => remote.push.closed(conn));
+  return remote;
 }

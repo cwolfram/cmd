@@ -5,7 +5,9 @@
 // pair from the Home Screen app, and pairs only when told to), opens a terminal
 // from Now, types from the key row and the compose bar, checks the text reached
 // the PTY and that the Mac's terminal is sized for the phone while it shows it,
-// pairs a second Mac (a second core) from a pasted link and switches between
+// shows the Mac's notifications as toasts that open their terminal (push itself
+// needs a real push service: core tests, and a phone by hand), pairs a second
+// Mac (a second core) from a pasted link and switches between
 // them (direct: the link opens at that Mac's own address), then has the first
 // Mac unpair it. Screenshots in .cmd-dev/shots/web-*.png. `pnpm e2e:web`;
 // E2E_HOSTED=1 runs it against the deployed relay and client instead;
@@ -156,6 +158,9 @@ try {
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("dialog").getByText("Control: can type and change files").waitFor();
   check(true, "Settings says what this device may do");
+  // An iOS tab gets no push (only the Home Screen app does): Settings says so, Now doesn't ask.
+  await page.getByRole("dialog").getByText("Add cmd to your Home Screen first").waitFor();
+  check(!(await page.getByText("Get notified on this device").isVisible()), "in an iOS tab, notifications wait for the Home Screen app");
   await page.waitForTimeout(300); // the sheet's rise (fixed-wait: a screenshot of it in place)
   await shot("2b-settings");
   await page.keyboard.press("Escape");
@@ -222,7 +227,23 @@ try {
   check(true, "Next opens the oldest thing that needs you");
   await shot("3b-agent");
   await page.getByRole("button", { name: "Back to Now" }).click();
-  void waiting;
+
+  // The Mac's notifications while the client is open: a toast that opens its terminal.
+  await call("notify.send", { paneId: waiting.id, title: "api · needs you", body: "Allow “pnpm test”?" });
+  const toastEl = page.locator(".ui-toast", { hasText: "api · needs you" });
+  await toastEl.waitFor();
+  check(true, "a notification on the Mac shows as a toast");
+  await toastEl.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+  await shot("2e-toast");
+  await toastEl.getByRole("button", { name: "Open" }).click();
+  await page.locator(".term-state", { hasText: "Needs you" }).waitFor();
+  check(true, "its Open button opens the terminal");
+  // Nothing about the terminal on screen: it's already in front of you.
+  await call("notify.send", { paneId: waiting.id, title: "api · bell", body: "Bell" });
+  await call("notify.send", { title: "Build", body: "Done in 4 min" });
+  await page.locator(".ui-toast", { hasText: "Build" }).waitFor();
+  check(!(await page.locator(".ui-toast", { hasText: "api · bell" }).isVisible()), "no toast about the terminal on screen");
+  await page.getByRole("button", { name: "Back to Now" }).click();
 
   // The phone comes back after a reload: it remembers the Mac, no pairing.
   await page.reload();

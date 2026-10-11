@@ -29,6 +29,7 @@ import { handleCertificates } from "./certificates.ts";
 import { isPopup, startWebSession } from "./web-session.ts";
 import { handleOpen, openForUser } from "./open.ts";
 import { crashStatus, followCrashReports, record as recordCrash, startCrashReporting } from "./crash.ts";
+import { followPresence } from "./presence.ts";
 import { feedbackStatus, sendFeedback, startFeedback, type FeedbackRequest } from "./feedback.ts";
 import { claimWhatsNew } from "./whats-new.ts";
 import { bootDone, booting, bootStalled, pollBoot } from "./boot.ts";
@@ -413,12 +414,11 @@ async function ensureCore(): Promise<void> {
 }
 
 /**
- * Until the core answers. A core that is alive but not listening yet is busy
- * starting (the first launch of a version can migrate data for minutes): it gets
- * as long as its boot report keeps changing, and the windows show what it does
- * (boot.ts, docs/50). One that holds the lock without a pid file (older cores wrote it
- * only once listening) shows as our core exiting "already running": start
- * another now and then, which takes over as soon as the busy one is gone.
+ * Until the core answers. A core that is alive but not listening yet is busy starting (the first
+ * launch of a version can migrate data for minutes): it gets as long as its boot report keeps changing,
+ * and the windows show what it does (boot.ts, docs/50). One that holds the lock without a pid file (older
+ * cores wrote it only once listening) shows as our core exiting "already running": start another now
+ * and then, which takes over as soon as the busy one is gone.
  */
 async function waitForCore(): Promise<void> {
   let said = false;
@@ -976,7 +976,7 @@ app.whenReady().then(async () => {
   ensureCore()
     .finally(coreChecked)
     .then(coreUp, (err: Error) => (bootDone(), log.error("the core did not start", err), void coreFailed(coreUp)));
-  followCrashReports(socketPath);
+  followCrashReports(socketPath), followPresence(socketPath);
   // Its bundle (about 570 KB) is parsed on this thread; its first check is 30 s away anyway.
   setTimeout(() => void startUpdater(), 5000);
   const send = commandSender(() => (workbenchOnly ? null : workspaces.reopen()), { openSettings, checkForUpdates, isUtility, appWindows });

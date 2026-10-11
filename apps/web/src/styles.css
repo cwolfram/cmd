@@ -86,3 +86,6 @@ body { background: var(--bg); color: var(--text); font: var(--text-base) / 1.35 
 
 /* The terminal's menu: its rows edge to edge in the sheet. */
 .menu-rows { padding: var(--space-1) 0 var(--space-3); }
+
+/* A Mac's notification as a toast (App.tsx): its title on a line of its own. */
+.ui-toast-text strong { display: block; }

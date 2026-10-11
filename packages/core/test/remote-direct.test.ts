@@ -327,7 +327,7 @@ describe("DirectListener", () => {
     const { url } = await listen();
     const res = await fetch(`http://${url}/`);
     const csp = Object.fromEntries(res.headers.get("content-security-policy")!.split(";").map((d) => d.trim().split(/\s+(.*)/).slice(0, 2)));
-    expect(csp).toMatchObject({ "default-src": "'none'", "manifest-src": "'self'", "img-src": "'self' data:", "script-src": "'self'", "connect-src": "'self'" });
+    expect(csp).toMatchObject({ "default-src": "'none'", "manifest-src": "'self'", "worker-src": "'self'", "img-src": "'self' data:", "script-src": "'self'", "connect-src": "'self'" });
     // srcObject loads no URL, so media-src stays 'none'; and no Permissions-Policy turns the camera off.
     expect(csp["media-src"]).toBeUndefined();
     expect(res.headers.get("permissions-policy")).toBeNull();

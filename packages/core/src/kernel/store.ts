@@ -10,6 +10,7 @@ import type { Agent, AgentId, AppWindow, PaneId, RemoteScope, Workspace } from "
 import type { PaneRecord } from "../terminals/panes.ts";
 import type { ClosedRecord } from "../windows/closed.ts";
 import { peek } from "../data/peek.ts";
+import type { PushSubscriptionData } from "../remote/webpush.ts";
 import { decodeAgent, decodeClosed, decodeDoc, decodePane, decodeRemoteDevice, decodeRows, decodeWorkspace, decodeWindow } from "./stored.ts";
 
 export interface RemoteDeviceRecord {
@@ -20,6 +21,8 @@ export interface RemoteDeviceRecord {
   publicKey: string;
   pairedAt: number;
   lastSeenAt: number;
+  /** Where its pushes go (push.subscribe); none: it gets no notifications. */
+  push?: PushSubscriptionData;
 }
 
 /**

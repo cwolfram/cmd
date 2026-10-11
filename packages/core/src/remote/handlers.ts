@@ -1,10 +1,12 @@
 // Remote access's methods (remote.*, docs/13 and 38): turn it on, pair and approve devices,
 // access modes, and a session's bootstrap (what a paired device loads first, and the events
-// it gets from then on: those of the windows it shows and the files it watches).
+// it gets from then on: those of the windows it shows and the files it watches), and a
+// device's push subscription.
 
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 import type { RemoteScope, Result } from "@cmd/protocol";
+import type { Connection } from "../kernel/connection.ts";
 import type { CoreContext } from "../kernel/context.ts";
 import { IN_CORE, slice } from "../kernel/handlers.ts";
 import { remoteEvent } from "./policy.ts";
@@ -38,14 +40,30 @@ export const remoteHandlers = (core: CoreContext) =>
         theme: remoteTheme(core.settings.settings),
       };
       if (conn) {
-        if (conn.deviceId) result.device = { id: conn.deviceId, scope: conn.access as RemoteScope };
+        if (conn.deviceId) {
+          result.device = { id: conn.deviceId, scope: conn.access as RemoteScope };
+          const push = core.remote.push.info(conn.deviceId);
+          if (push) result.push = push;
+        }
         const state = core.server.state(conn);
         core.server.subscribe(conn, (e) => remoteEvent(e, core.server.policy(), state.follows, state.watches));
         core.magic.resume();
       }
       return result;
     },
+    // A paired device's own: its subscription is kept on its record (docs/13, "Push notifications").
+    "push.subscribe": (p, { conn } = IN_CORE) => (core.remote.push.subscribe(device(conn), p), null),
+    "push.unsubscribe": (_, { conn } = IN_CORE) => (core.remote.push.unsubscribe(device(conn)), null),
+    "push.visible": (p, { conn } = IN_CORE) => (core.remote.visible(device(conn), p.visible === true), null),
+    // The Mac's own app: whether someone's at this Mac, for remote.push.when "away".
+    "ui.presence": (p, { conn } = IN_CORE) => (core.remote.push.presence(conn, p), null),
   });
+
+/** The paired device's connection behind a call; nobody else has notifications to switch. */
+function device(conn: Connection | null): Connection {
+  if (!conn || conn.access === "local") throw new Error("only paired devices get notifications");
+  return conn;
+}
 
 let hostName: string | null = null;
 /** The Mac's name as set in System Settings ("Jan's MacBook Pro"), else the host name. */

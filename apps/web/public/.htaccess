@@ -1,9 +1,9 @@
 # Served by Apache on Uberspace (scripts/deploy-remote.sh). Every path that
 # isn't a file is the app (/pair#… included), and the page is locked down: its
 # own scripts only, WebSockets to relays only, never framed, no referrer. The
-# manifest and icons make it installable from the home screen; media-src stays
-# 'none' because the QR scanner's <video> plays the camera through srcObject,
-# which loads no URL. Mirrors the core's direct listener
+# manifest and icons make it installable from the home screen, and sw.js
+# (worker-src) shows its notifications; media-src stays 'none' because the QR
+# scanner's <video> plays the camera through srcObject, which loads no URL. Mirrors the core's direct listener
 # (packages/core/src/remote/direct.ts), caching included.
 RewriteEngine On
 RewriteBase /
@@ -13,7 +13,7 @@ RewriteRule ^ index.html [L]
 AddType application/manifest+json .webmanifest
 AddType image/svg+xml .svg
 
-Header always set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src wss:; img-src 'self' data:; font-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+Header always set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src wss:; img-src 'self' data:; font-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 Header always set Referrer-Policy "no-referrer"
 Header always set X-Content-Type-Options "nosniff"
 Header always set Strict-Transport-Security "max-age=31536000"
