@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { OperatorConversation, OperatorItem, WindowId } from "@cmd/protocol";
-import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, ToolbarButton, ToolbarSpacer, View, WindowToolbar, useStickToEnd } from "@cmd/ui";
+import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, ToolbarButton, ToolbarSpacer, ToolbarText, View, WindowToolbar, useStickToEnd } from "@cmd/ui";
 import { showContextMenu } from "../../lib/context.ts";
 import { useAiStatus } from "../../ai/status.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
@@ -94,6 +94,7 @@ export function OperatorView({ win, focused }: WindowViewProps) {
         toolbar={
           <WindowToolbar label="Operator">
             <ToolbarButton icon="square.and.pencil" label="New Conversation" disabled={!conv?.items.length} onClick={() => void operatorCall.reset(ws).catch(() => {})} />
+            {conv?.name && <ToolbarText>{conv.name}</ToolbarText>}
             <ToolbarSpacer />
             <ToolbarButton icon="clock.arrow.circlepath" label="Past Conversations" menu onClick={() => void showPast(ws)} />
           </WindowToolbar>

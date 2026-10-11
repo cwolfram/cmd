@@ -51,12 +51,15 @@ export interface OperatorDeps {
   notify?(workspaceId: WorkspaceId, title: string, body: string): void;
   /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
   record?(e: NewDataEvent): void;
+  /** A name for a conversation from its requests and answers (docs/32's namer, the fast tier); null when there's none to give. */
+  name?(turns: { prompt: string; final: string | null; at: number }[], project: string | null): Promise<string | null>;
   /** Where conversations are kept (cmd's database); null: in memory only (tests). */
   db: DatabaseSync | null;
 }
 
 interface Conversation {
   workspaceId: WorkspaceId;
+  name: string | null;
   items: OperatorItem[];
   messages: ModelMessage[];
   refs: Refs;
@@ -80,6 +83,7 @@ interface Conversation {
 }
 
 interface Saved {
+  name?: string | null;
   items: OperatorItem[];
   messages: ModelMessage[];
   refs: Record<string, WindowId>;
@@ -182,7 +186,7 @@ export class OperatorService {
 
   get(workspaceId: WorkspaceId): OperatorConversation {
     const c = this.#conv(workspaceId);
-    return { workspaceId, items: c.items, busy: c.busy, usage: c.usage, model: c.model, latency: c.latency };
+    return { workspaceId, name: c.name, items: c.items, busy: c.busy, usage: c.usage, model: c.model, latency: c.latency };
   }
 
   send(workspaceId: WorkspaceId, text: string, selected: WindowId | null = null): void {
@@ -235,16 +239,16 @@ export class OperatorService {
 
   /** The conversation becomes `saved` (null: empty), keeping what it waits on; the app is told. */
   #replace(c: Conversation, saved: Saved | null): void {
-    Object.assign(c, { items: saved?.items ?? [], messages: saved?.messages ?? [], refs: new Refs(saved?.refs), system: saved?.system ?? null, rules: saved?.rules ?? null, news: [], usage: saved?.usage ?? zero(), model: saved?.model ?? null, latency: null, denials: 0 });
+    Object.assign(c, { name: saved?.name ?? null, items: saved?.items ?? [], messages: saved?.messages ?? [], refs: new Refs(saved?.refs), system: saved?.system ?? null, rules: saved?.rules ?? null, news: [], usage: saved?.usage ?? zero(), model: saved?.model ?? null, latency: null, denials: 0 });
     this.#save(c);
-    this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, reset: true, items: c.items, busy: false, usage: c.usage, model: c.model, latency: null });
+    this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, reset: true, name: c.name, items: c.items, busy: false, usage: c.usage, model: c.model, latency: null });
   }
 
   /** Into the past conversations, if there is anything in it. */
   #putAway(c: Conversation): void {
     const requests = c.items.filter((i) => i.kind === "user");
     if (!this.#d.db || !c.items.length) return;
-    const title = (requests[0]?.text ?? c.items.find((i) => i.kind === "event")?.text ?? "Conversation").replace(/\s+/g, " ").slice(0, 120);
+    const title = (c.name ?? requests[0]?.text ?? c.items.find((i) => i.kind === "event")?.text ?? "Conversation").replace(/\s+/g, " ").slice(0, 120);
     this.#d.db.prepare("INSERT INTO operator_past (id, workspace_id, title, at, requests, json) VALUES (?, ?, ?, ?, ?, ?)").run(randomUUID(), c.workspaceId, title, c.items.at(-1)!.at, requests.length, JSON.stringify(this.#saved(c)));
   }
 
@@ -349,6 +353,7 @@ export class OperatorService {
       this.#save(c);
       this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, busy: false, usage: c.usage, model: c.model, latency: c.latency });
     }
+    if (!c.name && !stopped && !error) void this.#nameIt(c);
     if (c.queue.length || c.news.length) void this.#turn(c);
   }
 
@@ -424,6 +429,23 @@ export class OperatorService {
       if (method === "window.close") return this.#closing((params as Params<"window.close">).id).then(() => this.#d.call(method, params) as Promise<Result<M>>);
       return this.#d.call(method, params) as Promise<Result<M>>;
     };
+  }
+
+  /** Name the conversation once it has a request and an answer: what it is about, in the person's words. */
+  async #nameIt(c: Conversation): Promise<void> {
+    if (!this.#d.name) return;
+    const turns: { prompt: string; final: string | null; at: number }[] = [];
+    for (const i of c.items) {
+      if (i.kind === "user") turns.push({ prompt: i.text, final: null, at: i.at });
+      else if (i.kind === "text" && turns.length) turns.at(-1)!.final = i.text;
+    }
+    if (!turns.length) return;
+    const ws = this.#d.workspace(c.workspaceId);
+    const name = await this.#d.name(turns, ws && !ws.home ? (ws.root.split("/").pop() ?? null) : null).catch(() => null);
+    if (!name || c.name) return;
+    c.name = name;
+    this.#save(c);
+    this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, name });
   }
 
   async #closing(id: WindowId): Promise<void> {
@@ -503,6 +525,7 @@ export class OperatorService {
     const saved = this.#load(workspaceId);
     c = {
       workspaceId,
+      name: saved?.name ?? null,
       items: saved?.items ?? [],
       messages: saved?.messages ?? [],
       refs: new Refs(saved?.refs),
@@ -536,7 +559,7 @@ export class OperatorService {
   }
 
   #saved(c: Conversation): Saved {
-    return { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
+    return { name: c.name, items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
   }
 
   #save(c: Conversation): void {

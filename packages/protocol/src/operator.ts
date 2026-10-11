@@ -49,6 +49,8 @@ export interface OperatorUsage {
 
 export interface OperatorConversation {
   workspaceId: WorkspaceId;
+  /** 1–3 nouns for what it is about (docs/32's namer), once its first turn ended; null until then. */
+  name: string | null;
   items: OperatorItem[];
   /** A turn is running (thinking, calling tools or waiting for you). */
   busy: boolean;
@@ -61,7 +63,7 @@ export interface OperatorConversation {
 /** A conversation put away by New Conversation, to open again. */
 export interface OperatorPast {
   id: string;
-  /** Its first request. */
+  /** Its name, else its first request. */
   title: string;
   /** When it was last added to. */
   at: number;
@@ -77,6 +79,7 @@ export type OperatorEvent = {
   items?: OperatorItem[];
   /** The whole conversation was cleared (operator.reset). */
   reset?: boolean;
+  name?: string | null;
   busy?: boolean;
   usage?: OperatorUsage;
   model?: string | null;

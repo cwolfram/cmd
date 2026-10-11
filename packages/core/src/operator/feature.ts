@@ -9,6 +9,7 @@ import type { Feature } from "../kernel/features.ts";
 import type { HandlerSlice } from "../kernel/handlers.ts";
 import type { WindowType } from "../windows/types.ts";
 import { OperatorService } from "./service.ts";
+import { checkName, NAME_SCHEMA, nameInput, nameSystem, type NamerAnswer } from "../agents/namer.ts";
 
 /** The Operator widget: one per workspace is enough, the conversation is the workspace's. */
 export const operatorType: WindowType = {
@@ -39,6 +40,14 @@ export function operatorOf(core: CoreContext): OperatorService {
       notify: (_id, title, body) => core.notifications.info(title, body),
       // A terminal's window is its pane: its tool calls are found with the terminal's other events too.
       record: (e) => core.data.record(e.windowId && core.panes.get(e.windowId) ? { ...e, paneId: e.windowId } : e),
+      // Named like agents' sessions (docs/32), in the background on the fast tier; none without AI.
+      name: async (turns, project) => {
+        if (!core.ai.status().ready) return null;
+        const input = nameInput({ current: null, turns: turns.map((t) => ({ at: t.at, prompt: t.prompt, files: [], final: t.final })), others: [], project });
+        const r = await core.ai.object<NamerAnswer>({ tier: "fast", purpose: "operator.name", background: true, system: nameSystem(), prompt: input, schema: NAME_SCHEMA as unknown as Record<string, unknown>, effort: "minimal", maxOutputTokens: 300, temperature: 0 });
+        const checked = checkName(r.value.name, [], project);
+        return checked.problem ? null : checked.name;
+      },
       db: core.store.db,
     });
     services.set(core, s);

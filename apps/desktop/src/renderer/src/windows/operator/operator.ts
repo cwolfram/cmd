@@ -52,6 +52,7 @@ cmd.onEvent((e) => {
       ...c,
       items,
       ...(e.busy !== undefined ? { busy: e.busy } : {}),
+      ...(e.name !== undefined ? { name: e.name } : {}),
       ...(e.usage ? { usage: e.usage } : {}),
       ...(e.model !== undefined ? { model: e.model } : {}),
       ...(e.latency !== undefined ? { latency: e.latency } : {}),
