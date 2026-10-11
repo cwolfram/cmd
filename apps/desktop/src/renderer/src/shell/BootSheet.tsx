@@ -46,7 +46,7 @@ function Step({ step }: { step: BootStep }) {
         <ProgressRing value={share ?? undefined} state={step.ended ? "done" : undefined} label={step.label} />
         <Text>{step.label}</Text>
       </Inline>
-      {!step.ended && <Text tone="dim">{share !== null ? `${Math.floor(share * 100)}%` : step.detail}</Text>}
+      {!step.ended && <Text tone="dim" size="sm">{share !== null ? `${Math.floor(share * 100)}%` : step.detail}</Text>}
     </Inline>
   );
 }
