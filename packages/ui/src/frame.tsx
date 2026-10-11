@@ -330,10 +330,10 @@ export function Filmstrip({ items, selected, onSelect }: { items: readonly { key
   );
 }
 
-/** Text in one of the kit's roles: `dim` for secondary, `mono` for values and IDs, `strong` for a name; `truncate` cuts one line with an ellipsis. */
-export function Text({ tone, size, mono, strong, truncate, select, children }: { tone?: "dim" | Tone; size?: TextSize; mono?: boolean; strong?: boolean; truncate?: boolean; /** A value to read and copy (a path, a hash): selectable, a long one breaks anywhere. */ select?: boolean; children: ReactNode }) {
+/** Text in one of the kit's roles: `dim` for secondary, `mono` for values and IDs, `strong` for a name; `truncate` cuts one line with an ellipsis; `balance` wraps a short paragraph into lines of about one length (an intro under a title). */
+export function Text({ tone, size, mono, strong, truncate, select, balance, children }: { tone?: "dim" | Tone; size?: TextSize; mono?: boolean; strong?: boolean; truncate?: boolean; /** A value to read and copy (a path, a hash): selectable, a long one breaks anywhere. */ select?: boolean; balance?: boolean; children: ReactNode }) {
   return (
-    <span className="ui-text" data-tone={tone} data-size={size} data-mono={mono || undefined} data-strong={strong || undefined} data-truncate={truncate || undefined} data-select={select || undefined}>
+    <span className="ui-text" data-tone={tone} data-size={size} data-mono={mono || undefined} data-strong={strong || undefined} data-truncate={truncate || undefined} data-select={select || undefined} data-balance={balance || undefined}>
       {children}
     </span>
   );

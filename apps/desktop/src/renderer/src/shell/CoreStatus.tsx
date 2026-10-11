@@ -33,7 +33,7 @@ function summarize(p: Props, h: CoreHealth, restarting: boolean, startup: Startu
     if (p.error) return { led: "needs", text: "Core error", detail: p.error };
     // Busy before it answers (the first launch of a version updating data, docs/50): say what it does.
     const step = runningStep(boot);
-    if (step) return { led: "working", text: `${stepLine(step)}…`, detail: "Getting your data ready. Terminals keep running." };
+    if (step) return { led: "working", text: `${stepLine(step)}…`, detail: "Getting your data ready." };
     return { led: "working", text: "Connecting to core…", detail: "The core isn't reachable; reconnecting." };
   }
   // Connected, still starting up behind the socket: say what it does (the first launch of a version rebuilds its views).

@@ -211,6 +211,19 @@ export class Scheduler extends EventEmitter<{ startup: [StartupStatus]; stall: [
     });
   }
 
+  /**
+   * Runs `fn`, work the core does before it serves anyone (opening and compacting
+   * the event log: the boot report shows it, docs/50), without the watchdog
+   * counting it as a stall: nobody waited on the thread.
+   */
+  unwatched<T>(fn: () => T): T {
+    try {
+      return fn();
+    } finally {
+      this.#expected = performance.now() + TICK_MS;
+    }
+  }
+
   /** Tests, the core's close: every startup job has run. */
   async idle(): Promise<void> {
     await this.#queue;

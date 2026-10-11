@@ -32,7 +32,7 @@ The fixed ten minutes are gone: the app waits as long as the file changes, and g
 
 ### The sheet
 
-`shell/BootSheet.tsx`: shown when the core isn't connected yet, a report says work is running, and it has run for a second (no flash for a quick migration). One row per step: done, running with its count or detail, the line "Your terminals keep running" (they do, in the PTY host, which the core takes over once it answers). It goes when the core answers; What's New opens after it, as before. A core that fails to start gets the existing dialog (`coreFailed`: Try Again, Show Log), with the backup path in the log, not the sheet.
+`shell/BootSheet.tsx`: shown when the core isn't connected yet, a report says work is running, and it has run for a second (no flash for a quick migration). One row per step: done, running with its count or detail, all drawn by one `ProgressRing` (filling, turning, done, failed) so the rows line up. It goes when the core answers; What's New opens after it, as before. A core that fails to start gets the existing dialog (`coreFailed`: Try Again, Show Log), with the backup path in the log, not the sheet.
 
 ### Progress on startup jobs
 

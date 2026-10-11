@@ -4,7 +4,7 @@
 // TitleBand, and Hide (what gives way as a window narrows).
 import { useState, type ReactNode } from "react";
 import { Button } from "./button.tsx";
-import { Dial, Document, Hide, Page, Picture, Stage, Thumb, TitleBand, View, ViewState, Viewport, type ViewStateSpec } from "./frame.tsx";
+import { Dial, Document, Hide, Page, Picture, Stack, Stage, Text, Thumb, TitleBand, View, ViewState, Viewport, type ViewStateSpec } from "./frame.tsx";
 import { FormRow, FormSection } from "./layout.tsx";
 import { Switch } from "./choice.tsx";
 import { Badge } from "./status.tsx";
@@ -50,6 +50,16 @@ export const Dials = () => {
 };
 
 /** Rendered Markdown in a reading column: headings, a list, code, a quote, a table. */
+/** A paragraph as it wraps by default (pretty: no lone last word), and `balance`d: lines of about one length, for a short intro under a title. */
+export const Paragraphs = () => (
+  <div style={{ width: 340 }}>
+    <Stack gap={3}>
+      <Text>This version brings your recorded data up to date. It happens once.</Text>
+      <Text balance>This version brings your recorded data up to date. It happens once.</Text>
+    </Stack>
+  </div>
+);
+
 export const Reading = () => (
   <Box w={560} h={360}>
     <View>

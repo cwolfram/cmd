@@ -151,6 +151,7 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-text[data-select] { user-select: text; overflow-wrap: anywhere; }
 /* Text on its own line in a Stack is a paragraph: room between its lines, wrapped evenly. */
 .ui-stack > .ui-text:not([data-truncate]) { display: block; line-height: 1.45; text-wrap: pretty; }
+.ui-text[data-balance], .ui-stack > .ui-text[data-balance] { text-wrap: balance; }
 .ui-text[data-truncate] { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 /* Tables drop their least important columns as their space narrows (GridColumn.hide). */

@@ -208,7 +208,7 @@ export class Core {
     this.server.onClosed((conn) => this.panes.releaseAll(conn));
     // Every event says which cmd recorded it: the app's version, or the checkout's build.
     // A real core opens the log now (an older one is migrated first: data/migrations.ts) and imports and rebuilds views in start(), once it answers.
-    this.data = new DataService({ file: state ? path.join(state, "data", "events.sqlite") : null, recordedBy: process.env.CMD_APP_VERSION || (opts.build ? `source+${opts.build.slice(0, 8)}` : "source"), settings: () => this.settings.settings, maintenance: !!state });
+    this.data = this.scheduler.unwatched(() => new DataService({ file: state ? path.join(state, "data", "events.sqlite") : null, recordedBy: process.env.CMD_APP_VERSION || (opts.build ? `source+${opts.build.slice(0, 8)}` : "source"), settings: () => this.settings.settings, maintenance: !!state }));
     this.views = new ViewsStore(state ? path.join(state, "data", "views.sqlite") : null);
     const activity = new ActivityView(this.data, this.views, { deferRebuild: !!state, pace: this.scheduler, workspaceOf: (paneId) => this.panes.get(paneId)?.workspaceId ?? null });
     this.sessions = new SessionsView(this.views, this.data, { deferRebuild: !!state, pace: this.scheduler });

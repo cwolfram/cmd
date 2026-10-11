@@ -137,3 +137,15 @@ describe("startup jobs", () => {
     s.dispose();
   });
 });
+
+describe("the watchdog", () => {
+  it("doesn't count boot work as a stall", async () => {
+    const s = new Scheduler();
+    s.unwatched(() => {
+      for (const t0 = Date.now(); Date.now() - t0 < 1200; );
+    });
+    await new Promise((r) => setTimeout(r, 1100));
+    expect(s.stalls()).toEqual([]);
+    s.dispose();
+  });
+});

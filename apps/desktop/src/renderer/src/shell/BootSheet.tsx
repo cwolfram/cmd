@@ -4,8 +4,8 @@
 // running with its count or what it does now. Shown only once the work has run
 // a second (a quick migration doesn't flash it), gone when the core answers.
 
-import { Dialog, Inline, ProgressRing, Stack, Text } from "@cmd/ui";
-import { useEffect, useState } from "react";
+import { Dialog, Inline, ProgressRing, Separator, Stack, Text } from "@cmd/ui";
+import { Fragment, useEffect, useState } from "react";
 import type { BootReport, BootStep } from "@cmd/protocol";
 import { cmd } from "../lib/bridge.ts";
 
@@ -54,14 +54,16 @@ function Step({ step }: { step: BootStep }) {
 export function BootSheet({ open = true, report }: { open?: boolean; report: BootReport }) {
   return (
     <Dialog open={open} onClose={() => {}} dismissable={false} position="center" width={420} window={{ icon: "arrow.triangle.2.circlepath", name: "Getting Ready", close: false }}>
-      <Stack gap={3}>
-        <Text>This version brings your recorded data up to date. It happens once.</Text>
-        <Stack gap={2}>
-          {report.steps.map((s) => (
-            <Step key={s.id} step={s} />
+      <Stack gap={5}>
+        <Text balance>This version brings your recorded data up to date. It happens once.</Text>
+        <Stack gap={3}>
+          {report.steps.map((s, i) => (
+            <Fragment key={s.id}>
+              {i > 0 && <Separator />}
+              <Step step={s} />
+            </Fragment>
           ))}
         </Stack>
-        <Text tone="dim">Your terminals keep running.</Text>
       </Stack>
     </Dialog>
   );
