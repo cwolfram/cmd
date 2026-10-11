@@ -22,13 +22,13 @@ export interface ErrorBoundaryProps {
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, { failed: boolean; mount: number }> {
-  state = { failed: false, mount: 0 };
+  override state = { failed: false, mount: 0 };
 
   static getDerivedStateFromError(): { failed: boolean } {
     return { failed: true };
   }
 
-  componentDidCatch(error: unknown, info: ErrorInfo): void {
+  override componentDidCatch(error: unknown, info: ErrorInfo): void {
     this.props.onError?.(error, { componentStack: info.componentStack ?? "" });
   }
 
@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, { failed: boole
     this.setState((s) => ({ failed: false, mount: s.mount + 1 }));
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     const { title = "This window stopped working", text, reloadLabel = "Reload Window", children } = this.props;
     if (this.state.failed)
       return (

@@ -16,7 +16,7 @@ import { languages } from "@codemirror/language-data";
 import { highlightCode } from "@lezer/highlight";
 import { StyleModule } from "style-mod";
 import { cmd } from "../../lib/bridge.ts";
-import { openLink, openPath, selectPane } from "../../lib/actions.ts";
+import { openLink, openPath } from "../../lib/actions.ts";
 import { syntax } from "../../editor/syntax.ts";
 import { onFsChanged } from "../../lib/store.ts";
 import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";

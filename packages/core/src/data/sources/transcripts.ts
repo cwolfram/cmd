@@ -233,7 +233,7 @@ export function codexLine(line: string, n: number, file: TranscriptFile, state: 
  * readers: Copilot, unknown formats): its prompts, answers and tool calls as
  * events, ids from their position so re-reading changes nothing.
  */
-export function docEvents(doc: SessionDocument, file: TranscriptFile, mtime: number): NewEvent[] {
+export function docEvents(doc: SessionDocument, mtime: number): NewEvent[] {
   const agent = doc.agent;
   const sid = `${agent}:${doc.id}`;
   const at = doc.startedAt ?? mtime;
@@ -294,7 +294,7 @@ export function readTranscript(file: TranscriptFile, state: ReadState | null, so
   // Whole-file parsers: Copilot, and anything sniffed as nothing cmd knows line by line.
   const root: TranscriptRoot = { agent, dir: "", env: file.env };
   const doc = sources.parse(root, fileLines(file.path), file.path);
-  if (doc) events.push(...docEvents(doc, file, stat.mtime)), (sessionId = `${doc.agent}:${doc.id}`);
+  if (doc) events.push(...docEvents(doc, stat.mtime)), (sessionId = `${doc.agent}:${doc.id}`);
   return { events, offset: stat.size, lines: 0, agent: doc?.agent ?? agent, sessionId };
 }
 

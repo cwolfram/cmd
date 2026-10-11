@@ -42,7 +42,7 @@ function fixture(): StoreEvent[] {
     claude({ type: "summary", uuid: "u5", summary: "Sidebar work", leafUuid: "u3" }),
     codex({ type: "event_msg", payload: { type: "user_message", message: "migrate the postgres schema" } }, 2),
     codex({ type: "response_item", payload: { type: "function_call", name: "shell", arguments: JSON.stringify({ command: ["rg", "SchemaMigrator"] }), call_id: "c" } }, 3),
-    ...docEvents({ agent: "copilot", id: "d1", cwd: "/c", branch: null, title: "Lint step", prompts: ["add a lint step"], responses: ["Added eslint."], tools: ["npm run lint"], startedAt: 1, updatedAt: 2 } as never, FILE, 1),
+    ...docEvents({ agent: "copilot", id: "d1", cwd: "/c", branch: null, title: "Lint step", prompts: ["add a lint step"], responses: ["Added eslint."], tools: ["npm run lint"], startedAt: 1, updatedAt: 2 } as never, 1),
     { id: "command:1", at: 5, type: "command", source: "osc", text: "pnpm test", body: commandBody("pnpm test", "FAIL packages/core/test/flaky.test.ts"), data: { command: "pnpm test", exitCode: 1, cwd: "/w" }, content: "FAIL packages/core/test/flaky.test.ts" },
     { id: "visit:1", at: 6, type: "browser.visit", source: "window", text: "Flaky tests in Vitest", body: "Flaky tests in Vitest", data: { url: "https://vitest.dev/flaky", title: "Flaky tests in Vitest" } },
     { id: "file:1", at: 7, type: "file.open", source: "window", text: "/w/flaky.md", data: { path: "/w/flaky.md" } },

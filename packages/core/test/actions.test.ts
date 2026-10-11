@@ -269,7 +269,7 @@ describe("describing", () => {
   it("asks the fast tier, keeps author words, never lowers risk", async () => {
     write({ "package.json": JSON.stringify({ scripts: { dev: "vite", release: "node scripts/release.mjs" }, "scripts-info": { dev: "The author's words" } }), "README.md": "```sh\ndocker compose up\npnpm dev\n```" });
     const actions = scan(dir, null).actions;
-    const object = vi.fn(async (o: { prompt: string; tier: string }) => ({
+    const object = vi.fn(async (_o: { prompt: string; tier: string }) => ({
       value: {
         actions: [
           { id: "npm:package.json:dev", description: "Start the dev server", kind: "dev", long: true, risky: false },

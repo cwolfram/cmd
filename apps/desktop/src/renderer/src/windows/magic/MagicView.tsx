@@ -10,7 +10,7 @@
 // as "Stale" with the reason; problems a build left show in a line with Fix.
 
 import { AiField, Button, Callout, CodeBlock, Inline, LinkButton, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Spinner, Stack, StatusLine, Text, toast, View, ViewState, type ViewStateSpec, WebStage } from "@cmd/ui";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { kitVersion, requestedMedia, SYSTEM_SOUNDS, widgetTokens, type AppWindow, type MagicState, type MagicStep } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import { copy, openLink, selectPane, typeInTerminal } from "../../lib/actions.ts";
@@ -211,13 +211,6 @@ function PromptPane({ focused, error, initial, onSubmit }: { focused: boolean; e
     if (ai?.ready) onSubmit(pending);
   }, [pending, setup, ai?.ready]); // eslint-disable-line react-hooks/exhaustive-deps
   const ask = (p: string) => (needsAi ? (showSetup(["ai"]), setPending(p)) : onSubmit(p));
-  const submit = () => text.trim() && ask(text.trim());
-  const onKey = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      submit();
-    }
-  };
   return <Ask text={text} onText={setText} onAsk={ask} error={error && !NO_PROVIDER.test(error) ? error : undefined} needsAi={needsAi} autoFocus={focused} />;
 }
 

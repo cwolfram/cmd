@@ -14,8 +14,6 @@ import { ICON, iconNode } from "./icon.tsx";
 import { Spinner, type Tone } from "./status.tsx";
 import type { SpaceStep, TextSize } from "./tokens.gen.ts";
 
-const cls = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
-
 /** A step of the spacing scale (--space-*, tokens/space.tokens.json: multiples of 4px, `2` is 8px), or 0; a Stack's `pad` also takes the window inset. */
 export type Space = 0 | SpaceStep;
 type Pad = Space | "inset";

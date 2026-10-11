@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ACTIVITY_SCHEMA, DEFAULT_SETTINGS, EXPORT_FORMAT, HOOK_FORMAT, TURN_FORMAT, type ActivityEvent } from "@cmd/protocol";
+import { ACTIVITY_SCHEMA, DEFAULT_SETTINGS, EXPORT_FORMAT, TURN_FORMAT, type ActivityEvent } from "@cmd/protocol";
 import { FIXTURE_EPOCH, fixtureMeta, readFixture, toFixture } from "../src/agents/activity/fixture.ts";
 import { agentVersion } from "../src/agents/procinfo.ts";
 import { Core } from "../src/kernel/core.ts";

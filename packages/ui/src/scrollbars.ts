@@ -327,7 +327,7 @@ export function pageScrollbars(doc: Document, o: PageScrollbarsOptions, span: ty
   };
   const soon = () => (frame ||= win.requestAnimationFrame(placeAll));
 
-  const hide = (el: Element, s: State) => {
+  const hide = (s: State) => {
     s.on = false;
     for (const b of Object.values(s.bars)) b?.el.classList.remove("on");
   };
@@ -351,7 +351,7 @@ export function pageScrollbars(doc: Document, o: PageScrollbarsOptions, span: ty
     clearTimeout(s.timer);
     if (o.always) return;
     const st = s;
-    st.timer = setTimeout(() => (st.hovered || st.held ? keep(el) : hide(el, st)), o.hold);
+    st.timer = setTimeout(() => (st.hovered || st.held ? keep(el) : hide(st)), o.hold);
   }
 
   doc.documentElement.append(host);

@@ -31,7 +31,6 @@ const SHOWN = 400;
 type Row = { node: JsonNode; depth: number } | { more: JsonNode; depth: number; rest: number };
 type Hit = { node: JsonNode; field: "key" | "value"; start: number; end: number };
 
-const isContainer = (n: JsonNode) => n.type === "object" || n.type === "array";
 const keyText = (n: JsonNode) => (n.parent?.virtual ? String(n.line) : n.key === null ? "" : String(n.key));
 const valueText = (n: JsonNode) => (n.children ? "" : (n.raw ?? "").slice(0, SHOWN));
 

@@ -1,7 +1,6 @@
 // Built-in transcript sources (Claude Code, Codex, Qwen Code, Copilot CLI). They
 // use the same registry API another agent's source would.
 
-import fs from "node:fs";
 import path from "node:path";
 import { shq } from "../terminals/shell.ts";
 import { parseClaude, parseCodex, parseCopilot, parseQwen, type Obj } from "./parser.ts";

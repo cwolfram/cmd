@@ -180,6 +180,7 @@ export async function dataCommand(client: Client, pos: string[], opt: Record<str
       });
       await client.call("events.subscribe", { types: ["data.changed"] });
       await new Promise(() => {}); // until Ctrl-C
+      return 0;
     }
     case "export": {
       const out = typeof opt.out === "string" ? fs.createWriteStream(opt.out) : null;

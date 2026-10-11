@@ -1,7 +1,3 @@
-import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Agent, AgentTurn } from "@cmd/protocol";
 import { agentNotice, cleanAiBody, gist, noticeContext, plain, subjectOf } from "../src/agents/notice.ts";

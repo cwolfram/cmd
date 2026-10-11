@@ -29,11 +29,11 @@ installTooltips();
 const read = () => Object.fromEntries(new URLSearchParams(location.search));
 
 class Catch extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  render() {
+  override render() {
     return this.state.failed ? <p data-stage-failed>This story stopped working.</p> : this.props.children;
   }
 }

@@ -212,14 +212,14 @@ function Live({ c, C, props }: { c: ComponentInfo; C: ComponentType<Args>; props
 
 /** A cell that broke says so in place, small, instead of taking the page down; a new `retry` tries again. */
 class Catch extends Component<{ children: ReactNode; retry?: number }, { error: string | null }> {
-  state = { error: null as string | null };
+  override state = { error: null as string | null };
   static getDerivedStateFromError(e: unknown) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
-  componentDidUpdate(prev: { retry?: number }) {
+  override componentDidUpdate(prev: { retry?: number }) {
     if (prev.retry !== this.props.retry && this.state.error) this.setState({ error: null });
   }
-  render() {
+  override render() {
     return this.state.error ? <span className="wb-error">{this.state.error}</span> : this.props.children;
   }
 }

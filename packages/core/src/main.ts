@@ -14,7 +14,6 @@ import { adoptLoginPath } from "./terminals/loginpath.ts";
 import { ProcInfo } from "./agents/procinfo.ts";
 import { statusRoot } from "./agents/statusfiles.ts";
 import { devKeys } from "./kernel/dev-keys.ts";
-import { locateContext } from "./search/sources.ts";
 import { connectHost } from "./terminals/remote.ts";
 import type { TermBackend } from "./terminals/types.ts";
 

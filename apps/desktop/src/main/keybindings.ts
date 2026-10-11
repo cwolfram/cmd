@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { editJsonc, parseJsoncObject } from "@cmd/protocol";
 import { configDir } from "@cmd/protocol/node";
-import { editKeybindings, resolveKeybindings, type Keybindings } from "../shared/commands.ts";
+import { editKeybindings, resolveKeybindings } from "../shared/commands.ts";
 import type { KeybindingsSnapshot } from "../shared/ipc.ts";
 export type { KeybindingsSnapshot } from "../shared/ipc.ts";
 

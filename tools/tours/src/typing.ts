@@ -42,7 +42,7 @@ export function planKeys(text: string, r: Rng, p: TypingProfile = TYPING.termina
   let typoAt = -1;
   if (chars.length >= 12 && r() < p.typo) {
     // Inside a word, not its first letter, a letter we know the neighbours of.
-    const spots = chars.map((c, i) => i).filter((i) => i > 0 && NEAR[chars[i]!.toLowerCase()] && /[a-z]/i.test(chars[i - 1]!));
+    const spots = chars.map((_c, i) => i).filter((i) => i > 0 && NEAR[chars[i]!.toLowerCase()] && /[a-z]/i.test(chars[i - 1]!));
     if (spots.length) typoAt = spots[Math.floor(r() * spots.length)]!;
   }
   const keys: string[] = [];

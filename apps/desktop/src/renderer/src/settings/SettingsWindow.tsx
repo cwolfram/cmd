@@ -25,7 +25,6 @@ import {
   type SettingDef,
   type SettingKey,
   type SearchStatus,
-  type Settings,
   type SettingsSnapshot,
 } from "@cmd/protocol";
 import { COMMANDS, COMMAND_BY_ID, DEFAULT_KEYBINDINGS, norm, prettyAccelerator, type CommandSpec } from "../../../shared/commands.ts";

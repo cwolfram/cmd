@@ -9,7 +9,7 @@
 
 import { forwardRef, useEffect, useRef, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type TextareaHTMLAttributes } from "react";
 import { ICON, Icon, iconNode } from "./icon.tsx";
-import { Button, type Size } from "./button.tsx";
+import type { Size } from "./button.tsx";
 import { Spinner } from "./status.tsx";
 import { useRowLabel } from "./labels.ts";
 

@@ -20,7 +20,6 @@ export function syntheticDay(day: string): NewJournalEvent[] {
   const page = (at: string, title: string, url: string, win = "w1") => ev(at, null, { kind: "browser.visit", url, title, windowId: win }, title, { cwd: null, thread: `window:${win}` });
   const session = (id: string, from: string, to: string, title: string, first: string, cwd = SHOP, repo: string | null = SHOP) =>
     ev(from, to, { kind: "agent.session", agent: "claude", sessionId: id, title, firstPrompt: first, branch: "main" }, title, { cwd, repo, thread: `session:${id}` });
-  let turnN = 0;
   const turn = (id: string, from: string, to: string, prompt: string, o: { final?: string; files?: string[]; commands?: string[]; outcome?: string; cwd?: string; repo?: string | null } = {}) =>
     ev(
       from,

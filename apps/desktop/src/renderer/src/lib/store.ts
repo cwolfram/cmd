@@ -4,7 +4,7 @@
 
 import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import type { Agent, AgentId, AppNotification, AppWindow, ClosedWindow, CommandRun, CoreEvent, Pane, PaneId, RemotePairRequest, RemoteStatus, SearchStatus, SettingsSnapshot, Workspace, WorkspaceId, StartupStatus, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
+import type { Agent, AgentId, AppNotification, AppWindow, ClosedWindow, CoreEvent, Pane, PaneId, RemotePairRequest, RemoteStatus, SearchStatus, SettingsSnapshot, Workspace, WorkspaceId, StartupStatus, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
 import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID, PROTOCOL } from "@cmd/protocol";
 import { OutputGate } from "@cmd/protocol/replay";
 import { reducedMotion } from "@cmd/ui";

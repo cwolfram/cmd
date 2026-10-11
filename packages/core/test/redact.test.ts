@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DATA_FLAGS, HOOK_FORMAT } from "@cmd/protocol";

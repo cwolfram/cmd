@@ -8,7 +8,6 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
-import path from "node:path";
 import { EventEmitter } from "node:events";
 import type { ActivityEvent, Agent, AgentId, AgentKind, AgentState, AgentTurn, GitPlace, Methods, NameSource, PaneId, Settings, WorkspaceId } from "@cmd/protocol";
 import { DEFAULT_SETTINGS, ENV, HOME_WORKSPACE_ID } from "@cmd/protocol";

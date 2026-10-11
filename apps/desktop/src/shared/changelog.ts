@@ -142,7 +142,7 @@ function lintEntry(e: string, kind: ChangeKind | "summary"): string[] {
 export function lintChangelog(text: string): string[] {
   const problems: string[] = [];
   const lines = text.split("\n");
-  const at = (i: number, msg: string) => problems.push(`CHANGELOG.md:${i + 1}: ${msg}`);
+  const at = (i: number, msg: string): void => void problems.push(`CHANGELOG.md:${i + 1}: ${msg}`);
   if (lines[0] !== "# Changelog") at(0, 'the first line must be "# Changelog"');
 
   let version: string | null = null;

@@ -35,7 +35,6 @@ import { formatBytes, homeOf, shortPath, windowsUsing } from "../../lib/model.ts
 import { getState, onFsChanged, usePersisted, useStoreValue } from "../../lib/store.ts";
 import { registerDropTarget } from "../../lib/drops.ts";
 import { dragFiles } from "../../lib/drags.ts";
-import { ICON, Symbol } from "../../components/Symbol.tsx";
 import { fileIcon, PlacementContext } from "../registry.ts";
 import { registerWindowActions, type WindowActions } from "../../lib/windowActions.ts";
 import { commandItem } from "../../shell/commands/registry.ts";

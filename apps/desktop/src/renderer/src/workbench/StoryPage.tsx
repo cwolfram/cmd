@@ -3,7 +3,7 @@
 // (DialogLayer): a variant that is a sheet shows inside its box, so several can be open
 // at once; the cell grows to fit it.
 
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { ErrorBoundary, LinkButton, SectionHeading } from "@cmd/ui";
 import type { StoryInfo } from "./catalog/index.ts";
 import { Doc, Head } from "./ComponentPage.tsx";

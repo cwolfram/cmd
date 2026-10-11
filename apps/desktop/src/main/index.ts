@@ -951,7 +951,7 @@ app.whenReady().then(async () => {
     done({ video: req.frame, audio: "loopback" });
   });
   // Magic widgets and frame pages (Visualizer, Jam) may not leave their page, open anything, or ask for permissions.
-  session.defaultSession.setPermissionRequestHandler((wc, _permission, done, details) => {
+  session.defaultSession.setPermissionRequestHandler((_wc, _permission, done, details) => {
     done(!/^cmd-widget:/.test(details.requestingUrl ?? "") && !fromFrame(details.requestingUrl));
   });
   // Browser windows' pages: deny by default, ask for camera, location and the like (web-session.ts).
