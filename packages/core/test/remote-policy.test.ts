@@ -4,13 +4,13 @@ import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import type { CoreEvent, Method } from "@cmd/protocol";
 import { Core } from "../src/kernel/core.ts";
-import { checkRemoteCall, REMOTE_ACCESS, RemoteDenied, remoteEventVisible, scopeAllows, type PolicyContext } from "../src/remote/policy.ts";
+import { checkRemoteCall, MAX_WATCHES, NO_ARGS, REMOTE_ACCESS, RemoteDenied, remoteEvent, remoteEventVisible, remoteResult, scopeAllows, type PolicyContext } from "../src/remote/policy.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 
 const home = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cmd-policy-")));
 const core = new Core({ socketPath: path.join(home, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home });
-const ctx: PolicyContext = { panes: core.panes, agents: core.agents, workspaces: core.workspaces, windows: core.windows, home };
+const ctx: PolicyContext = { panes: core.panes, agents: core.agents, workspaces: core.workspaces, windows: core.windows, windowTypes: core.windowTypes, home };
 afterAll(async () => {
   await core.close();
   rmTemp(home);
@@ -173,6 +173,56 @@ describe("remote policy table", () => {
     } finally {
       core.workspaces.markClosed(ws.id);
     }
+  });
+
+  it("checks the arguments of every reachable method that has any", () => {
+    const src = fs.readFileSync(path.join(import.meta.dirname, "../src/remote/policy.ts"), "utf8");
+    const args = src.slice(src.indexOf("const ARGS"), src.indexOf("// ── argument checks"));
+    const checked = new Set([...args.matchAll(/^  "([a-z][\w.]+)":/gm)].map((m) => m[1]));
+    const reachable = (Object.keys(REMOTE_ACCESS) as Method[]).filter((m) => REMOTE_ACCESS[m] !== "never");
+    expect(reachable.filter((m) => !checked.has(m) && !NO_ARGS.has(m))).toEqual([]);
+    expect([...NO_ARGS].filter((m) => checked.has(m) || REMOTE_ACCESS[m] === "never")).toEqual([]);
+    expect(denied("jam.change", { code: "x".repeat(70_000), request: "r" })).toMatch(/too long/);
+  });
+
+  it("tells a device only of open workspaces, without prompts or window state", async () => {
+    fs.mkdirSync(path.join(home, "shown"), { recursive: true });
+    fs.mkdirSync(path.join(home, "gone"), { recursive: true });
+    const shown = core.workspaces.open(path.join(home, "shown")).workspace;
+    const gone = core.workspaces.open(path.join(home, "gone")).workspace;
+    const p1 = core.panes.create({ cwd: path.join(home, "shown"), workspaceId: shown.id });
+    const p2 = core.panes.create({ cwd: path.join(home, "gone"), workspaceId: gone.id });
+    const browser = core.windows.open("browser", { url: "https://example.test/private-page" }, shown);
+    core.workspaces.markClosed(gone.id);
+    const boot = remoteResult("remote.bootstrap", await core.call("remote.bootstrap", {}), ctx) as { panes: { id: string }[]; workspaces: { id: string }[]; windows: { id: string; state: Record<string, unknown> }[] };
+    expect(boot.panes.map((p) => p.id)).toContain(p1.id);
+    expect(boot.panes.map((p) => p.id)).not.toContain(p2.id);
+    expect(boot.workspaces.map((w) => w.id)).not.toContain(gone.id);
+    expect(boot.windows.find((w) => w.id === browser.id)?.state).toEqual({});
+    // Its title is what it shows now; its state (history, the page before) stays on the Mac.
+    expect((remoteResult("window.list", core.windows.list(), ctx) as { state: unknown }[]).every((w) => JSON.stringify(w.state) === "{}")).toBe(true);
+    expect(core.windows.list().find((w) => w.id === browser.id)?.state).not.toEqual({});
+    expect(remoteEvent({ type: "pane.updated", pane: core.panes.get(p2.id)! }, ctx, new Set(), [])).toBeNull();
+    expect(remoteEvent({ type: "pane.updated", pane: core.panes.get(p1.id)! }, ctx, new Set(), [])).not.toBeNull();
+    expect(remoteEvent({ type: "window.updated", window: browser }, ctx, new Set(), [])).toMatchObject({ window: { state: {} } });
+    expect(remoteEvent({ type: "workspace.updated", workspace: core.workspaces.get(gone.id)! }, ctx, new Set(), [])).toEqual({ type: "workspace.removed", id: gone.id });
+    const agent = { id: "a", paneId: p1.id, workspaceId: shown.id, lastPrompt: "my secret", spawn: { source: "user", prompt: "also secret" } };
+    expect(JSON.stringify(remoteEvent({ type: "agent.updated", agent } as never, ctx, new Set(), []))).not.toContain("secret");
+  });
+
+  it("lets a session watch 32 paths, not 33", async () => {
+    fs.mkdirSync(path.join(home, "watched"), { recursive: true });
+    core.workspaces.open(path.join(home, "watched"));
+    const replies: { id: number; result?: unknown; error?: { message: string } }[] = [];
+    const served = core.serve({ access: "view", deviceId: "d", send: (l) => void replies.push(JSON.parse(l)), close: () => {} });
+    for (let i = 0; i <= MAX_WATCHES; i++) {
+      const dir = path.join(home, "watched", `d${i}`);
+      fs.mkdirSync(dir, { recursive: true });
+      served.receive(JSON.stringify({ jsonrpc: "2.0", id: i, method: "fs.watch", params: { path: dir } }));
+    }
+    await vi.waitFor(() => expect(replies).toHaveLength(MAX_WATCHES + 1));
+    expect(replies.filter((r) => r.error)).toEqual([{ jsonrpc: "2.0", id: MAX_WATCHES, error: { code: -32001, message: `watching ${MAX_WATCHES} paths already` } }]);
+    served.closed();
   });
 
   it("filters events", () => {
