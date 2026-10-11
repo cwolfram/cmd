@@ -160,7 +160,7 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 ### AR1-16-06 · Ring timers on wall-clock time, across sleep
 
-- **Status:** done (feature-fixes branch; the manual sleep check is left)
+- **Status:** done (e2a97ac3; the manual sleep check is left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/timers.ts:26-48`
@@ -180,7 +180,7 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 ### AR1-16-07 · Key the actions' pins and descriptions by repository, not by absolute folder
 
-- **Status:** done (feature-fixes branch)
+- **Status:** done (8f353855)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/actions/describe.ts:115-119`, `packages/core/src/actions/describe.ts:154-173`, `packages/core/src/actions/service.ts:97`, `packages/core/src/actions/service.ts:217-226`
@@ -260,7 +260,7 @@ interface Feature<O> {
 
 ### AR1-16-10 · Keep an edited summary when asked again, and record that it exists
 
-- **Status:** done (feature-fixes branch)
+- **Status:** done (dada9eb7)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/summaries/service.ts:250-275`
@@ -280,7 +280,7 @@ interface Feature<O> {
 
 ### AR1-16-11 · Use the shared JSONC parser in Workspace Actions
 
-- **Status:** done (feature-fixes branch)
+- **Status:** done (e2a97ac3)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/src/actions/sources.ts:118-137`, `packages/protocol/src/jsonc.ts`
