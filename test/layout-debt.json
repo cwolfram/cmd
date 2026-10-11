@@ -13,7 +13,7 @@
   "files over 600 lines in tools/tours": 0,
   "lines in packages/core/src/kernel/core.ts": 462,
   "lines in packages/cli/src/main.ts": 618,
-  "lines in packages/core/src/actions/sources.ts": 713,
+  "lines in packages/core/src/actions/sources.ts": 692,
   "lines in packages/core/src/agents/tracker.ts": 938,
   "lines in packages/core/src/data/store.ts": 680,
   "lines in packages/core/src/magic/service.ts": 936,

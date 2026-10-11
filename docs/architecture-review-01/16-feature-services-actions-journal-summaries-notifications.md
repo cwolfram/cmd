@@ -160,7 +160,7 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 ### AR1-16-06 · Ring timers on wall-clock time, across sleep
 
-- **Status:** in progress (feature-fixes)
+- **Status:** done (feature-fixes branch; the manual sleep check is left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/timers.ts:26-48`
@@ -172,13 +172,16 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 **Proposal.** Keep the per-timer timeout, and add one `unref`'d 15 s interval that runs only while a timer is armed. It compares `Date.now()` with each `endsAt` and fires any that are due. That catches wake, clock changes and `MAX_WAIT` re-arms in one place. Alternatively, main forwards `powerMonitor` `resume` as an RPC (`core.resumed`) that re-syncs every timer. The interval is simpler and needs no protocol change, so recommend it.
 
 **Success criteria.**
-- [ ] A test with fake timers: arm a 10-minute timer, jump `Date.now()` forward 11 minutes without advancing timers, then advance 15 s. The window is rung once.
-- [ ] No interval runs when no Timer window has an `endsAt` (asserted in the test).
+- [x] A test with fake timers: arm a 10-minute timer, jump `Date.now()` forward 11 minutes without advancing timers, then advance 15 s. The window is rung once.
+- [x] No interval runs when no Timer window has an `endsAt` (asserted in the test).
 - [ ] A manual check (noted in the PR): a 2-minute timer across a 5-minute sleep rings within 15 s of wake.
+
+**Progress (2026-10-11).** `TimerAlarms` keeps its per-timer timeout and runs a `CHECK_MS` (15 s, unref'd) interval only while a timer is armed; it rings any timer whose `endsAt` the wall clock passed, so a wake, a clock change or a `MAX_WAIT` re-arm all go through one place. `test/timers.test.ts` moves the system clock 11 minutes without moving timers and sees one ring within a check, and no timer or interval once none runs. Not done: the manual check across a real sleep (needs the Mac to sleep).
+
 
 ### AR1-16-07 · Key the actions' pins and descriptions by repository, not by absolute folder
 
-- **Status:** in progress (feature-fixes)
+- **Status:** done (feature-fixes branch)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/actions/describe.ts:115-119`, `packages/core/src/actions/describe.ts:154-173`, `packages/core/src/actions/service.ts:97`, `packages/core/src/actions/service.ts:217-226`
@@ -190,9 +193,12 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 **Proposal.** Key both by the repository's common git dir plus the root's path relative to the checkout top (`checkoutOf(root).common` + relative path), falling back to the absolute path outside git. Drop `root` from the hash, since `path.basename(root)` in the prompt is the only thing the model sees of it. Add a sweep on the existing 60 s timer that deletes describe rows unused for 90 days. Register the tables through doc 03's table registry when it lands.
 
 **Success criteria.**
-- [ ] A test: two worktrees of one repository with the same `package.json` cause one `describe` call, and a pin in one shows in the other.
-- [ ] A test: a describe row older than 90 days with no catalog is deleted by the sweep.
-- [ ] The `inputOf` hash no longer contains the absolute root (prefix bumped to `v3`).
+- [x] A test: two worktrees of one repository with the same `package.json` cause one `describe` call, and a pin in one shows in the other.
+- [x] A test: a describe row older than 90 days with no catalog is deleted by the sweep.
+- [x] The `inputOf` hash no longer contains the absolute root (prefix bumped to `v3`).
+
+**Progress (2026-10-11).** `folderKey(root)` (actions/describe.ts): the checkout's shared git folder and the root's path in it, the folder itself outside git. Pins and the describe cache use it (the service caches each root's key; pins kept under the absolute folder move over the first time). `inputOf` hashes `v3` with the folder's name only (all the model sees of where it is). The 60 s timer sweeps describe rows unused for 90 days once an hour (`get` touches a row). Tests in `actions.test.ts`. The tables still aren't in a schema registry (AR1-03-05).
+
 
 ### AR1-16-08 · Declare each feature as one contribution, as a dry run for plugins
 
@@ -256,7 +262,7 @@ interface Feature<O> {
 
 ### AR1-16-10 · Keep an edited summary when asked again, and record that it exists
 
-- **Status:** in progress (feature-fixes)
+- **Status:** done (feature-fixes branch)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/summaries/service.ts:250-275`
@@ -268,13 +274,16 @@ interface Feature<O> {
 **Proposal.** Record a `summary` event (`sessionId`, `path`, `inputHash` of the pruned context, `writtenHash` of the rendered file) when one is written. On a re-ask, compare: if the file's hash differs from `writtenHash`, the person edited it, so write to `…-2.md`. If the input hash is unchanged and the file is untouched, show the existing file and skip the call.
 
 **Success criteria.**
-- [ ] A test: summarise, edit the file, summarise again. The edited file is unchanged and a second file is written.
-- [ ] A test: summarise twice with no new messages. The fake AI is called once.
-- [ ] A `summary` event is in the log after a summary is written.
+- [x] A test: summarise, edit the file, summarise again. The edited file is unchanged and a second file is written.
+- [x] A test: summarise twice with no new messages. The fake AI is called once.
+- [x] A `summary` event is in the log after a summary is written.
+
+**Progress (2026-10-11).** The `summary.written` event (AR1-16-02) carries `input` (a hash of the model's input) and `written` (a hash of the file cmd last wrote, recorded when the answer or the error is in). Asking again: a file whose contents don't match what cmd wrote (the person edited it, or it's from before the records) is left alone and the summary goes to the next free `-2.md`, `-3.md`…; an untouched file with the same input is shown again without a model call. Tests in `summaries.test.ts` with the records in a map; `createSummaries` writes them to the log (`summary:<file>`) and reads them back.
+
 
 ### AR1-16-11 · Use the shared JSONC parser in Workspace Actions
 
-- **Status:** in progress (feature-fixes)
+- **Status:** done (feature-fixes branch)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/src/actions/sources.ts:118-137`, `packages/protocol/src/jsonc.ts`
@@ -286,8 +295,11 @@ interface Feature<O> {
 **Proposal.** Delete the local parser and import `parseJsonc` from `@cmd/protocol`; it throws with a position on malformed input, so keep the callers' existing catch (a source that throws keeps its last good actions).
 
 **Success criteria.**
-- [ ] `grep -n "function parseJsonc" packages/core/src/actions/sources.ts` returns nothing.
-- [ ] An actions test reads a `tasks.json` whose command contains `, ]` and gets it unchanged.
+- [x] `grep -n "function parseJsonc" packages/core/src/actions/sources.ts` returns nothing.
+- [x] An actions test reads a `tasks.json` whose command contains `, ]` and gets it unchanged.
+
+**Progress (2026-10-11).** `actions/sources.ts` imports `parseJsonc` from `@cmd/protocol` (jsonc-parser); its own is gone. The test reads a `.vscode/tasks.json` with a comment, trailing commas and a command containing `, ]` and `, }` through `scan`.
+
 
 ## Course corrections
 
