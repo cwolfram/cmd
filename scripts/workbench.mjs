@@ -4,11 +4,13 @@
 // and exposes the DevTools protocol, so these commands drive the open window. A target
 // is a story (shell/feedback, or its old id feedback) or a component (ui/Button).
 //   pnpm workbench [target] [--headless]          start it (stays in the foreground); headless: the window isn't shown
+//   pnpm workbench ls [--json]                    the components and stories (read from the sources; no window needed)
 //   pnpm workbench goto <target> [variant] [--theme id]   show that in the window
-//   pnpm workbench shot [story] [variant] [--theme id] [--out file.png] [--window]
-// Shots crop to the component (a dialog, else what the stage shows) with a margin:
-// the window is yours to size and move, so its size and display vary. They are
-// always 2x: the window is emulated at 2x for the shot (SF Symbols re-render), then restored.
+//   pnpm workbench shot [target] [variant] [--theme id | --themes all] [--out file.png] [--window]
+// Shots crop to the component (a dialog, else what the stage shows) with a margin, or to
+// the page as far as it shows; --themes all: the target in every theme, one image of the
+// whole grid. The window is yours to size and move, so its size and display vary. They
+// are always 2x: the window is emulated at 2x for the shot (SF Symbols re-render), then restored.
 //   pnpm workbench matrix <story> [--themes a,b,c]   every variant × themes, into .cmd-dev/shots/wb
 //   pnpm workbench eval '<js>'                    run JS in the window (await works), print the result
 //   pnpm workbench audit [story] [variant] [--theme id]   (or audit --all: every story, its Sizes too) where each window's content sits against its
@@ -48,7 +50,7 @@ const freePort = () =>
     });
   });
 
-const commands = { goto, shot, matrix, eval: evaluate, audit, stop };
+const commands = { ls, goto, shot, matrix, eval: evaluate, audit, stop };
 await (commands[args[0]] ?? start)(
   ...(commands[args[0]] ? args.slice(1) : args),
 );
@@ -97,10 +99,21 @@ async function start(story = "") {
 }
 
 /** The open Workbench page, over the DevTools protocol. */
+/** Commands run as the script loads (top-level await), so this is a function, not a const below them. */
+function notRunning() {
+  console.error(`The UI Workbench isn't running for ${path.relative(root, home) || home}. Start it with pnpm workbench (--headless for no window).`);
+  process.exit(1);
+}
+
 async function connect() {
-  const { port } = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  let port;
+  try {
+    ({ port } = JSON.parse(fs.readFileSync(stateFile, "utf8")));
+  } catch {
+    notRunning();
+  }
   const { chromium } = await import("playwright");
-  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
+  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`).catch(notRunning);
   const page = browser
     .contexts()
     .flatMap((c) => c.pages())
@@ -114,21 +127,24 @@ async function connect() {
  * what is there), then wait until it rendered: the page says what it was asked, for which
  * mount, and what is on stage (data-asked, data-mount, data-ready).
  */
-async function show(page, { story: target, variant, theme }) {
+async function show(page, { story: target, variant, theme, mode }) {
   const mount = String(Date.now()); // fresh state, whatever was clicked before
   const want = await page.evaluate(
-    ({ target, variant, theme, mount }) => {
+    ({ target, variant, theme, mount, mode }) => {
       const q = new URLSearchParams(location.search);
       if (target && globalThis.workbenchCatalog?.components.some((c) => c.id === target)) (q.set("component", target), q.delete("story"), q.delete("variant"));
       else if (target) (q.set("story", target), q.delete("component"), variant || q.delete("variant"));
       if (variant) q.set("variant", variant);
       if (theme) q.set("theme", theme);
+      // Every theme at once, or one (null); unset keeps what is there.
+      if (mode) q.set("mode", mode);
+      else if (mode === null) q.delete("mode");
       q.set("mount", mount);
       history.replaceState(null, "", `?${q}`);
       dispatchEvent(new Event("workbench:url"));
       return q.get("component") ?? q.get("story") ?? "";
     },
-    { target, variant, theme, mount },
+    { target, variant, theme, mount, mode },
   );
   await page.waitForFunction(
     ({ want, mount, variant }) => {
@@ -144,7 +160,7 @@ async function show(page, { story: target, variant, theme }) {
 }
 
 /** The component's box plus a margin (one variant alone), the page as far as it shows, or the whole window. */
-async function capture(page, file, whole) {
+async function capture(page, file, whole, grid) {
   const cdp = await page.context().newCDPSession(page);
   const [width, height, dpr] = await page.evaluate(() => [
     innerWidth,
@@ -161,7 +177,7 @@ async function capture(page, file, whole) {
     await page.waitForTimeout(500);
   }
   try {
-    await shoot(page, cdp, file, whole);
+    await (grid ? shootGrid(page, cdp, file) : shoot(page, cdp, file, whole));
   } finally {
     if (dpr !== 2) await cdp.send("Emulation.clearDeviceMetricsOverride");
     await cdp.detach();
@@ -245,27 +261,73 @@ async function auditAll() {
   if (bad) process.exitCode = 1;
 }
 
+/** The catalog, read from the sources here (no window needed): stories with their variants, then the kit's components with how many variants render each. */
+async function ls() {
+  const { extractCatalog, catalogRoots } = await import("../apps/desktop/src/renderer/src/workbench/catalog/extract.ts");
+  const catalog = extractCatalog(catalogRoots(root));
+  if (flag("json")) return console.log(JSON.stringify(catalog, null, 2));
+  const pad = (s, n) => s.padEnd(n);
+  const w = Math.max(...catalog.stories.map((s) => s.id.length), ...catalog.components.map((c) => c.id.length));
+  console.log(`Stories (${catalog.stories.length}):`);
+  for (const s of catalog.stories) console.log(`  ${pad(s.id, w)}  ${s.variants.map((v) => v.name).join(", ")}`);
+  const kit = catalog.components.filter((c) => c.kit);
+  const shownBy = (id) => catalog.stories.flatMap((s) => s.variants.filter((v) => v.components?.includes(id))).length;
+  console.log(`\nKit components (${kit.length}), and how many variants render each:`);
+  for (const c of kit) console.log(`  ${pad(c.id, w)}  ${shownBy(c.id) || "none"}`);
+  const bare = kit.filter((c) => !shownBy(c.id));
+  console.log(bare.length ? `\n${bare.length} without a story: ${bare.map((c) => c.name).join(", ")}` : "\nA story renders every one.");
+}
+
 async function goto(story, variant) {
   const { browser, page } = await connect();
   console.log(await show(page, { story, variant, theme: flag("theme") }));
   await browser.close();
 }
 
+/** Every theme's box, the whole grid: the page's scroller let out to its content for the shot, then put back. */
+async function shootGrid(page, cdp, file) {
+  const clip = await page.evaluate(() => {
+    const main = document.querySelector(".ui-split-main");
+    const wb = document.querySelector(".wb");
+    main.dataset.shot = main.getAttribute("style") ?? "";
+    main.style.overflow = "visible";
+    wb.style.height = "auto";
+    document.body.style.overflow = "visible";
+    const r = document.querySelector(".wb-themes").getBoundingClientRect();
+    const m = 24;
+    return { x: Math.max(0, r.left - m), y: Math.max(0, r.top + scrollY - m), width: r.width + 2 * m, height: r.height + 2 * m };
+  });
+  await page.waitForTimeout(300);
+  try {
+    const { data } = await cdp.send("Page.captureScreenshot", { format: "png", clip: { ...clip, scale: 1 }, captureBeyondViewport: true });
+    fs.writeFileSync(file, Buffer.from(data, "base64"));
+  } finally {
+    await page.evaluate(() => {
+      const main = document.querySelector(".ui-split-main");
+      main.setAttribute("style", main.dataset.shot ?? "");
+      delete main.dataset.shot;
+      document.querySelector(".wb").style.height = "";
+      document.body.style.overflow = "";
+    });
+  }
+}
+
 async function shot(story, variant) {
   const theme = flag("theme");
   const out = flag("out");
   const whole = !!flag("window");
+  const every = flag("themes") === "all";
   const { browser, page } = await connect();
-  const on = await show(page, { story, variant, theme });
+  const on = await show(page, { story, variant, theme, mode: every ? "themes" : null });
   fs.mkdirSync(shots, { recursive: true });
   const file = path.resolve(
     out ??
       path.join(
         shots,
-        `${on.replaceAll("/", "-").replace(/-\*$/, "")}${theme ? `-${theme}` : ""}.png`,
+        `${on.replaceAll("/", "-").replace(/-\*$/, "")}${every ? "-themes" : theme ? `-${theme}` : ""}.png`,
       ),
   );
-  await capture(page, file, whole);
+  await capture(page, file, whole, every);
   console.log(file);
   await browser.close();
 }
@@ -276,7 +338,7 @@ async function matrix(story) {
   ).split(",");
   const { browser, page } = await connect();
   const before = page.url();
-  await show(page, { story });
+  await show(page, { story, mode: null });
   const variants = (
     await page.evaluate(() => document.body.dataset.variants ?? "")
   )
@@ -285,7 +347,7 @@ async function matrix(story) {
   fs.mkdirSync(shots, { recursive: true });
   for (const theme of themes)
     for (const variant of variants) {
-      await show(page, { story, variant, theme });
+      await show(page, { story, variant, theme, mode: null });
       const file = path.join(shots, `${story.replaceAll("/", "-")}-${variant}-${theme}.png`);
       await capture(page, file);
       console.log(file);
