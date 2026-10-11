@@ -5,8 +5,10 @@ import { UnknownSettings } from "./UnknownSettings.tsx";
 
 /** Two unknown keys under an error, as the page shows them. */
 export const Default = () => (
-  <Stack gap={3} style={{ width: 560 }}>
-    <Callout tone="danger">font.codeSize: expected a number</Callout>
-    <UnknownSettings keys={["canvas.zoomz", "terminal.ligatures"]} onRemove={() => {}} />
-  </Stack>
+  <div style={{ width: 560 }}>
+    <Stack gap={3}>
+      <Callout tone="danger">font.codeSize: expected a number</Callout>
+      <UnknownSettings keys={["canvas.zoomz", "terminal.ligatures"]} onRemove={() => {}} />
+    </Stack>
+  </div>
 );
