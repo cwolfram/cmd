@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { RpcError, UNKNOWN_METHOD, type AgentId, type AiModel, type AiProvider, type AppWindow, type Method, type Methods, type Params, type Placement, type Result, type Settings, type Workspace } from "@cmd/protocol";
+import { PROTOCOL, RpcError, UNKNOWN_METHOD, type AgentId, type AiModel, type AiProvider, type AppWindow, type Method, type Methods, type Params, type Placement, type Result, type Settings, type Workspace } from "@cmd/protocol";
 import { logger, machineId } from "@cmd/protocol/node";
 import { createActions } from "../actions/feature.ts";
 import type { ActionsService } from "../actions/service.ts";
@@ -259,7 +259,7 @@ export class Core {
       const mem = process.memoryUsage();
       const cpu = process.cpuUsage();
       return {
-        pid: process.pid,
+        pid: process.pid, protocol: PROTOCOL,
         build: this.#opts.build ?? "",
         root: path.resolve(import.meta.dirname, "../../../.."),
         node: process.versions.node,

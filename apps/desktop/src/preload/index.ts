@@ -25,8 +25,9 @@ export interface AppInfo {
   dev: boolean;
   electron: string;
   chrome: string;
-  /** Source hash of the core this app ships (compare with core.info's build). */
+  /** Source hash of the core this app ships, and the folder it runs its core from (isCurrentCore). */
   build: string;
+  root: string;
   home: string;
   /** Where the logs and crash reports are (release and development builds each have their own). */
   logs: string;

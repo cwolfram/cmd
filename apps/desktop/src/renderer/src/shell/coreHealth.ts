@@ -3,7 +3,7 @@
 // while the window is visible; faster while the details are open.
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { CoreInfo, ProcessStat } from "@cmd/protocol";
+import { isCurrentCore, type CoreInfo, type ProcessStat } from "@cmd/protocol";
 import { cmd } from "../lib/bridge.ts";
 
 export interface CoreHealth {
@@ -28,9 +28,9 @@ const EMPTY: CoreHealth = { info: null, core: null, ptyHost: null, latency: null
 
 export function useCoreHealth(connected: boolean, open: boolean): CoreHealth {
   const [health, setHealth] = useState<CoreHealth>(EMPTY);
-  const [build, setBuild] = useState<string | null>(null);
+  const [app, setApp] = useState<{ build: string; root: string } | null>(null);
 
-  useEffect(() => void cmd.appInfo().then((a) => setBuild(a.build)), []);
+  useEffect(() => void cmd.appInfo().then((a) => setApp({ build: a.build, root: a.root })), []);
 
   useEffect(() => {
     if (!connected) {
@@ -50,7 +50,7 @@ export function useCoreHealth(connected: boolean, open: boolean): CoreHealth {
         const timeout = new Promise<null>((r) => setTimeout(() => r(null), TIMEOUT_MS));
         const [info, procs] = await Promise.all([
           Promise.race([cmd.call("core.info", {}).then((i) => ((latency = Math.round(performance.now() - t0)), i), () => null), timeout]),
-          // CPU% is over the time since anyone last asked (the Task Manager asks too).
+          // One sample a few seconds for every window that asks (kernel/methods.ts), CPU% since the one before.
           Promise.race([cmd.call("core.processes", {}).catch(() => null), timeout]),
         ]);
         inflight = false;
@@ -60,7 +60,8 @@ export function useCoreHealth(connected: boolean, open: boolean): CoreHealth {
           core: procs ? procs.core : h.core,
           ptyHost: procs ? procs.ptyHost : h.ptyHost,
           latency,
-          outdated: !!info && !!build && info.build !== build,
+          // Main's rule (isCurrentCore): another protocol, build or code folder, and it's restarted at the next launch.
+          outdated: !!info && !!app && !isCurrentCore(info, app),
           unresponsive: !info,
         }));
       }
@@ -74,7 +75,7 @@ export function useCoreHealth(connected: boolean, open: boolean): CoreHealth {
       clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [connected, open, build]);
+  }, [connected, open, app]);
 
   return health;
 }

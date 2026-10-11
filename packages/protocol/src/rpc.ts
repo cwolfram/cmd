@@ -23,6 +23,16 @@ import type { RemoteMethods } from "./remote.ts";
  */
 export const PROTOCOL = 1;
 
+/**
+ * Whether a core runs this app's code: its protocol, its source build and the folder
+ * it runs from (a same-build core from another checkout counts as another). Main
+ * restarts a core that isn't on launch; the sidebar footer says it's outdated.
+ */
+export function isCurrentCore(core: { protocol?: number; build: string; root?: string }, app: { build: string; root: string }): boolean {
+  const same = (a: string, b: string) => a.replace(/\/+$/, "") === b.replace(/\/+$/, "");
+  return core.protocol === PROTOCOL && core.build === app.build && (!core.root || same(core.root, app.root));
+}
+
 /** JSON-RPC's code for a method the core doesn't have (an older core, or a newer client). */
 export const UNKNOWN_METHOD = -32601;
 
@@ -44,6 +54,8 @@ export interface CoreHello {
 
 export interface CoreInfo {
   pid: number;
+  /** PROTOCOL of the core's build. */
+  protocol: number;
   build: string;
   /** Folder the core runs from (the repo, or the app's runtime copy). */
   root: string;

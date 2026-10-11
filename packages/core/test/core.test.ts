@@ -56,6 +56,11 @@ describe("core over the socket", () => {
     c.close();
   });
 
+  it("answers every window's footer from one sample of its processes", async () => {
+    const [a, b] = [await core.call("core.processes", {}), await core.call("core.processes", {})];
+    expect(b).toBe(a);
+  });
+
   it("reports diagnostics", async () => {
     const info = await conn.client.call("core.info", {});
     expect(info).toMatchObject({ pid: process.pid, socket: socketPath, dbPath: path.join(dir, "db.sqlite"), settingsPath: null });

@@ -13,7 +13,7 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { KIT_FILES, PROTOCOL, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
+import { isCurrentCore, KIT_FILES, PROTOCOL, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
 import { cmdHome, connect, CORE_REFUSED_EXIT, coreLocked, coreRefusal, coreSocketPath, enterInstance, foreignHome, foreignHomeText, hasDevMarker, initLog, instanceName, isOwnCore, installCrashHandlers, ipcPath, logDir, logger, sourceBuildId } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
 import { contextTemplate } from "./menu-template.ts";
@@ -185,7 +185,7 @@ async function checkCoreBuild(): Promise<void> {
     if (!ownCore(hello)) return;
     const current = sourceBuildId(repoRoot);
     const root = coreRoot();
-    if (hello.protocol === PROTOCOL && hello.build === current && (!hello.root || path.resolve(hello.root) === path.resolve(root))) return;
+    if (isCurrentCore(hello, { build: current, root })) return;
     if (hello.protocol !== PROTOCOL) log.info(`core ${hello.pid} speaks protocol ${hello.protocol ?? "(none)"}, this app ${PROTOCOL}: restarting it`);
     else if (hello.build !== current) log.info(`core ${hello.pid} runs build ${hello.build}, this app ships ${current}: restarting it`);
     else log.info(`core ${hello.pid} runs from ${hello.root}, this app from ${root}: restarting it`);
@@ -751,6 +751,7 @@ ipcMain.handle("app-info", async () => ({
   electron: process.versions.electron,
   chrome: process.versions.chrome,
   build: sourceBuildId(repoRoot),
+  root: coreRoot(),
   home: cmdHome(),
   logs: logDir(),
   coreLog: coreLog(),

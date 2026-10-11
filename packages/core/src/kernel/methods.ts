@@ -1,15 +1,25 @@
 // The kernel's own methods: the core's processes, usage stats, settings, secrets and the UI's
 // state (core.hello, core.info and events.subscribe are Core's, in core.ts).
 
+import type { ProcessStat } from "@cmd/protocol";
 import type { CoreContext } from "./context.ts";
 import { slice } from "./handlers.ts";
 
-export const kernelHandlers = (core: CoreContext) =>
-  slice({
-    "core.processes": async () => {
+/** core.processes answers from one sample this long: every window's footer asks, and CPU% is since the last sample. */
+export const PROCESSES_FRESH_MS = 4000;
+
+export const kernelHandlers = (core: CoreContext) => {
+  let last: { at: number; value: Promise<{ core: ProcessStat | null; ptyHost: ProcessStat | null }> } | null = null;
+  return slice({
+    "core.processes": () => {
+      if (last && Date.now() - last.at < PROCESSES_FRESH_MS) return last.value;
       const host = core.panes.backend.info?.()?.pid ?? null;
-      const stats = (await core.processes?.sample(host ? [process.pid, host] : [process.pid])) ?? new Map();
-      return { core: stats.get(process.pid) ?? null, ptyHost: host ? (stats.get(host) ?? null) : null };
+      const value = (async () => {
+        const stats = (await core.processes?.sample(host ? [process.pid, host] : [process.pid])) ?? new Map();
+        return { core: stats.get(process.pid) ?? null, ptyHost: host ? (stats.get(host) ?? null) : null };
+      })();
+      last = { at: Date.now(), value };
+      return value;
     },
     "usage.launch": () => (core.usage.launch(), null),
     "settings.get": () => core.settings.snapshot(),
@@ -25,3 +35,4 @@ export const kernelHandlers = (core: CoreContext) =>
       return null;
     },
   });
+};
