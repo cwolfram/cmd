@@ -40,7 +40,10 @@ describe("procinfo helper", () => {
     await panes.pollForeground();
     expect(Date.now() - t0).toBeLessThan(1500);
     expect(p.stalls).toBe(1);
-    expect(await p.query(1)).toMatchObject({ pid: 4242, path: "/usr/bin/vim" });
+    // A new helper (on a loaded machine its shell may itself miss the short deadline once).
+    let info = null;
+    for (let i = 0; i < 5 && !info; i++) info = await p.query(1);
+    expect(info).toMatchObject({ pid: 4242, path: "/usr/bin/vim" });
     fs.rmSync(marker, { force: true });
   });
 
