@@ -113,7 +113,7 @@ export const Lines = () => {
   );
 };
 
-/** One line at the widths a chart gets, from a narrow widget to a wide window: its stroke, dashes and dots grow with the plot. */
+/** One line at the widths a chart gets, from a narrow widget to a wide window: the stroke stays 2 px. */
 export const LineWidths = () => {
   const hours = Array.from({ length: 48 }, (_, i) => today - (47 - i) * HOUR);
   const mem = hours.map((_, i) => 400 + 120 * Math.sin(i / 6) + 40 * noise(i));

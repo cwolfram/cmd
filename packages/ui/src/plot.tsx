@@ -39,12 +39,10 @@ export interface PlotScales {
   max: number;
   hover: number | null;
   current: number | null;
-  /** A line's stroke at this size, in px: 1.25 in a 320 px plot up to 2.5 at 1000 px and wider (lineWidth). */
-  stroke: number;
 }
 
-/** A line's stroke for a plot `w` px wide: thin in a small widget, heavier as the chart grows, so it reads the same at every size. */
-const lineWidth = (w: number): number => Math.round(100 * Math.min(2.5, Math.max(1.25, 1.25 + (1.25 * (w - 320)) / 680))) / 100;
+/** A line's stroke in px, the same at every size. */
+const LINE_WIDTH = 2;
 
 const PlotContext = createContext<PlotScales | null>(null);
 
@@ -169,7 +167,6 @@ export function Plot({ n, max, height = 120, format = String, ticks: tickKind = 
     max: top,
     hover,
     current,
-    stroke: lineWidth(iw),
   };
   const at = (e: MouseEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -267,10 +264,10 @@ export function Bars({ series, stack = true }: { series: readonly ChartSeries[];
   return <g className="ui-plot-bars">{out}</g>;
 }
 
-/** A line through the buckets' centres (gaps where a value is missing); `area` fills under it. Its stroke, dashes and dots scale with the plot's width; `weight` scales them further (a comparison line under the main one: 0.66). */
+/** A line through the buckets' centres (gaps where a value is missing); `area` fills under it. Its stroke is 2 px at every size; `weight` scales it, its dashes and dots (a comparison line under the main one: 0.66). */
 export function Line({ values, color = seriesColor(0), dashed = false, area = false, weight = 1 }: { values: readonly (number | null)[]; color?: string; dashed?: boolean; area?: boolean; weight?: number }) {
   const p = usePlot();
-  const width = p.stroke * weight;
+  const width = LINE_WIDTH * weight;
   const defined = (v: number | null) => v !== null && Number.isFinite(v);
   const pts = values.map((v, i) => [i, v] as const);
   const line = d3line<readonly [number, number | null]>()
