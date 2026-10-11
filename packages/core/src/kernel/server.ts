@@ -7,11 +7,12 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import type { CoreEvent, DataQuery, Method } from "@cmd/protocol";
-import { lineSplitter, RpcError } from "@cmd/protocol";
+import { lineSplitter, MAX_LINE, RpcError } from "@cmd/protocol";
 import { ipcPath, logger, recordCrash } from "@cmd/protocol/node";
 import { widgetRead, type WidgetIdentity } from "../data/widgets.ts";
 import { checkRemoteCall, RemoteDenied, type PolicyContext } from "../remote/policy.ts";
 import type { Connection, Served } from "./connection.ts";
+import { ConnectionWriter } from "./writer.ts";
 import type { CoreContext } from "./context.ts";
 import type { Call } from "./handlers.ts";
 
@@ -232,20 +233,35 @@ export class CoreServer {
     sock.on("error", () => {});
     this.#sockets.add(sock);
     rpcLog.debug(widget ? "widget connection opened" : "connection opened");
+    const writer = new ConnectionWriter({
+      write: (line) => !sock.writable || sock.write(line),
+      buffered: () => sock.writableLength,
+      close: (reason) => {
+        rpcLog.warn(`a client stopped reading (${reason}): closing it`);
+        sock.destroy();
+      },
+    });
+    sock.on("drain", () => writer.drain());
     const conn: Connection = {
       access: "local",
-      send: (line) => void (sock.writable && sock.write(line)),
+      send: (line) => writer.send(line),
+      event: (e, line) => writer.event(e, line),
       close: () => sock.destroy(),
     };
     if (widget) this.#widgetConns.set(conn, null);
     const served = this.serve(conn);
     sock.on("close", () => {
+      writer.dispose();
       this.#sockets.delete(sock);
       this.#widgetConns.delete(conn);
       rpcLog.debug("connection closed");
       served.closed();
     });
-    sock.on("data", lineSplitter((line) => served.receive(line)));
+    const tooLong = () => {
+      rpcLog.warn(`a client sent a message over ${MAX_LINE / 1024 / 1024} MB: closing it`);
+      sock.destroy();
+    };
+    sock.on("data", lineSplitter((line) => served.receive(line), { max: MAX_LINE, tooLong }));
   }
 
   /** JSON-RPC over any connection; a remote one is held to remote/policy.ts. */

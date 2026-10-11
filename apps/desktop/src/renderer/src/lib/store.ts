@@ -417,6 +417,31 @@ export function usePersisted<T>(key: string, fallback: T): [T, (v: T | ((prev: T
 // either side of what the snapshot holds, @cmd/protocol/replay).
 const gates = new Map<PaneId, OutputGate>();
 
+/** The latest snapshot asked for per pane (by request number): an older answer arriving after a newer request is left out. */
+const attaching = new Map<PaneId, number>();
+let attachCount = 0;
+
+/** Show a terminal from its snapshot; output that waited at its gate goes after it, each byte once. */
+async function attach(paneId: PaneId): Promise<void> {
+  const n = ++attachCount;
+  attaching.set(paneId, n);
+  try {
+    const { data, cols, rows, seq } = await cmd.call("pane.snapshot", { paneId });
+    if (attaching.get(paneId) !== n) return;
+    terminals.reset(paneId);
+    terminals.replay(paneId, data, { cols, rows });
+    const rest = gates.get(paneId)?.snapshot(seq);
+    if (rest) terminals.write(paneId, rest);
+  } finally {
+    // Failed (the pane is gone) or nothing left to skip: output goes straight through.
+    if (attaching.get(paneId) === n) {
+      attaching.delete(paneId);
+      const gate = gates.get(paneId);
+      if (gate && (gate.done || gate.waiting)) gates.delete(paneId);
+    }
+  }
+}
+
 function handle(e: CoreEvent): void {
   countEvent(e.type);
   switch (e.type) {
@@ -425,6 +450,15 @@ function handle(e: CoreEvent): void {
       const data = gate ? gate.output(e.data, e.seq) : e.data;
       if (gate?.done) gates.delete(e.paneId);
       if (data) terminals.write(e.paneId, data);
+      return;
+    }
+    case "pane.resync": {
+      // This window fell behind (a busy or paused page) and the core dropped output it
+      // hadn't taken yet: start the terminal over from its snapshot.
+      const gate = gates.get(e.paneId);
+      if (gate) gate.wait();
+      else gates.set(e.paneId, new OutputGate("drop"));
+      attach(e.paneId).catch(() => {}); // the pane is gone
       return;
     }
     case "pane.updated": {
@@ -604,20 +638,7 @@ cmd.onStatus(async (status) => {
   const selected = state.workspaces.get(state.workspaceId)?.view?.["selection.pane"];
   const rank = (p: Pane) => (p.id === selected ? 0 : p.workspaceId === state.workspaceId ? 1 : 2);
   await Promise.allSettled(
-    [...snap.panes].sort((a, b) => rank(a) - rank(b)).map(async (p) => {
-      try {
-        const { data, cols, rows, seq } = await cmd.call("pane.snapshot", { paneId: p.id });
-        terminals.reset(p.id);
-        terminals.replay(p.id, data, { cols, rows });
-        const rest = gates.get(p.id)?.snapshot(seq);
-        if (rest) terminals.write(p.id, rest);
-      } finally {
-        // Failed (the pane is gone) or nothing left to skip: output goes straight through.
-        const gate = gates.get(p.id);
-        if (gate && (gate.done || gate.waiting)) gates.delete(p.id);
-        terminals.release(p.id);
-      }
-    }),
+    [...snap.panes].sort((a, b) => rank(a) - rank(b)).map((p) => attach(p.id).finally(() => terminals.release(p.id))),
   );
   performance.mark("boot:terminals");
   reopenDataSubs();

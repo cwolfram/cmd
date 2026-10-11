@@ -7,11 +7,10 @@
 import type { CoreEvent, RemoteScope } from "@cmd/protocol";
 import { fingerprint, frame, Handshake, LineOpener, PROLOGUE, sealLine, unframe, utf8, Wire, type Bytes, type KeyPair, type Transport } from "@cmd/remote-crypto";
 import type { Connection, Served } from "../kernel/connection.ts";
+import { ConnectionWriter } from "../kernel/writer.ts";
 
 /** Merge a pane's output for this long before sending it. */
 const COALESCE_MS = 30;
-/** Pending output beyond this is dropped (the device resyncs). */
-const MAX_PENDING = 1024 * 1024;
 
 export interface ChannelHost {
   key: KeyPair;
@@ -142,7 +141,7 @@ function parseHello(b: Bytes): { name: string } {
   return { name: typeof name === "string" && name.trim() ? name.trim().slice(0, 80) : "Unknown browser" };
 }
 
-/** The session as the core sees it. */
+/** The session as the core sees it. Its writer (kernel/writer.ts) merges output COALESCE_MS and drops it past MAX_PENDING. */
 class RemoteConnection implements Connection {
   readonly access: RemoteScope;
   readonly deviceId: string;
@@ -150,10 +149,7 @@ class RemoteConnection implements Connection {
   #send: (b: Bytes) => void;
   #close: () => void;
   #out: Promise<void> = Promise.resolve();
-  /** Output waiting to be merged, per pane, in arrival order, with the seq of its end. */
-  #pending = new Map<string, { data: string; seq?: number }>();
-  #pendingBytes = 0;
-  #timer: ReturnType<typeof setTimeout> | null = null;
+  #writer: ConnectionWriter;
 
   constructor(t: Transport, access: RemoteScope, deviceId: string, send: (b: Bytes) => void, close: () => void) {
     this.#t = t;
@@ -161,9 +157,19 @@ class RemoteConnection implements Connection {
     this.deviceId = deviceId;
     this.#send = send;
     this.#close = close;
+    // The relay link has no backpressure of its own yet (AR1-12-07): never "backed up", nothing buffered.
+    this.#writer = new ConnectionWriter({ write: (line) => (this.#seal(line), true), buffered: () => 0, close: () => this.close() }, { coalesceMs: COALESCE_MS });
   }
 
   send(line: string): void {
+    this.#writer.send(line);
+  }
+
+  event(e: CoreEvent, line: string): void {
+    this.#writer.event(e, line);
+  }
+
+  #seal(line: string): void {
     const t = this.#t;
     this.#out = this.#out
       .then(async () => {
@@ -172,36 +178,8 @@ class RemoteConnection implements Connection {
       .catch(() => this.#close());
   }
 
-  event(e: CoreEvent, line: string): void {
-    if (e.type !== "pane.output") {
-      this.#flush(); // keep output ahead of what follows it
-      this.send(line);
-      return;
-    }
-    this.#pending.set(e.paneId, { data: (this.#pending.get(e.paneId)?.data ?? "") + e.data, seq: e.seq });
-    this.#pendingBytes += e.data.length;
-    if (this.#pendingBytes > MAX_PENDING) {
-      const panes = [...this.#pending.keys()];
-      this.#pending.clear();
-      this.#pendingBytes = 0;
-      for (const paneId of panes) this.send(eventLine({ type: "pane.resync", paneId }));
-      return;
-    }
-    this.#timer ??= setTimeout(() => this.#flush(), COALESCE_MS);
-  }
-
-  #flush(): void {
-    if (this.#timer) clearTimeout(this.#timer);
-    this.#timer = null;
-    for (const [paneId, { data, seq }] of this.#pending) this.send(eventLine({ type: "pane.output", paneId, data, seq }));
-    this.#pending.clear();
-    this.#pendingBytes = 0;
-  }
-
   close(): void {
-    if (this.#timer) clearTimeout(this.#timer);
+    this.#writer.dispose();
     this.#close();
   }
 }
-
-const eventLine = (e: CoreEvent) => JSON.stringify({ jsonrpc: "2.0", method: "event", params: e });

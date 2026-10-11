@@ -76,15 +76,43 @@ export class RpcClient {
   }
 }
 
-/** Splits a byte stream into lines. */
-export function lineSplitter(onLine: (line: string) => void): (chunk: string) => void {
-  let buf = "";
+/** The longest message the core takes from a client (UTF-16 units); a longer one ends the connection. */
+export const MAX_LINE = 16 * 1024 * 1024;
+
+/**
+ * Splits a stream into lines. Each chunk is scanned once, so a long line arriving
+ * in many chunks costs its length, not its length squared. With `max`, a line
+ * longer than that is never parsed: `tooLong` runs and the splitter stops.
+ */
+export function lineSplitter(onLine: (line: string) => void, o: { max?: number; tooLong?: () => void } = {}): (chunk: string) => void {
+  const max = o.max ?? Infinity;
+  let parts: string[] = [];
+  let size = 0;
+  let dead = false;
+  const over = () => {
+    dead = true;
+    parts = [];
+    o.tooLong?.();
+  };
   return (chunk) => {
-    buf += chunk;
+    if (dead) return;
+    let start = 0;
     let i: number;
-    while ((i = buf.indexOf("\n")) >= 0) {
-      onLine(buf.slice(0, i));
-      buf = buf.slice(i + 1);
+    while ((i = chunk.indexOf("\n", start)) >= 0) {
+      if (size + i - start > max) return over();
+      const tail = chunk.slice(start, i);
+      if (parts.length) {
+        parts.push(tail);
+        const line = parts.join("");
+        parts = [];
+        size = 0;
+        onLine(line);
+      } else onLine(tail);
+      start = i + 1;
     }
+    if (start === chunk.length) return;
+    parts.push(start ? chunk.slice(start) : chunk);
+    size += chunk.length - start;
+    if (size > max) over();
   };
 }
