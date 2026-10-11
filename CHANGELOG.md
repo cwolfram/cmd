@@ -2,6 +2,16 @@
 
 What changed in each cmd release, newest first. cmd shows the releases since your last update in What's New. Written at release time by the changelog skill (`.claude/skills/changelog/SKILL.md`).
 
+## 0.27.1 — 2026-10-11
+
+### Improved
+
+- Browser windows can stay in colour when another window is selected: turn off Dim browser windows in `Settings → Windows`.
+
+### Fixed
+
+- Magic widgets no longer sometimes stay empty after you allow their media.
+
 ## 0.27.0 — 2026-10-11
 
 Operator, an assistant that works your workspace while you watch.
