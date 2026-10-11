@@ -161,6 +161,8 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "operator.stop": "never",
   "operator.answer": "never",
   "operator.reset": "never",
+  "operator.history": "never",
+  "operator.open": "never",
   "sqlite.schema": "view",
   "sqlite.rows": "view",
   "sqlite.query": "view",

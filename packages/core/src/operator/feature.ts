@@ -54,6 +54,8 @@ export const operatorFeature = {
     "operator.stop": (p) => (operatorOf(core).stop(p.workspaceId), null),
     "operator.answer": (p) => (operatorOf(core).answer(p.workspaceId, p.itemId, p.allow, p.reason), null),
     "operator.reset": (p) => (operatorOf(core).reset(p.workspaceId), null),
+    "operator.history": (p) => operatorOf(core).history(p.workspaceId),
+    "operator.open": (p) => (operatorOf(core).open(p.workspaceId, p.id), null),
   }),
   dispose: (core: CoreContext) => services.get(core)?.dispose(),
 } satisfies Feature;

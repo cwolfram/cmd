@@ -7,12 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { OperatorConversation, OperatorItem, WindowId } from "@cmd/protocol";
-import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, View, useStickToEnd } from "@cmd/ui";
+import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, ToolbarButton, ToolbarSpacer, View, WindowToolbar, useStickToEnd } from "@cmd/ui";
+import { showContextMenu } from "../../lib/context.ts";
 import { useAiStatus } from "../../ai/status.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
 import { getWorkspaceView, useStoreValue } from "../../lib/store.ts";
-import { fieldsOf, type SidebarRow } from "../../lib/model.ts";
+import { ago, fieldsOf, type SidebarRow } from "../../lib/model.ts";
 import { durationText, goTo } from "../../lib/widgets.ts";
+import { cmd } from "../../lib/bridge.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { operatorCall, useOperator } from "./operator.ts";
 
@@ -87,6 +89,13 @@ export function OperatorView({ win, focused }: WindowViewProps) {
       <View
         inset
         bodyRef={body}
+        toolbar={
+          <WindowToolbar label="Operator">
+            <ToolbarButton icon="square.and.pencil" label="New Conversation" disabled={!conv?.items.length} onClick={() => void operatorCall.reset(ws).catch(() => {})} />
+            <ToolbarSpacer />
+            <ToolbarButton icon="clock.arrow.circlepath" label="Past Conversations" menu onClick={() => void showPast(ws)} />
+          </WindowToolbar>
+        }
         state={
           !conv
             ? { kind: "loading" }
@@ -127,6 +136,17 @@ export function OperatorView({ win, focused }: WindowViewProps) {
         {conv && conv.usage.input > 0 && <Usage conv={conv} />}
       </Stack>
     </Stack>
+  );
+}
+
+/** Past conversations, newest first: picking one goes back to it (the current one is put away). */
+async function showPast(workspaceId: string): Promise<void> {
+  const past = await cmd.call("operator.history", { workspaceId }).catch(() => []);
+  const now = Date.now();
+  await showContextMenu(
+    past.length
+      ? past.slice(0, 30).map((p) => ({ label: `${p.title.length > 60 ? p.title.slice(0, 59) + "…" : p.title}  ·  ${ago(p.at, now)}`, run: () => void operatorCall.open(workspaceId, p.id).catch(() => {}) }))
+      : [{ label: "No past conversations yet", run: () => {}, enabled: false }],
   );
 }
 

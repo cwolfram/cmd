@@ -58,6 +58,17 @@ export interface OperatorConversation {
   latency: { firstStepMs: number | null; totalMs: number } | null;
 }
 
+/** A conversation put away by New Conversation, to open again. */
+export interface OperatorPast {
+  id: string;
+  /** Its first request. */
+  title: string;
+  /** When it was last added to. */
+  at: number;
+  /** Requests in it. */
+  requests: number;
+}
+
 /** The Operator's conversation in a workspace changed: items added or updated (by id), or its state. Part of CoreEvent (rpc.ts). */
 export type OperatorEvent = {
   type: "operator.changed";
@@ -85,6 +96,10 @@ export interface OperatorMethods {
   "operator.stop": { params: { workspaceId: WorkspaceId }; result: null };
   /** Allow or deny a tool call waiting for approval; `reason` goes back to the model with a denial. */
   "operator.answer": { params: { workspaceId: WorkspaceId; itemId: string; allow: boolean; reason?: string }; result: null };
-  /** Start over: the conversation is forgotten (a running turn is stopped first). */
+  /** Start a new conversation: the current one is put away (operator.history), a running turn stopped first. */
   "operator.reset": { params: { workspaceId: WorkspaceId }; result: null };
+  /** The workspace's past conversations, newest first. */
+  "operator.history": { params: { workspaceId: WorkspaceId }; result: OperatorPast[] };
+  /** Go back to a past conversation: the current one is put away in its place. */
+  "operator.open": { params: { workspaceId: WorkspaceId; id: string }; result: null };
 }

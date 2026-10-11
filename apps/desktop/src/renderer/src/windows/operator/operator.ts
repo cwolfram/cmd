@@ -93,4 +93,5 @@ export const operatorCall = {
   stop: (workspaceId: WorkspaceId) => cmd.call("operator.stop", { workspaceId }),
   answer: (workspaceId: WorkspaceId, itemId: string, allow: boolean, reason?: string) => cmd.call("operator.answer", { workspaceId, itemId, allow, reason }),
   reset: (workspaceId: WorkspaceId) => cmd.call("operator.reset", { workspaceId }),
+  open: (workspaceId: WorkspaceId, id: string) => cmd.call("operator.open", { workspaceId, id }),
 };

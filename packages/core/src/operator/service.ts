@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { Agent, AgentId, AgentState, Method, NewDataEvent, PaneId, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { Agent, AgentId, AgentState, Method, NewDataEvent, OperatorPast, PaneId, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { AgentCall, AgentResult, AgentRun } from "../ai/backends.ts";
 import type { ToolOutput } from "../magic/tools.ts";
@@ -100,6 +100,9 @@ export class OperatorService {
   constructor(d: OperatorDeps) {
     this.#d = d;
     d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_conversations (workspace_id TEXT PRIMARY KEY, json TEXT NOT NULL, at INTEGER NOT NULL)`);
+    // Conversations put away by New Conversation, to open again.
+    d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_past (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, at INTEGER NOT NULL, requests INTEGER NOT NULL, json TEXT NOT NULL)`);
+    d.db?.exec(`CREATE INDEX IF NOT EXISTS operator_past_ws ON operator_past (workspace_id, at)`);
     d.onAgent?.((a) => this.#agentChanged(a));
     d.onCommandEnd?.((paneId, exitCode) => this.#commandEnded(paneId, exitCode));
     d.onServing?.((paneId, url) => this.#serving(paneId, url));
@@ -206,12 +209,43 @@ export class OperatorService {
     resolve({ allow, reason: reason?.trim() || undefined });
   }
 
+  /** A new conversation; the current one is put away. What it started still reports back (to the new one). */
   reset(workspaceId: WorkspaceId): void {
     this.stop(workspaceId);
     const c = this.#conv(workspaceId);
-    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, agents: new Map(), commands: new Map(), news: [], usage: zero(), model: null, latency: null, denials: 0 });
+    this.#putAway(c);
+    this.#replace(c, null);
+  }
+
+  /** The workspace's past conversations, newest first. */
+  history(workspaceId: WorkspaceId): OperatorPast[] {
+    return (this.#d.db?.prepare("SELECT id, title, at, requests FROM operator_past WHERE workspace_id = ? ORDER BY at DESC LIMIT 100").all(workspaceId) ?? []) as unknown as OperatorPast[];
+  }
+
+  /** Back to a past conversation; the current one is put away in its place. */
+  open(workspaceId: WorkspaceId, id: string): void {
+    const row = this.#d.db?.prepare("SELECT json FROM operator_past WHERE id = ? AND workspace_id = ?").get(id, workspaceId) as { json: string } | undefined;
+    if (!row) throw new Error("that conversation is gone");
+    this.stop(workspaceId);
+    const c = this.#conv(workspaceId);
+    this.#putAway(c);
+    this.#d.db!.prepare("DELETE FROM operator_past WHERE id = ?").run(id);
+    this.#replace(c, JSON.parse(row.json) as Saved);
+  }
+
+  /** The conversation becomes `saved` (null: empty), keeping what it waits on; the app is told. */
+  #replace(c: Conversation, saved: Saved | null): void {
+    Object.assign(c, { items: saved?.items ?? [], messages: saved?.messages ?? [], refs: new Refs(saved?.refs), system: saved?.system ?? null, rules: saved?.rules ?? null, news: [], usage: saved?.usage ?? zero(), model: saved?.model ?? null, latency: null, denials: 0 });
     this.#save(c);
-    this.#d.broadcast({ type: "operator.changed", workspaceId, reset: true, items: [], usage: c.usage, model: null, latency: null });
+    this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, reset: true, items: c.items, busy: false, usage: c.usage, model: c.model, latency: null });
+  }
+
+  /** Into the past conversations, if there is anything in it. */
+  #putAway(c: Conversation): void {
+    const requests = c.items.filter((i) => i.kind === "user");
+    if (!this.#d.db || !c.items.length) return;
+    const title = (requests[0]?.text ?? c.items.find((i) => i.kind === "event")?.text ?? "Conversation").replace(/\s+/g, " ").slice(0, 120);
+    this.#d.db.prepare("INSERT INTO operator_past (id, workspace_id, title, at, requests, json) VALUES (?, ?, ?, ?, ?, ?)").run(randomUUID(), c.workspaceId, title, c.items.at(-1)!.at, requests.length, JSON.stringify(this.#saved(c)));
   }
 
   dispose(): void {
@@ -499,15 +533,18 @@ export class OperatorService {
     }
   }
 
+  #saved(c: Conversation): Saved {
+    return { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
+  }
+
   #save(c: Conversation): void {
     if (!this.#d.db) return;
     try {
-      if (!c.items.length && !c.messages.length) {
+      if (!c.items.length && !c.messages.length && !c.agents.size && !c.commands.size) {
         this.#d.db.prepare("DELETE FROM operator_conversations WHERE workspace_id = ?").run(c.workspaceId);
         return;
       }
-      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
-      this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(saved), Date.now());
+      this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(this.#saved(c)), Date.now());
     } catch (e) {
       log.warn(`could not save the conversation: ${(e as Error).message}`);
     }

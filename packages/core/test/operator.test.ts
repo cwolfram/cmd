@@ -488,6 +488,36 @@ describe("the service", () => {
   });
 });
 
+describe("past conversations", () => {
+  it("New Conversation puts the current one away; opening one brings it back and puts the other away", async () => {
+    const { DatabaseSync } = await import("node:sqlite");
+    const core = new Core({ socketPath: "", dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0 });
+    const ws = core.workspaces.home();
+    const events: OperatorEvent[] = [];
+    const op = new OperatorService({ workspace: (id) => core.workspaces.get(id) ?? null, call: (m, p) => core.call(m, p as never), agent: async () => reply(), selfIn: () => null, broadcast: (e) => void events.push(e), db: new DatabaseSync(":memory:") });
+    try {
+      const idle = () => vi.waitFor(() => expect(op.get(ws.id).busy).toBe(false));
+      op.send(ws.id, "first question");
+      await idle();
+      op.watchAgent(ws.id, "a1");
+      op.reset(ws.id);
+      expect(op.get(ws.id).items).toEqual([]);
+      expect(op.history(ws.id)).toMatchObject([{ title: "first question", requests: 1 }]);
+      op.send(ws.id, "second question");
+      await idle();
+      const [past] = op.history(ws.id);
+      op.open(ws.id, past!.id);
+      expect(op.get(ws.id).items).toMatchObject([{ kind: "user", text: "first question" }]);
+      expect(events.at(-1)).toMatchObject({ reset: true, items: [{ text: "first question" }] });
+      expect(op.history(ws.id).map((p) => p.title)).toEqual(["second question"]);
+      expect(() => op.open(ws.id, past!.id)).toThrow("that conversation is gone");
+    } finally {
+      op.dispose();
+      await core.close();
+    }
+  });
+});
+
 describe("pane.waitFor", () => {
   it("resolves on the prompt with the exit status, on text, and on time", async () => {
     const f = fakeFactory();
