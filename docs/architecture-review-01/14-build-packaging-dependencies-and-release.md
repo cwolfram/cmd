@@ -158,7 +158,7 @@ Answers to this review's questions, in brief:
 
 ### AR1-14-07 · Write down the package graph and fix the five places that bend it
 
-- **Status:** done (gates branch)
+- **Status:** done (229b9d25)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/package.json` (devDependencies), `packages/core/src/widgets/preview.ts:146-152`, `apps/desktop/package.json` (`@codemirror/theme-one-dark`), `packages/cli/src/main.ts:11-13`, `packages/core/test/remote.test.ts`, `apps/desktop/src/renderer/src/keybindings.ts:6`
