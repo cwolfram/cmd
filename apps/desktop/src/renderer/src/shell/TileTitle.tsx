@@ -16,6 +16,7 @@ import { DirtyDot, Mark, Slot } from "../components/Slot.tsx";
 import { RemoteBadge } from "../components/Remote.tsx";
 import { countRender } from "../lib/perf.ts";
 import { dragFiles, dragLink } from "../lib/drags.ts";
+import { useOperatorMark } from "../windows/operator/operator.ts";
 
 /** SF Symbol for a window kind (from the core's window type registry). */
 export const iconFor = (kind: string) => typeFor(kind)?.icon ?? "macwindow";
@@ -65,8 +66,11 @@ export function TileTitle({
   const place = f.place && !bare && !(row.win && viewFor(row.win.kind)?.placeInToolbar) ? f.place : undefined;
   const file = fileOf(row);
   const url = file ? null : urlOf(row);
+  // The Operator acting on this window says so where the status goes, and rings it (docs/51).
+  const operator = useOperatorMark(windowIdOf(row));
+  const status = operator ? { text: operator.waiting ? "Operator asks…" : `Operator: ${operator.why}`, key: "operator" } : f.status;
   return (
-    <WindowBar className="tile-title" onPointerDown={onPointerDown} onContextMenu={onContextMenu} onDoubleClick={onDoubleClick} data-tip={title}>
+    <WindowBar className={operator ? "tile-title operator-acting" : "tile-title"} onPointerDown={onPointerDown} onContextMenu={onContextMenu} onDoubleClick={onDoubleClick} data-tip={title}>
       {file || url ? (
         <span
           className="mark-drag"
@@ -99,7 +103,7 @@ export function TileTitle({
           onPointerDown={action ? (e) => e.stopPropagation() : undefined}
           onClick={action ? (e) => (e.stopPropagation(), action.run()) : undefined}
         >
-          <Slot className={`slot-status${action ? " actionable" : ""}`} value={f.status} divider={!bare && !!(f.kind || place)} title={action?.title} />
+          <Slot className={`slot-status${action && !operator ? " actionable" : ""}${operator ? " operator" : ""}`} value={status} divider={!bare && !!(f.kind || place)} title={action?.title} />
         </span>
       </span>
       {menu && (

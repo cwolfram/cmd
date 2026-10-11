@@ -21,6 +21,7 @@ import "./commands/register.tsx";
 import "./actions/register.tsx";
 import "./journal/register.tsx";
 import "./stats/register.tsx";
+import "./operator/register.tsx";
 import "./notifications/register.tsx";
 import "./resources/register.tsx";
 import "./events/register.tsx";

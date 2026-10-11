@@ -1,0 +1,150 @@
+// A conversation with an agent that acts (the Operator, docs/51): what the person asked, what the
+// agent says, the steps it takes and the approvals it waits for, newest last, in a View that
+// keeps the end in sight while it streams. Rows, not bubbles: cmd is a workbench.
+//
+//   ChatMessage   the person's request (on a recess) or the agent's answer (plain, streaming)
+//   ChatStep      one step: a light for its state, its "why", the window it is about, its time;
+//                 a click shows what it did (input and result)
+//   ChatApproval  a step waiting for the person: what it wants to do in words and exactly,
+//                 Allow / Deny / Deny and Say Why
+//   useStickToEnd a scroller that follows new content unless the person scrolled up
+
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Button, LinkButton } from "./button.tsx";
+import { TextField } from "./fields.tsx";
+import { Inline, Stack, Text } from "./frame.tsx";
+import { ICON, iconNode } from "./icon.tsx";
+import { Callout, CodeBlock } from "./layout.tsx";
+import { Mark } from "./list.tsx";
+import type { DotState } from "./status.tsx";
+
+const cls = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
+
+/** A message: the person's request, or what the agent says (`streaming`: a caret while it grows). Children may be rendered Markdown. */
+export function ChatMessage({ from, streaming, children }: { from: "person" | "agent"; streaming?: boolean; children: ReactNode }) {
+  return (
+    <div className="ui-chat-msg" data-from={from} data-streaming={streaming || undefined}>
+      {children}
+    </div>
+  );
+}
+
+export type ChatStepState = "running" | "waiting" | "done" | "failed" | "denied";
+
+const LIGHT: Record<ChatStepState, DotState> = { running: "working", waiting: "needs", done: "done", failed: "danger", denied: "warning" };
+
+/**
+ * One step the agent took: `icon` (an SF Symbol) with a light for its state, `title` (its why),
+ * `target` (a chip for the window it is about; clicking it goes there), `time` at the end. With
+ * `children`, a click opens them under the row (the input and result). `quiet`: a step that only looked.
+ */
+export function ChatStep({ icon, title, state, target, onTarget, time, quiet, children }: { icon: string; title: ReactNode; state: ChatStepState; target?: ReactNode; onTarget?: () => void; time?: ReactNode; quiet?: boolean; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="ui-chat-step" data-state={state} data-quiet={quiet || undefined} data-open={open || undefined}>
+      <div className={cls("ui-chat-step-row", children != null && "has-detail")} onClick={children != null ? () => setOpen(!open) : undefined}>
+        <Mark icon={icon} light={LIGHT[state]} tone={quiet ? "dim" : undefined} />
+        <span className="ui-chat-step-title">{title}</span>
+        {target != null && (
+          <button
+            type="button"
+            className="ui-chat-step-target"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTarget?.();
+            }}
+            disabled={!onTarget}
+          >
+            {target}
+          </button>
+        )}
+        {time != null && <span className="ui-chat-step-time">{time}</span>}
+        {children != null && <span className="ui-chat-step-twisty">{iconNode(open ? "chevron.down" : "chevron.right", ICON.small)}</span>}
+      </div>
+      {open && <div className="ui-chat-step-detail">{children}</div>}
+    </div>
+  );
+}
+
+/**
+ * A step waiting for the person: `title` says what it wants in words, `exact` shows exactly what
+ * would happen (the text to type and where). Allow, Deny, or Deny and Say Why (a line for the agent).
+ */
+export function ChatApproval({ title, exact, onAnswer, busy }: { title: ReactNode; exact?: ReactNode; onAnswer: (allow: boolean, reason?: string) => void; busy?: boolean }) {
+  const [why, setWhy] = useState<string | null>(null);
+  return (
+    <Callout tone="accent" icon="hand.raised" title={title}>
+      <Stack gap={2}>
+        {exact != null && <CodeBlock>{exact}</CodeBlock>}
+        {why === null ? (
+          <Inline gap={2}>
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => onAnswer(true)}>
+              Allow
+            </Button>
+            <Button size="sm" disabled={busy} onClick={() => onAnswer(false)}>
+              Deny
+            </Button>
+            <LinkButton tone="dim" disabled={busy} onClick={() => setWhy("")}>
+              Deny and Say Why…
+            </LinkButton>
+          </Inline>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              onAnswer(false, why.trim() || undefined);
+            }}
+          >
+            <Inline gap={2}>
+              <TextField size="sm" fill autoFocus value={why} onChange={setWhy} placeholder="What to do instead" aria-label="Why not" />
+              <Button size="sm" type="submit" disabled={busy}>
+                Deny
+              </Button>
+            </Inline>
+          </form>
+        )}
+      </Stack>
+    </Callout>
+  );
+}
+
+/** A quiet line in the conversation: Stopped, an error, how long a turn took. */
+export function ChatNote({ tone, children }: { tone?: "danger"; children: ReactNode }) {
+  return (
+    <Text size="sm" tone={tone === "danger" ? "danger" : "dim"}>
+      {children}
+    </Text>
+  );
+}
+
+/**
+ * Keeps a scroller at its end while content grows, unless the person scrolled up; `toEnd` goes
+ * back down (after sending). `deps` change when content does.
+ */
+export function useStickToEnd(ref: RefObject<HTMLElement | null>, deps: unknown[]): { atEnd: boolean; toEnd: () => void } {
+  const stick = useRef(true);
+  const [atEnd, setAtEnd] = useState(true);
+  const toEnd = useCallback(() => {
+    stick.current = true;
+    setAtEnd(true);
+    const el = ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [ref]);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onScroll = () => {
+      const end = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+      stick.current = end;
+      setAtEnd(end);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [ref]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return { atEnd, toEnd };
+}

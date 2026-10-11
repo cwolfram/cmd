@@ -136,6 +136,7 @@ export const COMMANDS = spec([
   // Workspace Actions (docs/39).
   { id: "actions.show", label: "Workspace Actions", menu: "Workspace/actions" },
   { id: "actions.rerun", label: "Run Last Action Again", keys: ["Shift+Cmd+R"], menu: "Workspace/actions" },
+  { id: "operator.ask", label: "Ask Operator…", keys: ["Cmd+J"], menu: "Workspace/actions" },
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
     id: `session.select${n}`,
     label: `Select Session ${n}`,
