@@ -289,8 +289,8 @@ export function Line({ values, color = seriesColor(0), dashed = false, area = fa
     <g className="ui-plot-line" data-dashed={dashed || undefined}>
       {fill && <path className="ui-plot-area" d={fill} fill={color} />}
       {line && <path d={line} stroke={color} strokeWidth={width} fill="none" strokeDasharray={dashed ? `${2 * width + 1} ${2 * width + 1}` : undefined} />}
-      {!dashed && last && p.hover === null && <circle className="ui-plot-dot" cx={p.cx(last[0])} cy={p.y(last[1]!)} r={width + 1} fill={color} />}
-      {!dashed && p.hover !== null && hv !== null && hv !== undefined && <circle className="ui-plot-dot" cx={p.cx(p.hover)} cy={p.y(hv)} r={width + 1.5} fill={color} />}
+      {!dashed && last && p.hover === null && <circle className="ui-plot-dot" cx={p.cx(last[0])} cy={p.y(last[1]!)} r={2 * width} fill={color} />}
+      {!dashed && p.hover !== null && hv !== null && hv !== undefined && <circle className="ui-plot-dot" cx={p.cx(p.hover)} cy={p.y(hv)} r={2.5 * width} fill={color} />}
     </g>
   );
 }
