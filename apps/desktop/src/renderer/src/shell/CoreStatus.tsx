@@ -4,7 +4,8 @@
 
 import { Button, Inline, KeyValue, Popover, Stack, StatusDot, Text } from "@cmd/ui";
 import { useRef, useState } from "react";
-import type { StartupStatus } from "@cmd/protocol";
+import { runningStep, stepLine, type BootReport, type StartupStatus } from "@cmd/protocol";
+import { useCoreBoot } from "./BootSheet.tsx";
 import { cmd } from "../lib/bridge.ts";
 import { formatUptime, restartCore, SLOW_MS, useCoreHealth, useRestart, type CoreHealth } from "./coreHealth.ts";
 import { formatBytes, usageLabel } from "../lib/model.ts";
@@ -26,15 +27,19 @@ interface Summary {
   detail: string;
 }
 
-function summarize(p: Props, h: CoreHealth, restarting: boolean, startup: StartupStatus | null): Summary {
+function summarize(p: Props, h: CoreHealth, restarting: boolean, startup: StartupStatus | null, boot: BootReport | null): Summary {
   if (restarting) return { led: "working", text: "Restarting core…", detail: "Starting a new core; terminals keep running." };
   if (!p.connected) {
     if (p.error) return { led: "needs", text: "Core error", detail: p.error };
+    // Busy before it answers (the first launch of a version updating data, docs/50): say what it does.
+    const step = runningStep(boot);
+    if (step) return { led: "working", text: `${stepLine(step)}…`, detail: "Getting your data ready. Terminals keep running." };
     return { led: "working", text: "Connecting to core…", detail: "The core isn't reachable; reconnecting." };
   }
   // Connected, still starting up behind the socket: say what it does (the first launch of a version rebuilds its views).
   if (startup?.phase === "starting") {
-    const doing = `${startup.tasks[0]?.label ?? "Starting"}…`;
+    const t = startup.tasks[0];
+    const doing = `${t?.label ?? "Starting"}${t?.total ? ` · ${Math.min(100, Math.floor(((t.done ?? 0) / t.total) * 100))}%` : ""}…`;
     return { led: "working", text: doing, detail: `${doing} Terminals work meanwhile.` };
   }
   if (h.unresponsive) return { led: "needs", text: "Core not responding", detail: "The core is connected but didn't answer in time." };
@@ -49,7 +54,8 @@ export function CoreStatus(p: Props) {
   const restart = useRestart();
   // The event is the fresh one; core.info's copy covers a window that connected after the last change.
   const startup = useStoreValue((st) => st.startup) ?? health.info?.startup ?? null;
-  const s = summarize(p, health, restart.restarting, startup);
+  const boot = useCoreBoot().report;
+  const s = summarize(p, health, restart.restarting, startup, boot);
   // Same key while it changes: the numbers update in place, only showing and hiding animate.
   const usage = p.connected && !restart.restarting && !health.unresponsive ? usageLabel(health.core) : null;
   const button = useRef<HTMLButtonElement>(null);

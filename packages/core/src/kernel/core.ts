@@ -317,7 +317,7 @@ export class Core {
     }
     // Views whose rules changed: from the log again (after the import, which they read).
     if (this.agents.activity.needsRebuild) s.startup("turns", "Rebuilding agent turns", async () => void (await this.agents.activity.rebuild()));
-    if (this.sessions.needsRebuild) s.startup("sessions", "Indexing sessions", () => this.sessions.rebuild().then(() => this.search.view.invalidate()));
+    if (this.sessions.needsRebuild) s.startup("sessions", "Indexing sessions", () => this.sessions.rebuild((done, total) => s.progress("sessions", done, total)).then(() => this.search.view.invalidate()));
     // Transcripts are read in a worker and recorded here in paced steps; the reading's own progress is search.status.
     if (o.transcripts || o.transcriptRoots) s.startup("transcripts", "Starting the transcript reader", () => void this.settings.bind(["data.record.transcripts", "search.archiveDirs"], () => this.search.restart()));
     if (o.stateDir) s.startup("search", "Preparing search", () => this.search.view.warm());
@@ -337,7 +337,7 @@ export class Core {
       });
     // A full-text index older than fts.ts's format: built again beside it in paced steps, the old one serving searches
     // meanwhile. Minutes on a big log, and only makes search faster: in the background, so startup is ready without it.
-    if (o.stateDir && this.data.store.needsFtsRebuild) s.startup("fts", "Indexing for search", () => void this.search.rebuildFts());
+    if (o.stateDir && this.data.store.needsFtsRebuild) s.startup("fts", "Indexing for search", () => this.search.rebuildFts());
     s.ready();
   }
 

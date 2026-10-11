@@ -17,6 +17,8 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { logger } from "@cmd/protocol/node";
 import { EVENTS_SCHEMA, PRAGMA_SQL } from "./schema.ts";
+import { inBootStep } from "../kernel/boot.ts";
+import { freeBytes, gb } from "../lib/disk.ts";
 
 const log = logger("data");
 
@@ -27,6 +29,22 @@ export interface Migration {
   label: string;
   /** Inside the migration's transaction; `progress` says how far a long step is. */
   run(db: DatabaseSync, progress: (done: number, total: number) => void): void;
+}
+
+/** No room for the copy aside: the migration doesn't start (state-dir.ts refuses with this). */
+export class NoSpaceForMigration extends Error {
+  override name = "NoSpaceForMigration";
+  readonly need: number;
+  constructor(file: string, need: number) {
+    super(`not enough free space to update ${file}: it needs about ${gb(need)}`);
+    this.need = need;
+  }
+}
+
+/** Bytes a log's pages in use take: what a copy of it (VACUUM INTO) or a rewrite (VACUUM) needs. */
+export function liveBytes(db: DatabaseSync): number {
+  const n = (p: string) => Object.values(db.prepare(`PRAGMA ${p}`).get() as Record<string, number>)[0]!;
+  return (n("page_count") - n("freelist_count")) * n("page_size");
 }
 
 /** A log written by a newer cmd than this one: not opened, not written to. */
@@ -155,35 +173,43 @@ export function migrate(db: DatabaseSync, file: string, steps: Migration[] = MIG
   const pending = steps.filter((s) => s.to > from && s.to <= newest);
   const t0 = Date.now();
   let backup: string | null = null;
-  if (file !== ":memory:" && file !== "") {
-    // A copy of the file as it was (VACUUM INTO: consistent, compact; it refuses a file that exists).
-    backup = `${file}.bak-v${from}`;
-    fs.rmSync(backup, { force: true });
-    log.info(`event log: schema ${from} → ${newest}; copying it aside first`, { backup });
-    db.prepare(`VACUUM INTO ?`).run(backup);
-    log.info("event log: copied aside", { ms: Date.now() - t0, bytes: fs.statSync(backup).size });
-  }
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    for (const s of pending) {
-      const t = Date.now();
-      let said = -1;
-      log.info(`event log: migrating to schema ${s.to}: ${s.label}`);
-      s.run(db, (done, total) => {
-        // A line per tenth: a long step says it is still going.
-        const tenth = total ? Math.floor((done / total) * 10) : 10;
-        if (tenth > said) (said = tenth), log.info(`event log: schema ${s.to}: ${done} of ${total} rows`, { ms: Date.now() - t });
-      });
-      db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('schema', ?)`).run(String(s.to));
+  // Shown while the core can't answer yet (kernel/boot.ts): the app and the CLI say what's going on.
+  inBootStep("migrate", "Updating recorded data", (boot) => {
+    if (file !== ":memory:" && file !== "") {
+      // A copy of the file as it was (VACUUM INTO: consistent, compact; it refuses a file that exists).
+      backup = `${file}.bak-v${from}`;
+      fs.rmSync(backup, { force: true });
+      const need = Math.ceil(liveBytes(db) * 1.1);
+      if (freeBytes(path.dirname(file)) < need) throw new NoSpaceForMigration(file, need);
+      log.info(`event log: schema ${from} → ${newest}; copying it aside first`, { backup });
+      boot.detail("Making a copy first");
+      db.prepare(`VACUUM INTO ?`).run(backup);
+      log.info("event log: copied aside", { ms: Date.now() - t0, bytes: fs.statSync(backup).size });
     }
-    const t = Date.now();
-    db.exec("COMMIT");
-    log.info("event log: committed", { ms: Date.now() - t });
-  } catch (err) {
-    db.exec("ROLLBACK");
-    log.error(`event log: migration from schema ${from} failed; the file is as it was`, err);
-    throw err;
-  }
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      for (const s of pending) {
+        const t = Date.now();
+        let said = -1;
+        log.info(`event log: migrating to schema ${s.to}: ${s.label}`);
+        s.run(db, (done, total) => {
+          boot.progress(done, total);
+          // A line per tenth: a long step says it is still going.
+          const tenth = total ? Math.floor((done / total) * 10) : 10;
+          if (tenth > said) (said = tenth), log.info(`event log: schema ${s.to}: ${done} of ${total} rows`, { ms: Date.now() - t });
+        });
+        db.prepare(`INSERT OR REPLACE INTO meta (key, value) VALUES ('schema', ?)`).run(String(s.to));
+      }
+      const t = Date.now();
+      boot.detail("Saving");
+      db.exec("COMMIT");
+      log.info("event log: committed", { ms: Date.now() - t });
+    } catch (err) {
+      db.exec("ROLLBACK");
+      log.error(`event log: migration from schema ${from} failed; the file is as it was`, err);
+      throw err;
+    }
+  });
   const ms = Date.now() - t0;
   log.info(`event log: at schema ${newest}`, { from, ms });
   return { from, to: newest, backup, ms };

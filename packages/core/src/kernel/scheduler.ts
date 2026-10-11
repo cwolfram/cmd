@@ -178,6 +178,7 @@ export class Scheduler extends EventEmitter<{ startup: [StartupStatus]; stall: [
       } finally {
         done();
         this.#tasks.delete(id);
+        this.#progress.delete(id);
         this.#pending--;
         const ms = Math.round(performance.now() - t0);
         if (ms > this.#budget) log.info(`startup: ${id}`, { ms });
@@ -186,6 +187,19 @@ export class Scheduler extends EventEmitter<{ startup: [StartupStatus]; stall: [
     });
   }
   #queue: Promise<void> = Promise.resolve();
+
+  /** How far a running startup job is (`done` of `total`), for the footer; sent at most once a second, and on each whole tenth. */
+  progress(id: string, done: number, total: number): void {
+    const was = this.#progress.get(id);
+    if (!this.#tasks.has(id)) return;
+    this.#progress.set(id, { done, total });
+    const tenth = (p?: { done: number; total: number }) => (p?.total ? Math.floor((p.done / p.total) * 10) : -1);
+    if (Date.now() - this.#progressAt < 1000 && tenth(was) === tenth({ done, total })) return;
+    this.#progressAt = Date.now();
+    this.#emitStartup();
+  }
+  #progress = new Map<string, { done: number; total: number }>();
+  #progressAt = 0;
 
   /** Every startup job is queued: the phase turns "ready" once they have run (at once when there were none). */
   ready(): void {
@@ -203,7 +217,7 @@ export class Scheduler extends EventEmitter<{ startup: [StartupStatus]; stall: [
   }
 
   status(): StartupStatus {
-    return { phase: this.#phase, since: this.#startedAt, tasks: [...this.#tasks].map(([id, label]) => ({ id, label })) };
+    return { phase: this.#phase, since: this.#startedAt, tasks: [...this.#tasks].map(([id, label]) => ({ id, label, ...this.#progress.get(id) })) };
   }
 
   /** The last few stalls, newest last. */

@@ -663,6 +663,10 @@ button.ui-secret-part:hover:not(:disabled) { color: var(--text); background: var
 .ui-ring { flex: none; display: block; }
 .ui-ring-track { fill: none; stroke: color-mix(in srgb, var(--text-dim) 35%, transparent); stroke-width: 2; }
 .ui-ring-fill { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; transition: stroke-dasharray var(--dur-slow) var(--ease); }
+.ui-ring[data-indeterminate] { animation: ui-spin 0.7s linear infinite; }
+.ui-ring[data-state="done"] .ui-ring-badge { fill: var(--success); }
+.ui-ring[data-state="failed"] .ui-ring-badge { fill: var(--danger); }
+.ui-ring-mark { fill: none; stroke: var(--on-accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ── forms ── */
 

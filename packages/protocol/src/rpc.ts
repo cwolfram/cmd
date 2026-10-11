@@ -47,7 +47,8 @@ export interface StartupStatus {
   phase: "starting" | "ready";
   /** Epoch ms the core started. */
   since: number;
-  tasks: { id: string; label: string }[];
+  /** `done` of `total` when the job counts its work (scheduler.progress). */
+  tasks: { id: string; label: string; done?: number; total?: number }[];
 }
 
 /** The event loop was blocked for `ms` from `at`, while `in` ran (a request's method, a job). */

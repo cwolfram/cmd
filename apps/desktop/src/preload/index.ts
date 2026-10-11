@@ -3,7 +3,7 @@
 import os from "node:os";
 import path from "node:path";
 import { contextBridge, ipcRenderer, webUtils } from "electron";
-import type { CoreEvent, Method, Params, Result } from "@cmd/protocol";
+import type { BootReport, CoreEvent, Method, Params, Result } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
 import { allowedAppUrl } from "../shared/app-url.ts";
@@ -168,6 +168,13 @@ const api = {
   /** Settings → Updates & About. */
   appInfo: (): Promise<AppInfo> => ipcRenderer.invoke("app-info"),
   restartCore: (): Promise<void> => ipcRenderer.invoke("restart-core"),
+  /** What the core does before it answers (docs/50): the report now, and each change (null once it answers). */
+  coreBoot: (): Promise<BootReport | null> => ipcRenderer.invoke("core-boot"),
+  onCoreBoot(fn: (r: BootReport | null) => void): () => void {
+    const h = (_e: unknown, r: BootReport | null) => fn(r);
+    ipcRenderer.on("core-boot", h);
+    return () => ipcRenderer.off("core-boot", h);
+  },
   /** Resize this window (Window → Resize to 1500 × 900). */
   setWindowSize: (width: number, height: number) => ipcRenderer.send("set-window-size", width, height),
   revealPath: (p: string) => ipcRenderer.send("reveal-path", p),

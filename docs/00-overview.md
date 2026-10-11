@@ -69,6 +69,7 @@ Every doc says under its title what it is: **research**, a **proposal**, **partl
 | 47 | [Motion feel](47-motion-feel.md) | proposal | Snappy and smooth on top of docs/37: speed across hand-offs, things from their cause, distance-aware springs, lists that move as one |
 | 48 | [UI Workbench](48-workbench.md) | built | One place to see and work on every component: the UI Workbench replaces the `@cmd/ui` gallery, and its sidebar, variant matrices, playground, props tables, notes and tests are derived from the component sources and story files |
 | 49 | [Stats](49-stats.md) | partly built | Usage numbers from the event log: a stats registry in the core (hour buckets in views.sqlite, kept current from dirty marks, rebuilt by version, one query and `cmd stats`), what cmd can show (agent time, waiting on you, failures, focus, tokens), a chart kit with Apple's discipline and a terminal's density (a mark grammar, scrubbing cursor, presets), the Stats widget, phases |
+| 50 | [Boot work people can see](50-boot-work.md) | built | What the core does before it answers after an update (migrating, compacting): a boot report beside `core.pid` that the app and the CLI read, a sheet when it lasts, no fixed timeout while it moves, progress counts on startup jobs, a free-space check; no step registry or ledger, by decision |
 
 ## Key findings
 1. **Nothing has to be invented for agent awareness.** Every tool in this space combines three things:

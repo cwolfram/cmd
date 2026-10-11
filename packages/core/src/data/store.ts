@@ -434,12 +434,12 @@ export class DataStore {
    * and what's recorded during the build goes into both. A build cut short
    * (the core stopped) goes on from its cursor. Returns the events indexed.
    */
-  async buildFts(o: { pace?: Pick<Pacer, "yield"> & Partial<Pick<Pacer, "mark">>; bodyOf?: (e: DataEvent) => string | null } = {}): Promise<number> {
+  async buildFts(o: { pace?: Pick<Pacer, "yield"> & Partial<Pick<Pacer, "mark">>; bodyOf?: (e: DataEvent) => string | null; /** How far it is, by seq (the footer's count). */ progress?: (done: number, total: number) => void } = {}): Promise<number> {
     // Each step named for the watchdog on its own (a name held across the pauses would stick to whatever runs in them).
     const mark = (activity: string) => o.pace?.mark?.(activity) ?? (() => {});
     let step = mark("fts rebuild");
     const pace = async (next = "fts rebuild") => {
-      step();
+      step(), o.progress?.(this.#ftsCursor ?? 0, (this.#stmt(`SELECT MAX(seq) AS m FROM events`).get() as { m: number | null }).m ?? 0);
       await (o.pace?.yield() ?? Promise.resolve());
       step = mark(next);
     };

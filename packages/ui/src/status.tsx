@@ -93,13 +93,27 @@ export function Spinner({ size = 12, label }: { size?: number; label?: string })
   return <span className="ui-spinner" role={label ? "status" : undefined} aria-label={label} aria-hidden={label ? undefined : true} style={{ width: size, height: size }} />;
 }
 
-/** A small determinate ring, for progress inside a field or a row (indexing). */
-export function ProgressRing({ value, size = 14, label }: { value: number; size?: number; label?: string }) {
+/**
+ * A small ring for one piece of work, in a field or a row (indexing, a step of a
+ * list): filling with `value` (0–1), spinning without one, and once it ends a
+ * filled check (`state="done"`) or cross (`"failed"`) in the same size, so a list
+ * of steps lines up whatever state each is in.
+ */
+export function ProgressRing({ value, state, size = 14, label }: { value?: number; state?: "done" | "failed"; size?: number; label?: string }) {
   const r = (size - 2) / 2;
   const c = 2 * Math.PI * r;
-  const f = Math.max(0, Math.min(1, value));
+  const at = (x: number, y: number) => `${x * size} ${y * size}`;
+  if (state)
+    return (
+      <svg className="ui-ring" data-state={state} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label}>
+        <circle className="ui-ring-badge" cx={size / 2} cy={size / 2} r={size / 2} />
+        <path className="ui-ring-mark" d={state === "done" ? `M${at(0.29, 0.52)} L${at(0.44, 0.67)} L${at(0.72, 0.37)}` : `M${at(0.35, 0.35)} L${at(0.65, 0.65)} M${at(0.65, 0.35)} L${at(0.35, 0.65)}`} />
+      </svg>
+    );
+  // Without a value: a quarter of the ring, turning.
+  const f = value == null ? 0.25 : Math.max(0, Math.min(1, value));
   return (
-    <svg className="ui-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label}>
+    <svg className="ui-ring" data-indeterminate={value == null || undefined} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role={value == null ? "status" : "img"} aria-label={label}>
       <circle className="ui-ring-track" cx={size / 2} cy={size / 2} r={r} />
       <circle
         className="ui-ring-fill"

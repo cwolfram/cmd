@@ -35,6 +35,7 @@ import { Palette, SEARCH_PREFIX } from "./Palette.tsx";
 import { actionItems, commandItems, lineItems, searchAll, SEARCH_GROUPS, usePaletteActions, windowItems } from "./palette.ts";
 import { useSelectionFollows } from "./selection.ts";
 import { closeSheet, openSheet, useSheet } from "./sheets.ts";
+import { BootSheet, useBootReport } from "./BootSheet.tsx";
 import { SitePermissionSheet } from "./SitePermissionSheet.tsx";
 import { StatusBar } from "./StatusBar.tsx";
 import { TaskManager } from "./TaskManager.tsx";
@@ -62,6 +63,7 @@ export function App() {
   const keys = useKeybindings();
   const [selected] = useWorkspaceView<PaneId | null>("selection.pane", null);
   const sheet = useSheet();
+  const boot = useBootReport(s.connected);
   const sliding = useSliding();
   // The sidebar before sidebars were windows: carried over into each workspace's first Navigator.
   const [sidebarOpen] = usePersisted("sidebar.open", true);
@@ -202,6 +204,7 @@ export function App() {
       <Presence when={sheet?.kind === "taskManager"}>{(_, open) => <TaskManager open={open} onClose={closeSheet} />}</Presence>
       <Presence when={sheet?.kind === "setup" && sheet.ids}>{(ids, open) => <Onboarding key={ids.join()} open={open} ids={ids} onClose={closeSheet} />}</Presence>
       <Presence when={sheet?.kind === "whatsNew" && sheet.releases}>{(releases, open) => <WhatsNew open={open} releases={releases} onClose={closeSheet} onLink={(url) => (closeSheet(), openLink(url))} />}</Presence>
+      <Presence when={boot}>{(report, open) => <BootSheet open={open} report={report} />}</Presence>
       <Presence when={all.pairRequests[0]}>{(request, open) => <PairSheet key={request.requestId} open={open} request={request} />}</Presence>
       <SitePermissionSheet />
     </div>

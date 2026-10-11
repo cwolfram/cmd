@@ -107,7 +107,7 @@ export class Search {
   async rebuildFts(): Promise<void> {
     const t0 = Date.now();
     try {
-      const n = await this.#core.data.store.buildFts({ pace: this.#core.scheduler });
+      const n = await this.#core.data.store.buildFts({ pace: this.#core.scheduler, progress: (done, total) => this.#core.scheduler.progress("fts", done, total) });
       log.info("full-text index rebuilt", { events: n, ms: Date.now() - t0 });
       this.view.invalidate();
     } catch (err) {

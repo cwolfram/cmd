@@ -14,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { ENV } from "./rpc.ts";
+import { BOOT_FILE, type BootReport } from "./boot.ts";
 
 export type InstanceName = "release" | "dev";
 
@@ -205,13 +206,13 @@ export function defaultSocketPath(): string {
  * the app shows instead of its generic "couldn't start" (coreRefusal).
  */
 export const CORE_REFUSED_EXIT = 78;
-export type CoreRefusalReason = "too-new" | "foreign";
+export type CoreRefusalReason = "too-new" | "foreign" | "disk";
 export const coreRefusalLine = (reason: CoreRefusalReason, text: string): string => `cmd core: refused (${reason}): ${text}`;
 
 /** The refusal in a core's output, the last one if several; null without one. */
 export function coreRefusal(lines: readonly string[]): { reason: CoreRefusalReason; text: string } | null {
   for (let i = lines.length - 1; i >= 0; i--) {
-    const m = /^cmd core: refused \((too-new|foreign)\): (.+)$/.exec(lines[i]!.trim());
+    const m = /^cmd core: refused \((too-new|foreign|disk)\): (.+)$/.exec(lines[i]!.trim());
     if (m) return { reason: m[1] as CoreRefusalReason, text: m[2]! };
   }
   return null;
@@ -234,5 +235,21 @@ export function coreLocked(home = cmdHome()): boolean {
     return true;
   } finally {
     db?.close();
+  }
+}
+
+/**
+ * What the instance's core is doing before it answers (docs/50), or null: no
+ * report, or one left by a core that isn't the live one (its pid isn't
+ * core.pid's, or isn't alive, or nobody holds the lock), which a crash leaves.
+ */
+export function readBoot(home = cmdHome()): BootReport | null {
+  try {
+    const r = JSON.parse(fs.readFileSync(path.join(home, BOOT_FILE), "utf8")) as BootReport;
+    if (!r || !Array.isArray(r.steps) || Number(fs.readFileSync(path.join(home, "core.pid"), "utf8")) !== r.pid) return null;
+    process.kill(r.pid, 0);
+    return coreLocked(home) ? r : null;
+  } catch {
+    return null;
   }
 }

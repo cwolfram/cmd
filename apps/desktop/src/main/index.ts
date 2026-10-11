@@ -31,6 +31,7 @@ import { handleOpen, openForUser } from "./open.ts";
 import { crashStatus, followCrashReports, record as recordCrash, startCrashReporting } from "./crash.ts";
 import { feedbackStatus, sendFeedback, startFeedback, type FeedbackRequest } from "./feedback.ts";
 import { claimWhatsNew } from "./whats-new.ts";
+import { bootDone, booting, bootStalled, pollBoot } from "./boot.ts";
 import { notifyPermission, openNotifySettings, requestNotifyPermission } from "./notify-permission.ts";
 import { claimOnboarding, recordOnboarding } from "./onboarding.ts";
 import { FRAME_SCHEMES, frameHandler, fromFrame, isFramePage } from "./frames.ts";
@@ -381,9 +382,8 @@ function spawnCore(): void {
   child.unref();
 }
 
-/** How long a core may take to answer, and how long one that is alive but busy starting. */
+/** How long a core may take to answer before it counts as busy starting (then: as long as its boot report moves, boot.ts). */
 const CORE_START_MS = 5000;
-const CORE_BUSY_MS = 10 * 60_000;
 
 type SpawnState = "starting" | "exited" | "locked" | "refused";
 /** The last core this app started: still starting (or running), exited, found another core holding the lock, or refused the state dir. */
@@ -414,25 +414,25 @@ async function ensureCore(): Promise<void> {
 
 /**
  * Until the core answers. A core that is alive but not listening yet is busy
- * starting (the first launch of a version can migrate data for minutes), so it
- * gets CORE_BUSY_MS, not CORE_START_MS; the window says "Connecting to core…"
- * meanwhile. One that holds the lock without a pid file (older cores wrote it
+ * starting (the first launch of a version can migrate data for minutes): it gets
+ * as long as its boot report keeps changing, and the windows show what it does
+ * (boot.ts, docs/50). One that holds the lock without a pid file (older cores wrote it
  * only once listening) shows as our core exiting "already running": start
  * another now and then, which takes over as soon as the busy one is gone.
  */
 async function waitForCore(): Promise<void> {
   let said = false;
   for (const t0 = Date.now(); ; ) {
-    if (await canConnect()) return;
+    if (await canConnect()) return bootDone();
     if (lastSpawn?.state === "refused") throw new Error(`core refused to start: ${lastRefusal?.text}; see ${coreLog()}`);
     const waited = Date.now() - t0;
     if (waited > CORE_START_MS) {
       const busy = coreLocked() || lastSpawn?.state === "starting" || lastSpawn?.state === "locked";
-      if (!busy || waited > CORE_BUSY_MS) throw new Error(`core did not start; see ${coreLog()}`);
+      if (!busy || bootStalled(t0)) throw new Error(`core did not start; see ${coreLog()}`);
       if (!said) (said = true), log.info("a core is running but not answering yet (busy starting): waiting for it");
-      if (lastSpawn?.state === "locked" && Date.now() - lastSpawn.at > 10_000) spawnCore();
+      if (lastSpawn?.state === "locked" && !booting() && Date.now() - lastSpawn.at > 10_000) spawnCore();
     }
-    await new Promise((r) => setTimeout(r, waited < CORE_START_MS ? 10 : 250));
+    pollBoot(), await new Promise((r) => setTimeout(r, waited < CORE_START_MS ? 10 : 250));
   }
 }
 

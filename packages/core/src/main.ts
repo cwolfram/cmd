@@ -14,6 +14,7 @@ import { adoptLoginPath } from "./terminals/loginpath.ts";
 import { ProcInfo } from "./agents/procinfo.ts";
 import { statusRoot } from "./agents/statusfiles.ts";
 import { devKeys } from "./kernel/dev-keys.ts";
+import { endBootReport, startBootReport } from "./kernel/boot.ts";
 import { connectHost } from "./terminals/remote.ts";
 import type { TermBackend } from "./terminals/types.ts";
 
@@ -74,6 +75,8 @@ if (!lock) {
 // on the first launch of a version, and the app waits for a core it sees alive.
 const pidFile = path.join(home, "core.pid");
 fs.writeFileSync(pidFile, String(process.pid));
+// What it does until it answers, for the app and the CLI to show (docs/50): gone once it listens.
+startBootReport(home);
 
 // The state dir before anything opens it (data/state-dir.ts): a cmd.sqlite or
 // event log from a newer cmd is refused, having only been read: this cmd would
@@ -85,7 +88,7 @@ try {
 } catch (err) {
   const e = err as Error;
   log.error(`could not open the state dir: ${e.message}`, err);
-  fs.rmSync(pidFile, { force: true });
+  fs.rmSync(pidFile, { force: true }), endBootReport();
   lock.release();
   if (e instanceof StateDirRefused) refuse(e);
   console.error(`cmd core: ${e.message}`);
@@ -151,9 +154,10 @@ try {
 } catch (err) {
   log.error(`could not listen: ${(err as Error).message}`);
   console.error(`cmd core: ${(err as Error).message}`);
-  fs.rmSync(pidFile, { force: true });
+  fs.rmSync(pidFile, { force: true }), endBootReport();
   process.exit(1);
 }
+endBootReport();
 log.info(`pid ${process.pid} listening on ${socketPath}`, { instance: instanceName(), home, version: process.env.CMD_APP_VERSION ?? "source", build, node: process.versions.node, platform: `${process.platform} ${process.arch}` });
 console.log(`cmd core ${process.pid} listening on ${socketPath}`);
 

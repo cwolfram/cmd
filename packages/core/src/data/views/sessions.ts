@@ -245,13 +245,14 @@ export class SessionsView {
   /** The transcript a session id was read from, and its resume env (set by the reader, TranscriptIngest). */
   fileOf: ((sessionId: string) => { path: string; env: Record<string, string> | null } | null) | null = null;
 
-  rebuild(): Promise<number> {
-    this.#running ??= this.#rebuild().finally(() => (this.#running = null));
+  /** `progress`: how far it is, by seq (the footer's count while it's a startup job). */
+  rebuild(progress?: (done: number, total: number) => void): Promise<number> {
+    this.#running ??= this.#rebuild(progress).finally(() => (this.#running = null));
     return this.#running;
   }
   #running: Promise<number> | null = null;
 
-  async #rebuild(): Promise<number> {
+  async #rebuild(progress?: (done: number, total: number) => void): Promise<number> {
     const t0 = Date.now();
     // Which file a session came from and how to resume it aren't in the log: kept across.
     const files = this.#views.db.prepare(`SELECT key, path, env FROM sessions WHERE path IS NOT NULL OR env IS NOT NULL`).all() as { key: string; path: string | null; env: string | null }[];
@@ -270,6 +271,7 @@ export class SessionsView {
         if (!rows.length) continue;
         this.#applyFolded(rows);
         n += rows.length;
+        progress?.(Math.min(after + SPAN, last), last);
         await this.#pace.yield();
       }
       // Names, in the order they were given.

@@ -15,7 +15,8 @@
 import os from "node:os";
 import path from "node:path";
 import { foreignHome, foreignHomeText, instanceName, type CoreRefusalReason, type InstanceName } from "@cmd/protocol/node";
-import { EventsLogTooNew, prepareEventsLog, schemaOf } from "./migrations.ts";
+import { EventsLogTooNew, NoSpaceForMigration, prepareEventsLog, schemaOf } from "./migrations.ts";
+import { gb } from "../lib/disk.ts";
 import { EVENTS_SCHEMA } from "./schema.ts";
 import { peek } from "./peek.ts";
 import { checkStoreSchema, StoreTooNew } from "../kernel/store.ts";
@@ -68,6 +69,7 @@ export function prepareStateDir(home: string, o: StateDirOptions = {}): void {
     prepareEventsLog(events);
   } catch (err) {
     if (err instanceof EventsLogTooNew || err instanceof StoreTooNew) throw new StateDirRefused("too-new", err.message, "It was saved by a newer version of cmd. Update cmd to open it.");
+    if (err instanceof NoSpaceForMigration) throw new StateDirRefused("disk", err.message, `There isn't enough free space to update it: it needs about ${gb(err.need)}. Free some space, then open cmd again.`);
     throw err;
   }
 }

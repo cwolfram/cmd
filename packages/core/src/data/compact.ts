@@ -6,12 +6,17 @@
 // one VACUUM that turns on incremental auto-vacuum, so pages freed later
 // (retention, forgets) go back to the disk a step at a time (reclaim) instead of
 // staying in the file for good. On the author's log: 2.9 GB, a third of it free
-// pages and most of the rest tool output. Runs as the store opens, before the
-// core listens (the app waits for a busy core): a minute on a big log, once;
-// on a new one it costs nothing and gives the file the same shape.
+// pages and most of the rest tool output. Runs as the data service opens the
+// log, before the core listens: 20 s on that log, once, shown in the boot report
+// (kernel/boot.ts, docs/50); on a new one it costs nothing and gives the file the
+// same shape. Without room for the vacuum, it does the rest and vacuums next launch.
 
+import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { logger } from "@cmd/protocol/node";
+import { bootStep, type BootProgress } from "../kernel/boot.ts";
+import { freeBytes, gb } from "../lib/disk.ts";
+import { liveBytes } from "./migrations.ts";
 import { storedPayload } from "../agents/activity/normalize.ts";
 import { keptLine, trimLine } from "./sources/transcripts.ts";
 import type { DataStore } from "./store.ts";
@@ -39,19 +44,33 @@ export function compactLog(store: DataStore): boolean {
   const t0 = Date.now();
   const before = pages(db);
   const done = { other: 0, lines: 0, hooks: 0 };
-  store.transaction(() => {
-    done.other = Number(db.prepare(`DELETE FROM events WHERE type = 'transcript.other' AND source >= 'transcript:claude' AND source < 'transcript:claudf'`).run().changes);
-    done.lines = trimTranscripts(store);
-    done.hooks = slimToolHooks(db);
-    db.exec(PARTIAL_INDEXES);
-    // Blobs only the deleted and rewritten rows held.
-    db.exec(`UPDATE blobs SET refs = 0; UPDATE blobs SET refs = x.n FROM (SELECT blob, COUNT(*) AS n FROM events WHERE blob IS NOT NULL GROUP BY blob) AS x WHERE blobs.hash = x.blob; DELETE FROM blobs WHERE refs <= 0`);
-  });
-  if (done.other || done.lines || done.hooks) log.info("event log: kept less of what was recorded before", { ...done, ms: Date.now() - t0 });
-  vacuum(db, store.file);
+  // Reported only when there's something to wait for: a new or small log is done in a blink.
+  const boot = before.total > 1000 ? bootStep("compact", "Shrinking recorded data") : null;
+  try {
+    store.transaction(() => {
+      done.other = Number(db.prepare(`DELETE FROM events WHERE type = 'transcript.other' AND source >= 'transcript:claude' AND source < 'transcript:claudf'`).run().changes);
+      done.lines = trimTranscripts(store, boot);
+      boot?.detail("Tidying up");
+      done.hooks = slimToolHooks(db);
+      db.exec(PARTIAL_INDEXES);
+      // Blobs only the deleted and rewritten rows held.
+      db.exec(`UPDATE blobs SET refs = 0; UPDATE blobs SET refs = x.n FROM (SELECT blob, COUNT(*) AS n FROM events WHERE blob IS NOT NULL GROUP BY blob) AS x WHERE blobs.hash = x.blob; DELETE FROM blobs WHERE refs <= 0`);
+    });
+    if (done.other || done.lines || done.hooks) log.info("event log: kept less of what was recorded before", { ...done, ms: Date.now() - t0 });
+    // A VACUUM writes a temporary copy and a journal: about twice the pages in use.
+    const need = liveBytes(db) * 2;
+    if (store.file !== ":memory:" && freeBytes(path.dirname(store.file)) < need) {
+      log.warn(`event log: not vacuumed, it needs about ${gb(need)} free; trying again next launch`);
+      return true;
+    }
+    boot?.detail("Freeing disk space");
+    vacuum(db, store.file);
+  } finally {
+    boot?.end();
+  }
   store.setMeta("compact", String(COMPACT_VERSION));
   const after = pages(db);
-  if (before.total > 1000) log.info("event log: compacted", { mb: [mb(before.total * before.size), mb(after.total * after.size)], ms: Date.now() - t0 });
+  if (boot) log.info("event log: compacted", { mb: [mb(before.total * before.size), mb(after.total * after.size)], ms: Date.now() - t0 });
   return true;
 }
 
@@ -71,11 +90,15 @@ function* paged<T extends { seq: number }>(db: DatabaseSync, sql: string): Gener
  * (keptLine), inline again when that's small; a copy the class's cap cut short
  * (it doesn't parse, nothing could read it) dropped.
  */
-function trimTranscripts(store: DataStore): number {
+function trimTranscripts(store: DataStore, boot: BootProgress | null): number {
   const db = store.db;
   const update = db.prepare(`UPDATE events SET data = jsonb(?), blob = ? WHERE seq = ?`);
+  const BIG = `type >= 'transcript.' AND type < 'transcript/' AND blob IS NOT NULL`;
+  const total = boot ? (db.prepare(`SELECT COUNT(*) AS n FROM events WHERE ${BIG}`).get() as { n: number }).n : 0;
   let n = 0;
-  for (const r of paged<{ seq: number; data: string; blob: string }>(db, `SELECT seq, json(data) AS data, blob FROM events WHERE type >= 'transcript.' AND type < 'transcript/' AND blob IS NOT NULL`)) {
+  let seen = 0;
+  for (const r of paged<{ seq: number; data: string; blob: string }>(db, `SELECT seq, json(data) AS data, blob FROM events WHERE ${BIG}`)) {
+    boot?.progress(++seen, total);
     const raw = store.blob(r.blob)?.toString("utf8") ?? "";
     const data = JSON.parse(r.data) as Obj;
     let line: unknown = null;

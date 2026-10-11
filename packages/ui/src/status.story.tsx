@@ -42,6 +42,9 @@ export const Progresses = () => {
       <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
         <ProgressRing value={p} />
         <ProgressRing value={0.75} size={18} />
+        <ProgressRing label="Working" />
+        <ProgressRing state="done" label="Done" />
+        <ProgressRing state="failed" label="Failed" />
         <Spinner />
         <Spinner size={16} />
         <span style={{ display: "flex", gap: "var(--space-1-5)", alignItems: "center", color: "var(--text-dim)" }}>
