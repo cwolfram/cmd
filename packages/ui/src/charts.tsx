@@ -39,9 +39,11 @@ function Readout({ value, label, parts }: { value: string; label: string; parts?
       <b className="ui-chart-value">{value}</b>
       <span className="ui-chart-when">{label}</span>
       {parts?.map((p) => (
-        <span key={p.label} className="ui-chart-part">
-          <i style={{ background: p.color }} />
-          {p.label} {p.value}
+        <span key={p.label} className="ui-chart-part" style={{ color: p.color }}>
+          <i />
+          <span>
+            {p.label} <span className="ui-chart-part-value">{p.value}</span>
+          </span>
         </span>
       ))}
     </>
@@ -126,14 +128,14 @@ export function TimeSeries(p: TimeChartProps & { area?: boolean }) {
   );
 }
 
-/** Series names and colours, for a chart with more than one. */
+/** Series names and colours, for a chart with more than one: each name in its series' colour, its swatch centred on the letters. */
 export function Legend({ series }: { series: readonly { label?: string; name?: string }[] }) {
   return (
     <div className="ui-legend">
       {series.map((s, i) => (
-        <span key={(s.label ?? s.name)!} className="ui-legend-item">
-          <i style={{ background: seriesColor(i) }} />
-          {s.label ?? s.name}
+        <span key={(s.label ?? s.name)!} className="ui-legend-item" style={{ color: seriesColor(i) }}>
+          <i />
+          <span>{s.label ?? s.name}</span>
         </span>
       ))}
     </div>
@@ -209,11 +211,13 @@ export function Proportion({ parts, format = String }: { parts: readonly { key: 
       </div>
       <div className="ui-legend">
         {shown.map((p) => (
-          <span key={p.key} className="ui-legend-item">
-            <i style={{ background: seriesColor(parts.indexOf(p)) }} />
-            {p.label}
-            <span className="ui-proportion-value">
-              {format(p.value)} · {Math.round((100 * p.value) / (total || 1))}%
+          <span key={p.key} className="ui-legend-item" style={{ color: seriesColor(parts.indexOf(p)) }}>
+            <i />
+            <span>
+              {p.label}
+              <span className="ui-proportion-value">
+                {format(p.value)} · {Math.round((100 * p.value) / (total || 1))}%
+              </span>
             </span>
           </span>
         ))}

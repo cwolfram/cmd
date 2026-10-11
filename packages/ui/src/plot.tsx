@@ -41,8 +41,11 @@ export interface PlotScales {
   current: number | null;
 }
 
-/** A line's stroke in px, the same at every size. */
-const LINE_WIDTH = 2;
+/** A line's stroke in px, the same at every size (plots and sparklines); its dot is twice that across. */
+export const LINE_WIDTH = 2;
+
+/** A dash pattern for a round-capped stroke `w` wide: dashes and gaps look `len` long once the caps are added. */
+export const roundDashes = (w: number, len: number): string => `${Math.max(0.01, len - w)} ${len + w}`;
 
 const PlotContext = createContext<PlotScales | null>(null);
 
@@ -289,7 +292,7 @@ export function Line({ values, color = seriesColor(0), dashed = false, area = fa
   return (
     <g className="ui-plot-line" data-dashed={dashed || undefined}>
       {fill && <path className="ui-plot-area" d={fill} fill={color} />}
-      {line && <path d={line} stroke={color} strokeWidth={width} fill="none" strokeDasharray={dashed ? `${2 * width + 1} ${2 * width + 1}` : undefined} />}
+      {line && <path d={line} stroke={color} strokeWidth={width} fill="none" strokeDasharray={dashed ? roundDashes(width, 2 * width + 1) : undefined} />}
       {!dashed && last && p.hover === null && <circle className="ui-plot-dot" cx={p.cx(last[0])} cy={p.y(last[1]!)} r={2 * width} fill={color} />}
       {!dashed && p.hover !== null && hv !== null && hv !== undefined && <circle className="ui-plot-dot" cx={p.cx(p.hover)} cy={p.y(hv)} r={2.5 * width} fill={color} />}
     </g>
@@ -303,7 +306,7 @@ export function Rule({ y, label, dashed = true }: { y: number; label?: string; d
   const yy = Math.round(p.y(y)) + 0.5;
   return (
     <g className="ui-plot-rule">
-      <line x1={p.left} x2={p.right} y1={yy} y2={yy} strokeDasharray={dashed ? "2 3" : undefined} />
+      <line x1={p.left} x2={p.right} y1={yy} y2={yy} strokeDasharray={dashed ? roundDashes(1, 2.5) : undefined} />
       {label && (
         <text className="ui-plot-tick ui-plot-rule-label" x={p.left + 2} y={yy - 4}>
           {label}
