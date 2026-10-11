@@ -6,7 +6,7 @@ import { Button, Callout, Checkbox, Dialog, EmptyState, Segmented, TextArea, Tex
 import { useEffect, useRef, useState } from "react";
 import { cmd } from "../lib/bridge.ts";
 import type { CmdBridge } from "../../../preload/index.ts";
-import type { FeedbackRequest } from "../../../main/feedback.ts";
+import type { FeedbackRequest } from "../../../shared/ipc.ts";
 
 type Kind = FeedbackRequest["kind"];
 const KINDS: { id: Kind; label: string; placeholder: string }[] = [

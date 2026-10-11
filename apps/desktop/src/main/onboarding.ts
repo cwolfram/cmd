@@ -6,13 +6,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-
-export interface OnboardingClaim {
-  /** Step ids already shown on this Mac. */
-  seen: string[];
-  /** Nothing ran here before: every step shows, not only those for existing users. */
-  newInstall: boolean;
-}
+import type { OnboardingClaim } from "../shared/ipc.ts";
+export type { OnboardingClaim } from "../shared/ipc.ts";
 
 let claimed = false;
 const fileIn = (dir: string) => path.join(dir, "onboarding.json");

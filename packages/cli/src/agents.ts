@@ -8,8 +8,9 @@ import os from "node:os";
 import type { ActivityEvent, Agent, AgentTurn, Pane, TurnRow } from "@cmd/protocol";
 import { ENV, matchAgents } from "@cmd/protocol";
 import type { Connection } from "@cmd/protocol/node";
-import { rawFromLog, toFixture } from "@cmd/core/activity/fixture";
-import { toActivity } from "@cmd/core/activity/view";
+// The core's activity view and fixtures load when a command needs them, not with every `cmd`.
+const activityView = () => import("@cmd/core/activity/view");
+const fixtures = () => import("@cmd/core/activity/fixture");
 
 type Client = Connection["client"];
 
@@ -62,6 +63,7 @@ async function target(client: Client, ref: string): Promise<{ agentId?: string; 
 const ACTIVITY = ["agent.hook", "agent.note"];
 async function activity(client: Client, t: { agentId?: string; paneId?: string }, limit: number, raw: boolean): Promise<ActivityEvent[]> {
   const evs = await client.call("data.query", { query: { types: ACTIVITY, agentId: t.agentId, paneId: t.agentId ? undefined : t.paneId, order: "desc", limit } });
+  const { toActivity } = await activityView();
   return evs.reverse().map((e) => toActivity(e, raw));
 }
 
@@ -111,6 +113,7 @@ export async function agentsCommand(client: Client, closed: Promise<void>, pos: 
       if (!opt.follow) return 0;
       // A live query over the log: the agent's (or pane's) hook events and the core's notes, as they're recorded.
       const { id } = await client.call("data.subscribe", { query: { types: ACTIVITY, agentId: t.agentId, paneId: t.agentId ? undefined : t.paneId, limit: 1 } });
+      const { toActivity } = await activityView();
       client.onEvent((e) => {
         if (e.type !== "data.changed" || e.id !== id || e.reset) return; // reset: some were forgotten, the rest printed already
         for (const d of e.events) print(toActivity(d, !!opt.raw));
@@ -187,6 +190,7 @@ export async function agentsCommand(client: Client, closed: Promise<void>, pos: 
       if (!ref || !file) throw new Error("usage: cmd agents record <agent> <out.jsonl>");
       const t = await target(client, ref);
       const evs = await activity(client, t, 100_000, true);
+      const { rawFromLog, toFixture } = await fixtures();
       const raws = rawFromLog(evs);
       if (!raws.length) throw new Error("no events recorded for it");
       const cwd = evs.find((e) => e.cwd)?.cwd;

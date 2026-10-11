@@ -7,17 +7,17 @@ import type { CoreEvent, Method, Params, Result } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
 import { allowedAppUrl } from "../shared/app-url.ts";
-import type { KeybindingsSnapshot } from "../main/keybindings.ts";
+import type { KeybindingsSnapshot } from "../shared/ipc.ts";
 import type { Appearance } from "../main/appearance.ts";
 import type { UpdateStatus } from "../main/updater.ts";
 import type { CrashStatus } from "../main/crash.ts";
-import type { FeedbackRequest, FeedbackStatus } from "../main/feedback.ts";
+import type { FeedbackRequest, FeedbackStatus } from "../shared/ipc.ts";
 import type { WhatsNewClaim } from "../main/whats-new.ts";
 import type { NotifyAccess, NotifyPermission } from "../main/notify-permission.ts";
-import type { OnboardingClaim } from "../main/onboarding.ts";
-import type { AppProcess } from "../main/metrics.ts";
-import type { MacDevice, SiteDecisions, SitePermission, SitePermissionRequest } from "../main/web-policy.ts";
-import type { OpenFrom } from "../main/open-policy.ts";
+import type { OnboardingClaim } from "../shared/ipc.ts";
+import type { AppProcess } from "../shared/ipc.ts";
+import type { MacDevice, SiteDecisions, SitePermission, SitePermissionRequest } from "../shared/ipc.ts";
+import type { OpenFrom } from "../shared/ipc.ts";
 
 export interface AppInfo {
   version: string;

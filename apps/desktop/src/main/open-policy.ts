@@ -12,7 +12,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 /** Who chose the target: the person (menus, buttons, the palette) or text on screen (links in output and files). */
-export type OpenFrom = "user" | "content";
+export type { OpenFrom } from "../shared/ipc.ts";
+import type { OpenFrom } from "../shared/ipc.ts";
 export type OpenVerdict = "allow" | "ask" | "deny";
 
 /** Opened without asking, whoever asks. */

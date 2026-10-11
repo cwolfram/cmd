@@ -15,7 +15,7 @@ import type { PaneId } from "@cmd/protocol";
 import { cmd } from "./bridge.ts";
 import { openPath } from "./actions.ts";
 import { parseUriList } from "../windows/terminal/paste.ts";
-import type { OpenFrom } from "../../../main/open-policy.ts";
+import type { OpenFrom } from "../../../shared/ipc.ts";
 
 /** What a drag carries, by kind. Until the drop only the kinds can be read, not the data. */
 export interface DragKinds {

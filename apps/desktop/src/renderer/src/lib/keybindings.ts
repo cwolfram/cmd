@@ -3,7 +3,7 @@
 
 import { useSyncExternalStore } from "react";
 import { DEFAULT_KEYBINDINGS, MAC_KEYMAP, norm } from "../../../shared/commands.ts";
-import type { KeybindingsSnapshot } from "../../../main/keybindings.ts";
+import type { KeybindingsSnapshot } from "../../../shared/ipc.ts";
 import { cmd } from "./bridge.ts";
 
 let snapshot: KeybindingsSnapshot = { bindings: DEFAULT_KEYBINDINGS, errors: [], path: "" };

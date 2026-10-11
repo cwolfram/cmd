@@ -5,7 +5,7 @@
 
 import { Button, Dialog, usePresentValue } from "@cmd/ui";
 import { useEffect, useState } from "react";
-import type { SitePermissionRequest } from "../../../main/web-policy.ts";
+import type { SitePermissionRequest } from "../../../shared/ipc.ts";
 import { cmd } from "../lib/bridge.ts";
 
 /** What the page wants to do, after "to". */

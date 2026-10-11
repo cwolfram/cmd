@@ -2,17 +2,8 @@
 // utility processes and each renderer, named after the window or page it draws.
 
 import { app, BrowserWindow, webContents } from "electron";
-
-export interface AppProcess {
-  pid: number;
-  /** "Browser" (main), "GPU", "Tab" (a renderer), "Utility"… (Electron's ProcessMetric.type). */
-  type: string;
-  name: string;
-  /** Percent of one core since the previous call. */
-  cpu: number;
-  /** Working set in bytes. */
-  memory: number;
-}
+import type { AppProcess } from "../shared/ipc.ts";
+export type { AppProcess } from "../shared/ipc.ts";
 
 /** What a renderer draws: an app window (by title), a utility window, or a browser window's page. */
 function rendererName(pid: number): string | null {

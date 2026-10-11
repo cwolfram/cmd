@@ -11,5 +11,19 @@
   "files over 600 lines in apps/relay": 0,
   "files over 600 lines in apps/web": 0,
   "files over 600 lines in tools/tours": 0,
-  "lines in packages/core/src/kernel/core.ts": 462
+  "lines in packages/core/src/kernel/core.ts": 462,
+  "lines in packages/cli/src/main.ts": 618,
+  "lines in packages/core/src/actions/sources.ts": 713,
+  "lines in packages/core/src/agents/tracker.ts": 938,
+  "lines in packages/core/src/data/store.ts": 680,
+  "lines in packages/core/src/magic/service.ts": 952,
+  "lines in packages/core/src/terminals/panes.ts": 851,
+  "lines in packages/core/src/windows/builtin.ts": 733,
+  "lines in packages/protocol/src/rpc.ts": 633,
+  "lines in packages/ui/src/overlay.tsx": 689,
+  "lines in apps/desktop/src/main/index.ts": 1018,
+  "lines in apps/desktop/src/renderer/src/lib/store.ts": 644,
+  "lines in apps/desktop/src/renderer/src/shell/board/WindowsView.tsx": 1217,
+  "lines in apps/desktop/src/renderer/src/windows/files/FilesView.tsx": 733,
+  "lines in apps/desktop/src/renderer/src/windows/terminal/terminals.ts": 884
 }

@@ -6,8 +6,6 @@ import { parseArgs } from "node:util";
 import type { Agent, AgentState, GitPlace, Pane, Workspace } from "@cmd/protocol";
 import { APPLIES_LABEL, placeAgainst, currentKey, currentSecretKey, ENV, isSecretKey, SECRETS, type SecretDef, type SecretKey, SETTINGS_SCHEMA, isSettingKey, parseSettingValue, type SettingDef, type SettingKey } from "@cmd/protocol";
 import { connect, defaultSocketPath, type Connection } from "@cmd/protocol/node";
-import { magicCommand } from "./magic.ts";
-import { widgetCommand } from "./widget.ts";
 import { AGENTS_HELP, agentsCommand, pickAgent } from "./agents.ts";
 import { JOURNAL_HELP, journalCommand } from "./journal.ts";
 import { DATA_HELP, dataCommand } from "./data.ts";
@@ -146,8 +144,9 @@ async function main(): Promise<number> {
     return 0;
   }
   if (cmd === "hook") return hook(pos[0] ?? "claude");
-  if (cmd === "magic") return magicCommand(argv.slice(1));
-  if (cmd === "widget") return widgetCommand(argv.slice(1));
+  // Magic and widgets build with the core's code: loaded for them only, so every other `cmd` (a hook's included) starts small.
+  if (cmd === "magic") return (await import("./magic.ts")).magicCommand(argv.slice(1));
+  if (cmd === "widget") return (await import("./widget.ts")).widgetCommand(argv.slice(1));
 
   const conn = await connect().catch(() => {
     console.error(`cmd: no core running at ${defaultSocketPath()} (start it with: pnpm core)`);

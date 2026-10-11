@@ -5,12 +5,8 @@ import path from "node:path";
 import { editJsonc, parseJsoncObject } from "@cmd/protocol";
 import { configDir } from "@cmd/protocol/node";
 import { editKeybindings, resolveKeybindings, type Keybindings } from "../shared/commands.ts";
-
-export interface KeybindingsSnapshot {
-  bindings: Keybindings;
-  errors: string[];
-  path: string;
-}
+import type { KeybindingsSnapshot } from "../shared/ipc.ts";
+export type { KeybindingsSnapshot } from "../shared/ipc.ts";
 
 export const keybindingsPath = () => path.join(configDir(), "keybindings.json");
 

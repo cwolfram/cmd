@@ -10,11 +10,9 @@ export const BROWSER_PARTITION = "persist:cmd-browser";
 /** Granted to every page: video players, games and copy buttons expect them. */
 const ALWAYS: ReadonlySet<string> = new Set(["fullscreen", "pointerLock", "clipboard-sanitized-write"]);
 
-/** Asked once per site, then remembered. */
-export const ASKED = ["media", "geolocation", "notifications", "openExternal"] as const;
-export type SitePermission = (typeof ASKED)[number];
-/** Site (an http(s) origin) → its answers. */
-export type SiteDecisions = Record<string, Partial<Record<SitePermission, boolean>>>;
+// Asked once per site, then remembered: ASKED and these types are shared with the app's pages.
+import { ASKED, type MacDevice, type SiteDecisions, type SitePermission, type SitePermissionRequest } from "../shared/ipc.ts";
+export { ASKED, type MacDevice, type SiteDecisions, type SitePermission, type SitePermissionRequest };
 
 export const isAsked = (permission: string): permission is SitePermission => (ASKED as readonly string[]).includes(permission);
 
@@ -40,18 +38,6 @@ export function permissionVerdict(permission: string, site: string | null, decis
 
 /** will-attach-webview: a guest in any other session (or none, the app's own) is refused. */
 export const guestPartitionAllowed = (partition: string | undefined): boolean => partition === BROWSER_PARTITION;
-
-/** What the sheet asks (preload: onSitePermission). */
-export interface SitePermissionRequest {
-  id: string;
-  /** The site, e.g. "https://meet.google.com". */
-  site: string;
-  kind: SitePermission;
-  /** media: which devices; openExternal: the app's name, if macOS knows it. */
-  video?: boolean;
-  audio?: boolean;
-  app?: string;
-}
 
 /** site-permissions.json as read from disk: only well-formed entries survive. */
 export function parseDecisions(json: unknown): SiteDecisions {
@@ -90,7 +76,6 @@ export function forgetDecision(decisions: SiteDecisions, site: unknown, kind: un
 // use it at all. Without that, a page waits forever for its stream.
 
 /** A device macOS guards (systemPreferences.getMediaAccessStatus). */
-export type MacDevice = "camera" | "microphone";
 /** What macOS says about cmd and a device; "unknown" off macOS. */
 export type MacAccess = "not-determined" | "granted" | "denied" | "restricted" | "unknown";
 

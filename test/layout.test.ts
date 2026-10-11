@@ -1,7 +1,7 @@
 // Where code goes (docs/architecture-review-01/17): counts that only go down, in the
 // style of design-css.test.ts. Loose files at the root of the core and the renderer, entries
 // in the renderer's components/, source files over LONG lines per package and the lines of the
-// core's composition root (core.ts) are counted in layout-debt.json: a new one fails here (put
+// core's composition root (core.ts) and of every file already over LONG lines are counted in layout-debt.json: a new one fails here (put
 // the code in its feature's folder, or split the file), and a count that fell fails too, until
 // `pnpm layout-debt` writes the lower one, so a move or a split can't quietly grow back.
 import fs from "node:fs";
@@ -41,6 +41,8 @@ const now: Record<string, string[]> = {
   ...Object.fromEntries(packages.map((p) => [`files over ${LONG} lines in ${p}`, sources(p).filter((f) => lines(f) > LONG)])),
   // The core's composition root (AR1-03-01): what a feature does goes in its folder, not here. One entry per line.
   "lines in packages/core/src/kernel/core.ts": Array.from({ length: lines("packages/core/src/kernel/core.ts") }, (_, i) => `line ${i + 1}`),
+  // A file already over LONG lines may only shrink (AR1-13-02): new code goes into a module of its own.
+  ...Object.fromEntries(packages.flatMap((p) => sources(p).filter((f) => lines(f) > LONG)).map((f) => [`lines in ${f}`, Array.from({ length: lines(f) }, (_, i) => `line ${i + 1}`)])),
 };
 const counts = Object.fromEntries(Object.entries(now).map(([k, v]) => [k, v.length]));
 

@@ -7,7 +7,7 @@ import { getState, setUi } from "./store.ts";
 import { isWidget, under } from "./model.ts";
 import { windowStatus } from "./windowActions.ts";
 import { select, selected } from "./selection.ts";
-import type { OpenFrom } from "../../../main/open-policy.ts";
+import type { OpenFrom } from "../../../shared/ipc.ts";
 
 /** Select a window (lib/selection.ts; kept under this name for the windows that call it). */
 export function selectPane(id: PaneId): void {

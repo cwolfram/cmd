@@ -3,8 +3,8 @@
 
 import { scrub } from "./crash-format.ts";
 
-export const FEEDBACK_KINDS = ["idea", "bug", "other"] as const;
-export type FeedbackKind = (typeof FEEDBACK_KINDS)[number];
+import { FEEDBACK_KINDS, type FeedbackKind } from "../shared/ipc.ts";
+export { FEEDBACK_KINDS, type FeedbackKind };
 
 export interface Feedback {
   kind: FeedbackKind;

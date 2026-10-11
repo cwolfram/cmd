@@ -5,7 +5,9 @@
 // $CMD_FEEDBACK_WEBHOOK is set when they run.
 
 import { crashContext, logger } from "@cmd/protocol/node";
-import { FEEDBACK_KINDS, feedbackPayload, type Feedback, type FeedbackKind } from "./feedback-format.ts";
+import { FEEDBACK_KINDS, feedbackPayload, type Feedback } from "./feedback-format.ts";
+import type { FeedbackRequest, FeedbackStatus } from "../shared/ipc.ts";
+export type { FeedbackRequest, FeedbackStatus } from "../shared/ipc.ts";
 
 declare const __FEEDBACK_WEBHOOK__: string;
 const BAKED = typeof __FEEDBACK_WEBHOOK__ === "string" ? __FEEDBACK_WEBHOOK__ : "";
@@ -15,21 +17,6 @@ const MAX_PER_HOUR = 10;
 const sentAt: number[] = [];
 
 let webhook = "";
-
-export interface FeedbackStatus {
-  /** Feedback can be sent from this build. */
-  available: boolean;
-  /** Why not, when not. */
-  reason: string | null;
-}
-
-export interface FeedbackRequest {
-  kind: FeedbackKind;
-  message: string;
-  contact?: string;
-  /** Attach version, platform… */
-  includeInfo: boolean;
-}
 
 export function startFeedback(devBuild: boolean): void {
   webhook = process.env.CMD_FEEDBACK_WEBHOOK || (devBuild ? "" : BAKED);

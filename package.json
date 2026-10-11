@@ -18,7 +18,7 @@
     "workbench": "node scripts/workbench.mjs",
     "tokens": "node packages/ui/tokens/build.ts",
     "design-debt": "UPDATE_DESIGN_DEBT=1 vitest run apps/desktop/test/design-css.test.ts",
-    "layout-debt": "UPDATE_LAYOUT_DEBT=1 vitest run test/layout.test.ts",
+    "layout-debt": "UPDATE_LAYOUT_DEBT=1 vitest run test/layout.test.ts test/imports.test.ts",
     "remote:device": "node --no-warnings packages/cli/src/remote-device.ts",
     "dev": "node scripts/build-web.mjs --if-missing && pnpm --filter @cmd/desktop dev",
     "test": "vitest run",
@@ -40,6 +40,11 @@
     "shots": "pnpm build && node scripts/readme-shots/screenshots.mjs"
   },
   "devDependencies": {
+    "@strudel/core": "1.2.6",
+    "@strudel/mini": "1.2.6",
+    "@strudel/reference": "1.2.2",
+    "@strudel/tonal": "1.2.6",
+    "@strudel/transpiler": "1.2.6",
     "@types/node": "~24.19.0",
     "happy-dom": "^20.14.6",
     "playwright": "^1.63.0",

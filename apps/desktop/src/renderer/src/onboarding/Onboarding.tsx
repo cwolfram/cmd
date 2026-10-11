@@ -11,7 +11,7 @@ import { openSheet, useSheet } from "../shell/sheets.ts";
 import { aiStatus, useAiStatus } from "../ai/status.ts";
 import { STEPS, stepById, type OnboardingStep } from "./steps.tsx";
 import { AppIcon } from "./AppIcon.tsx";
-import type { OnboardingClaim } from "../../../main/onboarding.ts";
+import type { OnboardingClaim } from "../../../shared/ipc.ts";
 
 // ── what is open (any component can ask for a step): a sheet like the others (shell/sheets.ts) ─────
 

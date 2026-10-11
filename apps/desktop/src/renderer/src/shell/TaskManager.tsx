@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Pane, ProcessStat, Workspace } from "@cmd/protocol";
-import type { AppProcess } from "../../../main/metrics.ts";
+import type { AppProcess } from "../../../shared/ipc.ts";
 import { DataGrid, Dialog, StatusLine, Text, ToolbarButton, ToolbarSpacer, View, WindowToolbar, type GridCell, type GridRowInfo, type GridSort } from "@cmd/ui";
 import { cmd } from "../lib/bridge.ts";
 import { formatBytes } from "../lib/model.ts";
