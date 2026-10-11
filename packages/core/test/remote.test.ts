@@ -79,7 +79,8 @@ describe("remote access", () => {
     const s = await c.session;
     expect(s.host).toMatchObject({ scope: "view" });
     deviceId = s.host.deviceId as string;
-    expect(core.remote.devices()).toMatchObject([{ id: deviceId, name: "Test Phone", scope: "view", connected: true }]);
+    // Connected once the device's first message came (the session is no replay).
+    await expect.poll(() => core.remote.devices()).toMatchObject([{ id: deviceId, name: "Test Phone", scope: "view", connected: true }]);
     c.ws.close();
   });
 

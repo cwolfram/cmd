@@ -23,13 +23,12 @@ import { HostKeys } from "./keys.ts";
 import { webClientDir } from "./webroot.ts";
 import type { Transport } from "./transport.ts";
 import { HostChannel, type ChannelHost } from "./session.ts";
+import { FailureLimiter } from "./limiter.ts";
 
 const log = logger("remote");
 
 const PAIRING_TTL_MS = 5 * 60_000;
 const APPROVAL_TTL_MS = 2 * 60_000;
-/** Failed handshakes per minute before new channels are dropped unread for the rest of it. */
-const MAX_FAILURES = 3;
 export const REMOTE_VERSION = "1";
 
 export interface RemoteServiceOptions {
@@ -65,7 +64,8 @@ export class RemoteService {
   #channels = new Map<number, HostChannel>();
   #pairing: { psk: Bytes; scope: RemoteScope; expiresAt: number } | null = null;
   #requests = new Map<string, { request: RemotePairRequest; resolve: (scope: RemoteScope | null) => void }>();
-  #failures: number[] = [];
+  /** Failed handshakes per source (limiter.ts). */
+  #failures = new FailureLimiter();
   /** Which session a served connection is. */
   #sessions = new WeakMap<Connection, HostChannel>();
   /** Last remote.input per device and pane (throttle). */
@@ -351,9 +351,7 @@ export class RemoteService {
   }
 
   #openChannel(t: Transport, channel: number, ip: string, user: string | null): void {
-    const now = Date.now();
-    this.#failures = this.#failures.filter((t) => now - t < 60_000);
-    if (this.#failures.length >= MAX_FAILURES || !this.#key) return t.closeChannel(channel);
+    if (this.#failures.blocked(ip) || !this.#key) return t.closeChannel(channel);
     const session = new HostChannel({
       channel,
       ip,
@@ -381,14 +379,21 @@ export class RemoteService {
       device: (pub) => {
         this.#expire();
         const d = store.remoteDevices().find((x) => equal(fromBase64Url(x.publicKey), pub));
-        if (!d) return null;
-        store.saveRemoteDevice({ ...d, lastSeenAt: Date.now() });
-        return { id: d.id, scope: d.scope };
+        return d ? { id: d.id, scope: d.scope } : null;
       },
-      takePairing: () => {
+      seen: (id) => {
+        const d = store.remoteDevices().find((x) => x.id === id);
+        if (d) store.saveRemoteDevice({ ...d, lastSeenAt: Date.now() });
+      },
+      pairing: () => {
         const p = this.#pairing;
-        this.#pairing = null; // single use, right or wrong
         return p && p.expiresAt > Date.now() ? p : null;
+      },
+      usePairing: (p) => {
+        // Single use, once its PSK has proved right: junk can't burn the code the person is about to scan.
+        if (this.#pairing !== p) return false;
+        this.#pairing = null;
+        return true;
       },
       approve: (name, words, scope, signal) => this.#ask(name, words, scope, signal),
       addDevice: (name, pub, scope) => {
@@ -400,8 +405,8 @@ export class RemoteService {
         this.audit("paired", rec.id, `${name} (${scope})`);
         return { id: rec.id };
       },
-      failed: (reason) => {
-        this.#failures.push(Date.now());
+      failed: (reason, ip) => {
+        this.#failures.failed(ip);
         this.audit("handshake-failed", null, reason);
       },
       serve: (conn, session) => {

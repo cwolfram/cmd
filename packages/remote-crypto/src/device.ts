@@ -62,7 +62,10 @@ export function openDeviceSession(o: DeviceSessionOptions): { receive: (msg: Byt
     o.socket.send(frame(o.psk ? Wire.pair : Wire.hello, m1));
     const host = JSON.parse(new TextDecoder().decode(await hs.readMessage(await reply))) as Record<string, unknown>;
     const t = await hs.transport();
-    return established(o.socket, t, host, (fn) => (receive = fn));
+    const s = established(o.socket, t, host, (fn) => (receive = fn));
+    // A first message at once: the host opens the session only on one (message 1 alone could be a replay); an empty line is ignored.
+    await s.send("");
+    return s;
   })();
   return { receive: (msg) => receive(msg), closed: () => closed(), session };
 }

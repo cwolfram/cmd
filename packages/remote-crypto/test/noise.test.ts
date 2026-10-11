@@ -133,7 +133,10 @@ describe("device session", () => {
     expect(s.host).toEqual({ deviceId: "d1" });
     const t = await hs.transport();
     await s.send('{"x":1}');
-    expect(await new LineOpener(t).open(unframe(toHost[0]!).body)).toBe('{"x":1}');
+    // The device's first message is an empty line, so the host can open the session (no replay sends one).
+    const opener = new LineOpener(t);
+    expect(await opener.open(unframe(toHost[0]!).body)).toBe("");
+    expect(await opener.open(unframe(toHost[1]!).body)).toBe('{"x":1}');
     const got: string[] = [];
     s.onLine((l) => got.push(l));
     for (const fr of await sealLine(t, "pong")) receive(fr);

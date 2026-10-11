@@ -11,20 +11,25 @@ import { ConnectionWriter } from "../kernel/writer.ts";
 
 /** Merge a pane's output for this long before sending it. */
 const COALESCE_MS = 30;
+/** How long a session waits for the device's first message after the handshake. */
+export const CONFIRM_MS = 10_000;
 
 export interface ChannelHost {
   key: KeyPair;
   version: string;
   /** A paired device by its public key, or null. */
   device(publicKey: Bytes): { id: string; scope: RemoteScope } | null;
-  /** The PSK of the pairing link in effect (consumed by the caller), or null. */
-  takePairing(): { psk: Bytes; scope: RemoteScope } | null;
+  /** A device's session is confirmed: it's been seen now (its expiry moves). */
+  seen(deviceId: string): void;
+  /** The pairing link in effect, or null; usePairing() takes it once its PSK proved right (false: someone else did). */
+  pairing(): { psk: Bytes; scope: RemoteScope } | null;
+  usePairing(p: { psk: Bytes; scope: RemoteScope }): boolean;
   /** Ask the person on the Mac; resolves with the scope to pair with, or null for no (or when `signal` aborts: the device left). */
   approve(name: string, words: string[], scope: RemoteScope, signal: AbortSignal): Promise<RemoteScope | null>;
   /** Store a newly paired device. */
   addDevice(name: string, publicKey: Bytes, scope: RemoteScope): { id: string };
-  /** A handshake failed (wrong key, wrong PSK, junk). */
-  failed(reason: string): void;
+  /** A handshake failed (wrong key, wrong PSK, junk, no message after it), from `ip`. */
+  failed(reason: string, ip: string): void;
   /** The session is up: serve it. */
   serve(conn: Connection, session: HostChannel): Served;
   opened(session: HostChannel): void;
@@ -42,13 +47,20 @@ export class HostChannel {
   #host: ChannelHost;
   #send: (b: Bytes) => void;
   #drop: () => void;
-  #state: "hello" | "busy" | "open" | "closed" = "hello";
+  /** confirming: the handshake is done and the device's first message hasn't come (message 1 can be replayed, IK has no freshness). */
+  #state: "hello" | "busy" | "confirming" | "open" | "closed" = "hello";
+  #transport: Transport | null = null;
+  #confirm: ReturnType<typeof setTimeout> | null = null;
   #opener: LineOpener | null = null;
   #served: Served | null = null;
   #in: Promise<void> = Promise.resolve();
   #gone = new AbortController();
 
-  constructor(o: { channel: number; ip: string; user?: string | null; host: ChannelHost; send: (b: Bytes) => void; drop: () => void }) {
+  #confirmMs: number;
+
+  /** confirmMs: how long the device has for its first message (tests). */
+  constructor(o: { channel: number; ip: string; user?: string | null; host: ChannelHost; send: (b: Bytes) => void; drop: () => void; confirmMs?: number }) {
+    this.#confirmMs = o.confirmMs ?? CONFIRM_MS;
     this.channel = o.channel;
     this.ip = o.ip;
     this.user = o.user ?? null;
@@ -62,7 +74,7 @@ export class HostChannel {
     this.#in = this.#in
       .then(() => this.#receive(msg))
       .catch((err: Error) => {
-        if (this.#state !== "open") this.#host.failed(err.message);
+        if (this.#state !== "open") this.#host.failed(err.message, this.ip);
         this.close();
       });
   }
@@ -70,9 +82,11 @@ export class HostChannel {
   async #receive(msg: Bytes): Promise<void> {
     if (this.#state === "closed") return;
     const f = unframe(msg);
-    if (this.#state === "open") {
+    if (this.#state === "open" || this.#state === "confirming") {
       if (f.kind !== Wire.data) throw new Error("unexpected frame");
       const line = await this.#opener!.open(f.body);
+      // It decrypted: the device holds the session's keys, so it's no replay.
+      if (this.#state === "confirming") this.#confirmed();
       if (line !== null) this.#served?.receive(line);
       return;
     }
@@ -92,12 +106,13 @@ export class HostChannel {
     await this.#open(hs, d.id, d.scope);
   }
 
-  /** Pairing: the QR's PSK (single use), then the person on the Mac decides. */
+  /** Pairing: the QR's PSK (single use, once it proved right), then the person on the Mac decides. */
   async #pair(m1: Bytes): Promise<void> {
-    const pairing = this.#host.takePairing();
+    const pairing = this.#host.pairing();
     if (!pairing) throw new Error("no pairing in progress");
     const hs = await Handshake.create({ pattern: "IKpsk1", initiator: false, s: this.#host.key, psk: pairing.psk, prologue: PROLOGUE });
     const hello = parseHello(await hs.readMessage(m1));
+    if (!this.#host.usePairing(pairing)) throw new Error("the pairing link was used");
     const scope = await this.#host.approve(hello.name, fingerprint(hs.hash), pairing.scope, this.#gone.signal);
     if (this.#state === "closed") return;
     if (!scope) return this.close(); // the person said no: not a failed handshake
@@ -105,21 +120,35 @@ export class HostChannel {
     await this.#open(hs, id, scope);
   }
 
+  /** The reply; the session opens with the device's first message (confirmed), or the channel closes after CONFIRM_MS. */
   async #open(hs: Handshake, deviceId: string, scope: RemoteScope): Promise<void> {
     this.#send(frame(Wire.reply, await hs.writeMessage(utf8(JSON.stringify({ deviceId, scope, version: this.#host.version })))));
-    const t = await hs.transport();
-    this.#opener = new LineOpener(t);
+    this.#transport = await hs.transport();
+    this.#opener = new LineOpener(this.#transport);
     this.deviceId = deviceId;
     this.scope = scope;
+    this.#state = "confirming";
+    this.#confirm = setTimeout(() => {
+      this.#host.failed("no message after the handshake (a replay?)", this.ip);
+      this.close();
+    }, this.#confirmMs);
+    this.#confirm.unref?.();
+  }
+
+  #confirmed(): void {
+    clearTimeout(this.#confirm!);
+    this.#confirm = null;
     this.#state = "open";
     this.since = Date.now();
-    this.#served = this.#host.serve(new RemoteConnection(t, scope, deviceId, (b) => this.#send(b), () => this.close()), this);
+    this.#host.seen(this.deviceId!);
+    this.#served = this.#host.serve(new RemoteConnection(this.#transport!, this.scope!, this.deviceId!, (b) => this.#send(b), () => this.close()), this);
     this.#host.opened(this);
   }
 
   close(): void {
     if (this.#state === "closed") return;
     this.#state = "closed";
+    if (this.#confirm) clearTimeout(this.#confirm);
     this.#gone.abort();
     this.#served?.closed();
     this.#drop();
