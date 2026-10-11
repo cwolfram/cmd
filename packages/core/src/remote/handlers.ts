@@ -54,6 +54,8 @@ export const remoteHandlers = (core: CoreContext) =>
     "push.subscribe": (p, { conn } = IN_CORE) => (core.remote.subscribe(device(conn), p), null),
     "push.unsubscribe": (_, { conn } = IN_CORE) => (core.remote.unsubscribe(device(conn)), null),
     "push.visible": (p, { conn } = IN_CORE) => (core.remote.visible(device(conn), p.visible === true), null),
+    // The Mac's own app: whether someone's at this Mac, for remote.push.when "away".
+    "ui.presence": (p, { conn } = IN_CORE) => (core.remote.presence(conn, p), null),
   });
 
 /** The paired device's connection behind a call; nobody else has notifications to switch. */

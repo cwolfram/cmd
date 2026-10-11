@@ -371,6 +371,17 @@ export const SETTINGS_SCHEMA = {
     default: "https://cmd.endtime-instruments.org",
     description: "Where phones open cmd.",
   },
+  "remote.push.when": {
+    title: "Notify devices",
+    type: "enum",
+    default: "away",
+    options: ["always", "away", "never"],
+    labels: { always: "Always", away: "When You're Away", never: "Never" },
+    description: "When paired devices get this Mac's notifications.",
+    details: "Away: cmd isn't open, the screen is locked, or the Mac has had no input for a while. A device showing cmd gets them on its screen instead.",
+  },
+  "remote.push.awayMinutes": { title: "Away after", unit: "min", type: "number", default: 5, min: 1, max: 120, description: "No input on this Mac for this long counts as away." },
+  "remote.pushDetails": { title: "Show details", type: "boolean", default: true, description: "Full text on the lock screen, not just the title." },
   "remote.deviceExpiryDays": { title: "Unpair devices unseen for", unit: "days", type: "number", default: 30, min: 1, max: 365, description: "Unused devices are unpaired after this." },
 
   "agents.claude.command": {

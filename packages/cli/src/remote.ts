@@ -227,7 +227,7 @@ function printRemote(st: RemoteStatus, modes: RemoteAccessMode[], windows: AppWi
 
 function remoteDevice(d: RemoteDevice): string {
   const seen = d.connected ? "connected" : `last seen ${ago(d.lastSeenAt)}`;
-  return `${short(d.id)}  ${d.name.padEnd(24)} ${(d.scope === "view" ? "view only" : "control").padEnd(10)} ${seen}`;
+  return `${short(d.id)}  ${d.name.padEnd(24)} ${(d.scope === "view" ? "view only" : "control").padEnd(10)} ${seen}${d.push ? " · notifications on" : ""}`;
 }
 
 function ago(t: number): string {

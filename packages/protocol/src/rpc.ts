@@ -461,6 +461,8 @@ export interface Methods extends JournalMethods, ActionsMethods {
   "push.subscribe": { params: { endpoint: string; keys: { p256dh: string; auth: string } }; result: null };
   /** This device gets no more pushes. Remote sessions only. */
   "push.unsubscribe": { params: {}; result: null };
+  /** The app on this Mac: is the screen locked, and how long since the last input (for remote.push.when "away"). Its connection's: gone when it closes. */
+  "ui.presence": { params: { idleSeconds: number; locked: boolean }; result: null };
   /** Whether this session's page is in front: while one is, its device shows notifications itself and gets no push. Remote sessions only. */
   "push.visible": { params: { visible: boolean }; result: null };
   /** The windows this connection shows (terminals, Magic): remote sessions get pane.output and magic.data only for these. */

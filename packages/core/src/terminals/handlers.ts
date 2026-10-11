@@ -20,7 +20,7 @@ export const paneHandlers = (core: CoreContext) =>
     "pane.list": () => core.panes.list(),
     "pane.write": (p, { conn } = IN_CORE) => {
       core.panes.write(p.paneId, p.data);
-      if (conn?.access === "local" && !REPORTS.test(p.data)) core.panes.release(p.paneId);
+      if (conn?.access === "local" && !REPORTS.test(p.data)) (core.panes.release(p.paneId), core.remote.typed());
       else if (conn && conn.access !== "local") core.remote.input(conn, p.paneId);
       return null;
     },

@@ -290,6 +290,38 @@ export class RemoteService {
     this.#dropPush(d.id, "push-off");
   }
 
+  /** The app on this Mac (ui.presence, from its main process): when it last saw input, and whether the screen is locked. */
+  #presence: { conn: Connection | null; inputAt: number; locked: boolean } | null = null;
+  /** Someone last typed into a terminal here (pane.write from this Mac). */
+  #typedAt = 0;
+
+  /** The app's report (ui.presence); it belongs to its connection (null: from inside the core). */
+  presence(conn: Connection | null, p: { idleSeconds: number; locked: boolean }): void {
+    const idle = Number.isFinite(p.idleSeconds) ? Math.max(0, p.idleSeconds) : 0;
+    this.#presence = { conn, inputAt: Date.now() - idle * 1000, locked: p.locked === true };
+  }
+
+  /** Someone typed into a terminal from this Mac: input, like the app's own report. */
+  typed(): void {
+    this.#typedAt = Date.now();
+  }
+
+  /** A connection closed: when it was the app's, nobody reports anymore (the app quit). */
+  closed(conn: Connection): void {
+    if (this.#presence?.conn === conn) this.#presence = null;
+  }
+
+  /**
+   * Nobody's at this Mac (remote.push.when "away"): the app isn't running, the
+   * screen is locked, or there's been no input (typing in a terminal here
+   * counts) for remote.push.awayMinutes.
+   */
+  away(now = Date.now()): boolean {
+    const p = this.#presence;
+    if (!p || p.locked) return true;
+    return now - Math.max(p.inputAt, this.#typedAt) >= this.#o.settings.settings["remote.push.awayMinutes"] * 60_000;
+  }
+
   /** A session's page came to the front or left it (push.visible). */
   visible(conn: Connection, visible: boolean): void {
     const s = this.#sessions.get(conn);
@@ -298,11 +330,14 @@ export class RemoteService {
 
   /**
    * Sends a notification the Mac shows (alert set) to every device that
-   * subscribed, while remote access is on; not to one showing the client in
-   * front, which shows the notification event itself.
+   * subscribed, while remote access is on and remote.push.when says so; not to
+   * one showing the client in front, which shows the notification event itself.
+   * remote.pushDetails off sends the title alone.
    */
   notify(n: AppNotification): void {
-    if (!n.alert || !this.#key || !this.#o.settings.settings["remote.enabled"]) return;
+    const s = this.#o.settings.settings;
+    if (!n.alert || !this.#key || !s["remote.enabled"] || s["remote.push.when"] === "never") return;
+    if (s["remote.push.when"] === "away" && !this.away()) return;
     const looking = new Set([...this.#channels.values()].filter((c) => c.open && c.visible).map((c) => c.deviceId));
     const devices = this.#o.store.remoteDevices().filter((d) => d.push && !looking.has(d.id));
     if (!devices.length) return;
@@ -311,7 +346,7 @@ export class RemoteService {
         host: toBase64Url(this.#key.publicKey),
         id: n.id,
         title: cut(n.title, PUSH_TITLE_MAX),
-        body: cut(n.body, PUSH_BODY_MAX),
+        body: s["remote.pushDetails"] ? cut(n.body, PUSH_BODY_MAX) : "",
         paneId: n.paneId,
         windowId: n.windowId ?? null,
         workspaceId: n.workspaceId ?? null,
@@ -537,7 +572,7 @@ export const remoteTheme = (s: Settings): RemoteTheme => ({ appearance: s["theme
  * like the socket's, phones told when the theme changes, and the Mac's notifications pushed
  * to devices that subscribed.
  */
-export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast" | "notifications">, stateDir: string | null, o: { pushFetch?: typeof fetch } = {}): RemoteService {
+export function createRemote(core: Pick<CoreContext, "store" | "data" | "settings" | "serve" | "broadcast" | "notifications" | "server">, stateDir: string | null, o: { pushFetch?: typeof fetch } = {}): RemoteService {
   core.settings.bind(["theme.appearance", "theme.dark", "theme.light"], () => core.broadcast({ type: "theme.updated", theme: remoteTheme(core.settings.settings) }));
   const remote = new RemoteService({
     store: core.store,
@@ -552,6 +587,7 @@ export function createRemote(core: Pick<CoreContext, "store" | "data" | "setting
     pushFetch: o.pushFetch,
   });
   core.notifications.on("notification", (n) => remote.notify(n));
+  core.server.onClosed((conn) => remote.closed(conn));
   return remote;
 }
 

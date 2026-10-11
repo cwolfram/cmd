@@ -244,6 +244,62 @@ describe("remote access", () => {
     c.ws.close();
   });
 
+  it("knows when nobody's at the Mac, from the app's reports", async () => {
+    // No app: away.
+    expect(core.remote.away()).toBe(true);
+    const sent: string[] = [];
+    const app = core.serve({ access: "local", send: (l) => void sent.push(l), close: () => {} });
+    const presence = async (idleSeconds: number, locked: boolean) => {
+      const n = sent.length;
+      app.receive(JSON.stringify({ id: Date.now(), method: "ui.presence", params: { idleSeconds, locked } }));
+      await expect.poll(() => sent.length).toBe(n + 1);
+    };
+    await presence(0, false);
+    expect(core.remote.away()).toBe(false);
+    await presence(0, true);
+    expect(core.remote.away()).toBe(true); // locked
+    await presence(4 * 60, false);
+    expect(core.remote.away()).toBe(false);
+    // 5 min without input (remote.push.awayMinutes), counting typing in an earlier test here.
+    expect(core.remote.away(Date.now() + 5 * 60_000 + 1000)).toBe(true);
+    // Typing in a terminal here is input too.
+    const pane = await core.call("pane.create", {});
+    app.receive(JSON.stringify({ id: 1, method: "pane.write", params: { paneId: pane.id, data: "l" } }));
+    await expect.poll(() => core.remote.away(Date.now() + 4 * 60_000)).toBe(false);
+    // The app quit: away.
+    app.closed();
+    expect(core.remote.away()).toBe(true);
+  });
+
+  it("pushes as remote.push.when and remote.pushDetails say", async () => {
+    const c = await connect(route, { hostKey, device });
+    const client = rpc(await c.session);
+    const browser = receiverKeys();
+    await client.call("push.subscribe", { endpoint: "https://web.push.apple.com/when", keys: { p256dh: browser.p256dh, auth: browser.auth } });
+    const app = core.serve({ access: "local", send: () => {}, close: () => {} });
+    app.receive(JSON.stringify({ id: 1, method: "ui.presence", params: { idleSeconds: 0, locked: false } }));
+    await expect.poll(() => core.remote.away()).toBe(false);
+    const n = pushes.length;
+    // At the Mac: "away" waits, "always" doesn't, "never" never does.
+    await core.call("notify.send", { body: "you're here" });
+    core.settings.set("remote.push.when", "always");
+    await core.call("notify.send", { body: "always" });
+    core.settings.set("remote.push.when", "never");
+    await core.call("notify.send", { body: "never" });
+    // Away (the app quit), without details: the title alone.
+    core.settings.set("remote.push.when", "away");
+    core.settings.set("remote.pushDetails", false);
+    app.closed();
+    await core.call("notify.send", { title: "api · needs you", body: "Allow “rm -rf build”?" });
+    await expect.poll(() => pushes.length).toBe(n + 2);
+    const read = (i: number) => JSON.parse(decryptPush(pushes[i]!.body, browser.private, browser.auth));
+    expect(read(n).body).toBe("always");
+    expect(read(n + 1)).toMatchObject({ title: "api · needs you", body: "" });
+    core.settings.set("remote.pushDetails", true);
+    await client.call("push.unsubscribe", {});
+    c.ws.close();
+  });
+
   it("refuses unknown devices", async () => {
     const c = await connect(route, { hostKey, device: await generateKeyPair() });
     await expect.poll(c.closed).toBe(true);
