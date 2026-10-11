@@ -50,7 +50,8 @@ export interface OperatorDeps {
   /** A Workspace Action's run printed its address (ActionsService's url). */
   onServing?(fn: (paneId: PaneId, url: string) => void): void;
   /** A turn waits for the person, ended or failed while nobody looked (a notification). */
-  notify?(workspaceId: WorkspaceId, title: string, body: string): void;
+  /** Tell the person (a notification from the Operator's window: the app skips it while they look at that window). */
+  notify?(workspaceId: WorkspaceId, n: { title: string; body: string; urgent: boolean }): void;
   /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
   record?(e: NewDataEvent): void;
   /** The conversation's name changed (null: none yet): the Operator's windows are titled after it. */
@@ -336,6 +337,9 @@ export class OperatorService {
       c.abort = null;
       c.latency = { firstStepMs: firstStep, totalMs: Date.now() - t0 };
       const answer = c.items.slice(firstItem).flatMap((i) => (i.kind === "text" ? [i.text] : [])).join("\n\n").trim() || null;
+      // Done or failed, for when the person looked away (stopped: they know).
+      if (error) this.#d.notify?.(c.workspaceId, { title: `${c.name ?? "The Operator"} stopped`, body: friendly(new Error(error)), urgent: false });
+      else if (!stopped && answer) this.#d.notify?.(c.workspaceId, { title: c.name ?? "The Operator", body: plainLine(answer), urgent: false });
       const denied = done.filter((i) => i.kind === "tool" && i.state === "denied").length;
       this.#d.record?.({ ...turn, until: Date.now(), data: { steps: done.length, denied, stopped, error, model: c.model, tokens, firstStepMs: firstStep, ms: Date.now() - t0, answer: answer?.slice(0, 2000) ?? null }, content: `${request}${answer ? `\n\n=== answer ===\n\n${answer}` : ""}` });
       this.#save(c);
@@ -372,7 +376,7 @@ export class OperatorService {
       const ask = tool.confirm ? await tool.confirm(call.input, bench) : null;
       if (ask) {
         this.#update(c, { ...item, state: "waiting", ask: ask.title, exact: ask.exact });
-        if (!this.#d.selfIn(c.workspaceId)) this.#d.notify?.(c.workspaceId, "The Operator asks", ask.title);
+        this.#d.notify?.(c.workspaceId, { title: `${c.name ?? "The Operator"} asks`, body: ask.title, urgent: true });
         const a = await new Promise<{ allow: boolean; reason?: string }>((resolve) => c.approvals.set(item.id, resolve));
         c.approvals.delete(item.id);
         approval = { ask, allowed: a.allow, reason: a.reason ?? null };
@@ -529,6 +533,12 @@ function newsLine(a: Agent): string {
   const who = `${a.kind === "claude" ? "Claude" : a.kind === "codex" ? "Codex" : a.kind}${a.name ? ` “${a.name}”` : ""}`;
   const what = a.state === "done" ? "is done" : a.state === "needs_input" ? "needs input" : a.state === "failed" ? "failed" : "ended";
   return `${who} ${what}.`;
+}
+
+/** The start of an answer as one plain line, for a notification. */
+function plainLine(md: string): string {
+  const t = md.replace(/```[\s\S]*?```/g, " ").replace(/[*_`#>]|\[([^\]]*)\]\([^)]*\)/g, (_m, link) => link ?? "").replace(/\s+/g, " ").trim();
+  return t.length > 160 ? `${t.slice(0, 159)}…` : t;
 }
 
 function friendly(e: Error): string {

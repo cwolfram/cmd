@@ -387,6 +387,37 @@ describe("the service", () => {
     expect(core.windows.others().some((w) => w.id === self.id)).toBe(true);
   });
 
+  it("notifies when it asks, when it's done and when it fails, not when stopped", async () => {
+    const told: { title: string; body: string; urgent: boolean }[] = [];
+    const op2 = new OperatorService({ workspace: (id) => core.workspaces.get(id) ?? null, call: (m, p) => core.call(m, p as never), agent: async (r) => {
+      const step = turns.shift();
+      await step?.(r);
+      return reply();
+    }, selfIn: () => null, broadcast: () => {}, notify: (_id, n) => void told.push(n), db: null });
+    try {
+      turns.push(async (r) => {
+        r.onStep();
+        r.onText("The tests **pass**: see [the log](https://x).");
+        const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "terminal" })).output)![1]!;
+        await exec(r, "type", { ref, text: "ls" }, "n1");
+      });
+      op2.send(ws.id, "check");
+      await vi.waitFor(() => expect(told).toHaveLength(1));
+      expect(told[0]).toMatchObject({ title: "The Operator asks", body: expect.stringMatching(/^Type in the terminal/), urgent: true });
+      op2.answer(ws.id, "n1", true);
+      await vi.waitFor(() => expect(op2.get(ws.id).busy).toBe(false));
+      expect(told[1]).toEqual({ title: "The Operator", body: "The tests pass: see the log.", urgent: false });
+      turns.push(() => {
+        throw new Error("overloaded");
+      });
+      op2.send(ws.id, "again");
+      await vi.waitFor(() => expect(told).toHaveLength(3));
+      expect(told[2]).toMatchObject({ title: "The Operator stopped", body: "Something went wrong: overloaded" });
+    } finally {
+      op2.dispose();
+    }
+  });
+
   it("records each turn and its tool calls in the event log, linked, with what the person allowed", async () => {
     turns.push(async (r) => {
       r.onStep();

@@ -41,7 +41,11 @@ export function operatorOf(core: CoreContext): OperatorService {
       onAgent: (fn) => void core.agents.on("updated", fn),
       onCommandEnd: (fn) => void core.panes.on("osc", (id, ev) => ev.type === "prompt" && ev.mark === "D" && fn(id, ev.exitCode ?? null)),
       onServing: (fn) => void core.actions.on("url", fn),
-      notify: (_id, title, body) => core.notifications.info(title, body),
+      notify: (id, n) => {
+        const self = core.windows.others().find((w) => w.kind === "operator" && w.workspaceId === id);
+        if (self) core.notifications.widget({ windowId: self.id, title: n.title, body: n.body, urgent: n.urgent, muted: false });
+        else core.notifications.info(n.title, n.body);
+      },
       // A terminal's window is its pane: its tool calls are found with the terminal's other events too.
       record: (e) => core.data.record(e.windowId && core.panes.get(e.windowId) ? { ...e, paneId: e.windowId } : e),
       // Named like agents' sessions (docs/32), in the background on the fast tier; none without AI.
