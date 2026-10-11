@@ -1,7 +1,7 @@
 // Core API. Transport: newline-delimited JSON-RPC 2.0 over a Unix socket.
 // Every method is reachable from the UI, the `cmd` CLI and (later) MCP.
 
-import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, ClosedWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemoteAccessCheck, RemoteAccessMode, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteStatus, RemoteTheme, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
+import type { Agent, AgentId, AgentKind, AgentState, AppNotification, AppWindow, ClosedWindow, CommandRun, FileEntry, GitStatus, HookTarget, Pane, PaneId, ProcessStat, RemotePairRequest, RemoteStatus, RemoteTheme, Workspace, WorkspaceId, WidgetEntry, WindowId, WindowTypeInfo } from "./model.ts";
 import type { DataClassInfo, DataEvent, DataQuery, DataStats, NewDataEvent, SessionInfo, TurnRow, ViewQuery } from "./events.ts";
 import type { SettingKey, Settings } from "./settings.ts";
 import type { AiModel, AiStatus } from "./ai.ts";
@@ -11,6 +11,7 @@ import type { ActivityEvent, ActivityExportHeader, AgentCoverage, AgentHome, Age
 import type { JournalMethods } from "./journal.ts";
 import type { SqliteQuery, SqliteResult, SqliteRowsQuery, SqliteSchema } from "./sqlite.ts";
 import type { ActionsEvent, ActionsMethods } from "./actions.ts";
+import type { RemoteMethods } from "./remote.ts";
 
 /**
  * The wire's version, the same for the core, the app, the CLI and the web
@@ -101,7 +102,7 @@ export interface Placement {
 }
 
 /** Every method: the core's own, plus each feature's (declared in its own file, merged here). */
-export interface Methods extends JournalMethods, ActionsMethods {
+export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods {
   /** What a client asks first: which protocol the core speaks and what it can do (CoreHello). */
   "core.hello": { params: {}; result: CoreHello };
   /** Diagnostics for the Settings window's Updates & About page. */
@@ -437,56 +438,6 @@ export interface Methods extends JournalMethods, ActionsMethods {
   /** null deletes the key. Values must be JSON, ≤ 64 KiB. */
   "ui.set": { params: { key: string; value: unknown }; result: null };
 
-  /** Remote access (docs/13-remote-access.md). The Mac manages it; a phone can only call what packages/core/src/remote/policy.ts allows. */
-  "remote.status": { params: {}; result: RemoteStatus };
-  /** Turn remote access on or off (the remote.enabled setting); off closes every session, paired devices stay. */
-  "remote.enable": { params: {}; result: RemoteStatus };
-  "remote.disable": { params: {}; result: RemoteStatus };
-  /** A one-time pairing link (show it as a QR code); valid for 5 minutes, replaces any earlier one. */
-  "remote.pair": { params: { scope?: RemoteScope }; result: { url: string; expiresAt: number } };
-  /** Answer a remote.pairRequest. */
-  "remote.approve": { params: { requestId: string; allow: boolean; scope?: RemoteScope }; result: null };
-  "remote.devices": { params: {}; result: RemoteDevice[] };
-  /** Close live sessions (one device's, or all) without unpairing; devices may reconnect. */
-  "remote.disconnect": { params: { id?: string }; result: null };
-  /** Recent activity, newest first. */
-  "remote.log": { params: { limit?: number }; result: RemoteLogEntry[] };
-  /** The access modes this core has, the choices for remote.access. */
-  "remote.modes": { params: {}; result: RemoteAccessMode[] };
-  /** The setup checklist of an access mode (default: remote.access); empty when it has nothing to set up. */
-  "remote.checks": { params: { access?: string }; result: RemoteAccessCheck[] };
-  /** "Check Again": publish the current access mode again if it isn't, then its checklist. */
-  "remote.setup": { params: {}; result: RemoteAccessCheck[] };
-  /** Unpair a device and close its sessions. */
-  "remote.revoke": { params: { id: string }; result: null };
-  /** Change a device's scope; its sessions reconnect with it. */
-  "remote.setScope": { params: { id: string; scope: RemoteScope }; result: RemoteDevice };
-  /**
-   * What a remote session starts from (instead of events.subscribe): a projection
-   * without settings, UI state or secrets. After it the session receives the
-   * events the policy lets through.
-   */
-  /**
-   * A device has read `received` characters of what its session sent (in all). From its
-   * first ack the Mac keeps at most a window of output unread by it, and resyncs a
-   * terminal past that, instead of the relay dropping a slow phone (AR1-12-07).
-   */
-  "remote.ack": { params: { received: number }; result: null };
-  "remote.bootstrap": {
-    params: {};
-    result: {
-      panes: Pane[];
-      agents: Agent[];
-      windows: AppWindow[];
-      workspaces: Workspace[];
-      windowTypes: WindowTypeInfo[];
-      device: { id: string; scope: RemoteScope } | null;
-      /** This Mac, as the phone names it ("Jan's MacBook Pro"). */
-      host: { name: string };
-      /** The Mac's theme settings, so the phone looks the same (cores before 0.25 leave it out). */
-      theme: RemoteTheme;
-    };
-  };
   /** The windows this connection shows (terminals, Magic): remote sessions get pane.output and magic.data only for these. */
   "window.follow": { params: { ids: WindowId[] }; result: null };
 
