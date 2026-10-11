@@ -30,6 +30,31 @@ export const Conversation = () => (
   </div>
 );
 
+/** An answer with headings, lists (nested) and code, as the Operator writes them. */
+export const Answer = () => (
+  <div style={frame}>
+    <ChatMessage from="agent" copy="…">
+      <p>No agent turns today, only commits. What got built:</p>
+      <ul>
+        <li>
+          <strong>Release v0.26.0 (18:13):</strong> friendlier boot text, the footer, the UI Workbench staying up.
+        </li>
+        <li>
+          <strong>Bug-fix batches</strong> (<code>ar1-small</code>, <code>ar1-batch2</code>):
+          <ul>
+            <li>Agent events the app can't read are skipped.</li>
+            <li>Every settings key ever shipped is locked.</li>
+          </ul>
+        </li>
+      </ul>
+      <ol>
+        <li>Run the tests.</li>
+        <li>Start an agent on what fails.</li>
+      </ol>
+    </ChatMessage>
+  </div>
+);
+
 /** Every state a step can be in. */
 export const Steps = () => (
   <div style={frame}>

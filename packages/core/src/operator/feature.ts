@@ -19,6 +19,7 @@ export const operatorType: WindowType = {
   role: "widget",
   description: "Ask it to run your workspace: run the tests, start agents on what fails, wait for them and tell you. You watch every step and say yes before it types anything.",
   create: () => ({ state: {}, title: OPERATOR_TITLE }),
+  // The title is the conversation's name (OperatorService's named): kept as set.
   update: (state) => ({ state }),
 };
 
@@ -34,6 +35,9 @@ export function operatorOf(core: CoreContext): OperatorService {
       agent: (r) => core.ai.agent({ ...r, tier: "smart", purpose: "operator" }),
       selfIn: (id) => core.windows.others().find((w) => w.kind === "operator" && w.workspaceId === id)?.id ?? null,
       broadcast: (e) => core.broadcast(e),
+      named: (id, name) => {
+        for (const w of core.windows.others()) if (w.kind === "operator" && w.workspaceId === id) core.windows.update(w.id, { title: name ?? OPERATOR_TITLE });
+      },
       onAgent: (fn) => void core.agents.on("updated", fn),
       onCommandEnd: (fn) => void core.panes.on("osc", (id, ev) => ev.type === "prompt" && ev.mark === "D" && fn(id, ev.exitCode ?? null)),
       onServing: (fn) => void core.actions.on("url", fn),
@@ -58,7 +62,12 @@ export function operatorOf(core: CoreContext): OperatorService {
 export const operatorFeature = {
   id: "operator",
   handlers: (core: CoreContext): HandlerSlice<keyof OperatorMethods> => ({
-    "operator.get": (p) => operatorOf(core).get(p.workspaceId),
+    "operator.get": (p) => {
+      const c = operatorOf(core).get(p.workspaceId);
+      // A window opened after the conversation was named (it asks for it as it opens) takes the name.
+      if (c.name) for (const w of core.windows.others()) if (w.kind === "operator" && w.workspaceId === p.workspaceId && w.title !== c.name) core.windows.update(w.id, { title: c.name });
+      return c;
+    },
     "operator.send": (p) => (operatorOf(core).send(p.workspaceId, p.text, p.selected ?? null), null),
     "operator.stop": (p) => (operatorOf(core).stop(p.workspaceId), null),
     "operator.answer": (p) => (operatorOf(core).answer(p.workspaceId, p.itemId, p.allow, p.reason), null),

@@ -16,6 +16,8 @@ import { AiNotConfigured } from "../ai/service.ts";
 import { OPERATOR_ACCESS } from "./access.ts";
 import { Refs, agentLine, clip, look } from "./board.ts";
 import { RULES_VERSION, systemPrompt } from "./prompt.ts";
+import { workspaceBrief } from "./brief.ts";
+import { ConversationStore, type Saved } from "./store.ts";
 import { OPERATOR_TOOLS, type Ask, type Bench, type OperatorTool } from "./tools.ts";
 
 const log = logger("operator");
@@ -51,6 +53,8 @@ export interface OperatorDeps {
   notify?(workspaceId: WorkspaceId, title: string, body: string): void;
   /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
   record?(e: NewDataEvent): void;
+  /** The conversation's name changed (null: none yet): the Operator's windows are titled after it. */
+  named?(workspaceId: WorkspaceId, name: string | null): void;
   /** A name for a conversation from its requests and answers (docs/32's namer, the fast tier); null when there's none to give. */
   name?(turns: { prompt: string; final: string | null; at: number }[], project: string | null): Promise<string | null>;
   /** Where conversations are kept (cmd's database); null: in memory only (tests). */
@@ -82,31 +86,16 @@ interface Conversation {
   denials: number;
 }
 
-interface Saved {
-  name?: string | null;
-  items: OperatorItem[];
-  messages: ModelMessage[];
-  refs: Record<string, WindowId>;
-  system: string | null;
-  rules?: string | null;
-  agents?: [AgentId, AgentState][];
-  commands?: [PaneId, { label: string; url: string | null }][];
-  usage: OperatorUsage;
-  model: string | null;
-}
-
 const zero = (): OperatorUsage => ({ input: 0, output: 0, cacheRead: 0 });
 
 export class OperatorService {
   #d: OperatorDeps;
+  #store: ConversationStore;
   #all = new Map<WorkspaceId, Conversation>();
 
   constructor(d: OperatorDeps) {
     this.#d = d;
-    d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_conversations (workspace_id TEXT PRIMARY KEY, json TEXT NOT NULL, at INTEGER NOT NULL)`);
-    // Conversations put away by New Conversation, to open again.
-    d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_past (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, at INTEGER NOT NULL, requests INTEGER NOT NULL, json TEXT NOT NULL)`);
-    d.db?.exec(`CREATE INDEX IF NOT EXISTS operator_past_ws ON operator_past (workspace_id, at)`);
+    this.#store = new ConversationStore(d.db);
     d.onAgent?.((a) => this.#agentChanged(a));
     d.onCommandEnd?.((paneId, exitCode) => this.#commandEnded(paneId, exitCode));
     d.onServing?.((paneId, url) => this.#serving(paneId, url));
@@ -176,8 +165,7 @@ export class OperatorService {
   #watchers(): Conversation[] {
     if (!this.#loaded) {
       this.#loaded = true;
-      const rows = (this.#d.db?.prepare("SELECT workspace_id FROM operator_conversations").all() ?? []) as { workspace_id: string }[];
-      for (const r of rows) this.#conv(r.workspace_id);
+      for (const id of this.#store.workspaces()) this.#conv(id);
     }
     return [...this.#all.values()].filter((c) => c.agents.size || c.commands.size);
   }
@@ -223,33 +211,33 @@ export class OperatorService {
 
   /** The workspace's past conversations, newest first. */
   history(workspaceId: WorkspaceId): OperatorPast[] {
-    return (this.#d.db?.prepare("SELECT id, title, at, requests FROM operator_past WHERE workspace_id = ? ORDER BY at DESC LIMIT 100").all(workspaceId) ?? []) as unknown as OperatorPast[];
+    return this.#store.history(workspaceId);
   }
 
   /** Back to a past conversation; the current one is put away in its place. */
   open(workspaceId: WorkspaceId, id: string): void {
-    const row = this.#d.db?.prepare("SELECT json FROM operator_past WHERE id = ? AND workspace_id = ?").get(id, workspaceId) as { json: string } | undefined;
-    if (!row) throw new Error("that conversation is gone");
+    const saved = this.#store.take(workspaceId, id);
+    if (!saved) throw new Error("that conversation is gone");
     this.stop(workspaceId);
     const c = this.#conv(workspaceId);
     this.#putAway(c);
-    this.#d.db!.prepare("DELETE FROM operator_past WHERE id = ?").run(id);
-    this.#replace(c, JSON.parse(row.json) as Saved);
+    this.#replace(c, saved);
   }
 
   /** The conversation becomes `saved` (null: empty), keeping what it waits on; the app is told. */
   #replace(c: Conversation, saved: Saved | null): void {
     Object.assign(c, { name: saved?.name ?? null, items: saved?.items ?? [], messages: saved?.messages ?? [], refs: new Refs(saved?.refs), system: saved?.system ?? null, rules: saved?.rules ?? null, news: [], usage: saved?.usage ?? zero(), model: saved?.model ?? null, latency: null, denials: 0 });
     this.#save(c);
+    this.#d.named?.(c.workspaceId, c.name);
     this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, reset: true, name: c.name, items: c.items, busy: false, usage: c.usage, model: c.model, latency: null });
   }
 
   /** Into the past conversations, if there is anything in it. */
   #putAway(c: Conversation): void {
     const requests = c.items.filter((i) => i.kind === "user");
-    if (!this.#d.db || !c.items.length) return;
+    if (!c.items.length) return;
     const title = (c.name ?? requests[0]?.text ?? c.items.find((i) => i.kind === "event")?.text ?? "Conversation").replace(/\s+/g, " ").slice(0, 120);
-    this.#d.db.prepare("INSERT INTO operator_past (id, workspace_id, title, at, requests, json) VALUES (?, ?, ?, ?, ?, ?)").run(randomUUID(), c.workspaceId, title, c.items.at(-1)!.at, requests.length, JSON.stringify(this.#saved(c)));
+    this.#store.putAway(c.workspaceId, { title, at: c.items.at(-1)!.at, requests: requests.length }, this.#saved(c));
   }
 
   dispose(): void {
@@ -282,7 +270,7 @@ export class OperatorService {
     try {
       const bench = this.#bench(c, abort.signal);
       // Made once per conversation (the provider caches it), again when the rules changed since.
-      if (!c.system || c.rules !== RULES_VERSION) (c.system = systemPrompt({ root: ws.root, brief: await this.#brief(bench) }).text), (c.rules = RULES_VERSION);
+      if (!c.system || c.rules !== RULES_VERSION) (c.system = systemPrompt({ root: ws.root, brief: await workspaceBrief(bench) }).text), (c.rules = RULES_VERSION);
       // The board as it is now goes with the request, so the first step needn't be a look.
       const board = await this.#safe(() => this.#look(bench));
       // "this": only a window open in this workspace.
@@ -445,6 +433,7 @@ export class OperatorService {
     if (!name || c.name) return;
     c.name = name;
     this.#save(c);
+    this.#d.named?.(c.workspaceId, name);
     this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, name });
   }
 
@@ -456,29 +445,6 @@ export class OperatorService {
   async #look(b: Bench): Promise<string> {
     const [windows, panes, agents] = await Promise.all([b.call("window.list", {}), b.call("pane.list", {}), b.call("agent.list", {})]);
     return look({ workspace: b.workspace(), windows, panes, agents, self: b.self }, b.refs);
-  }
-
-  /** The workspace brief (docs/51): where it is, what changed, how to run it, what happened today. Summaries, never raw events. */
-  async #brief(b: Bench): Promise<string> {
-    const ws = b.workspace();
-    const parts: string[] = [];
-    if (ws.home) parts.push("This is the Home workspace: the person's home folder, not a project. Before starting agents, running or editing anything, ask which project folder they mean (or use the folder they named).");
-    const git = await this.#safe(() => b.call("git.status", { path: ws.root }));
-    if (git) {
-      const n = Object.keys(git.files).length;
-      parts.push(`Git: branch ${git.branch ?? "(detached)"}${git.upstream ? `, ${git.ahead} ahead and ${git.behind} behind ${git.upstream}` : ""}; ${n ? `${n}${git.truncated ? "+" : ""} changed files` : "nothing uncommitted"}.`);
-    }
-    const actions = await this.#safe(() => b.call("actions.list", { workspaceId: ws.id }));
-    if (actions?.actions.length) {
-      const shown = actions.actions.filter((a) => !a.hidden).slice(0, 40);
-      parts.push(`Workspace Actions (run them with run):\n${shown.map((a) => `- ${a.name}: ${a.command}${a.description ? ` (${a.description})` : ""}${a.risky ? " [risky: asks first]" : ""}${a.long ? " [keeps running]" : ""}`).join("\n")}`);
-    } else parts.push("No Workspace Actions found.");
-    const day = await this.#safe(() => b.call("journal.day", { workspaceId: ws.id, date: workDay(), write: "never" }));
-    if (day?.entries.length) parts.push(`Today so far (the journal): ${day.headline}\n${day.entries.slice(0, 8).map((e) => `- ${e.title}: ${e.summary}`).join("\n")}`);
-    const events = OPERATOR_TOOLS.find((t) => t.spec.name === "events");
-    const counts = events ? await this.#safe(() => events.run({ hours: 8 }, b)) : null;
-    if (counts) parts.push(counts.replace(/\nAsk for rows.*$/, ""));
-    return parts.join("\n\n");
   }
 
   async #safe<T>(fn: () => Promise<T>): Promise<T | null> {
@@ -522,7 +488,7 @@ export class OperatorService {
   #conv(workspaceId: WorkspaceId): Conversation {
     let c = this.#all.get(workspaceId);
     if (c) return c;
-    const saved = this.#load(workspaceId);
+    const saved = this.#store.load(workspaceId);
     c = {
       workspaceId,
       name: saved?.name ?? null,
@@ -549,30 +515,12 @@ export class OperatorService {
     return c;
   }
 
-  #load(workspaceId: WorkspaceId): Saved | null {
-    try {
-      const row = this.#d.db?.prepare("SELECT json FROM operator_conversations WHERE workspace_id = ?").get(workspaceId) as { json: string } | undefined;
-      return row ? (JSON.parse(row.json) as Saved) : null;
-    } catch {
-      return null;
-    }
-  }
-
   #saved(c: Conversation): Saved {
     return { name: c.name, items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
   }
 
   #save(c: Conversation): void {
-    if (!this.#d.db) return;
-    try {
-      if (!c.items.length && !c.messages.length && !c.agents.size && !c.commands.size) {
-        this.#d.db.prepare("DELETE FROM operator_conversations WHERE workspace_id = ?").run(c.workspaceId);
-        return;
-      }
-      this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(this.#saved(c)), Date.now());
-    } catch (e) {
-      log.warn(`could not save the conversation: ${(e as Error).message}`);
-    }
+    this.#store.save(c.workspaceId, c.items.length || c.messages.length || c.agents.size || c.commands.size ? this.#saved(c) : null);
   }
 }
 
@@ -581,13 +529,6 @@ function newsLine(a: Agent): string {
   const who = `${a.kind === "claude" ? "Claude" : a.kind === "codex" ? "Codex" : a.kind}${a.name ? ` “${a.name}”` : ""}`;
   const what = a.state === "done" ? "is done" : a.state === "needs_input" ? "needs input" : a.state === "failed" ? "failed" : "ended";
   return `${who} ${what}.`;
-}
-
-/** Local midnight of today's work day (it runs 04:00 to 04:00, as the journal's). */
-function workDay(now = new Date()): number {
-  const d = new Date(now.getTime() - 4 * 3600_000);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
 }
 
 function friendly(e: Error): string {
