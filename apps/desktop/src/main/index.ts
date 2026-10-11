@@ -29,6 +29,7 @@ import { handleCertificates } from "./certificates.ts";
 import { isPopup, startWebSession } from "./web-session.ts";
 import { handleOpen, openForUser } from "./open.ts";
 import { crashStatus, followCrashReports, record as recordCrash, startCrashReporting } from "./crash.ts";
+import { followPresence } from "./presence.ts";
 import { feedbackStatus, sendFeedback, startFeedback, type FeedbackRequest } from "./feedback.ts";
 import { claimWhatsNew } from "./whats-new.ts";
 import { notifyPermission, openNotifySettings, requestNotifyPermission } from "./notify-permission.ts";
@@ -983,6 +984,7 @@ app.whenReady().then(async () => {
     .finally(coreChecked)
     .then(coreUp, (err: Error) => (log.error("the core did not start", err), void coreFailed(coreUp)));
   followCrashReports(socketPath);
+  followPresence(socketPath);
   // Its bundle (about 570 KB) is parsed on this thread; its first check is 30 s away anyway.
   setTimeout(() => void startUpdater(), 5000);
   const send = commandSender(() => workspaces.reopen(), { openSettings, checkForUpdates, isUtility, appWindows });

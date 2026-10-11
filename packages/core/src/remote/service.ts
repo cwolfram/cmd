@@ -298,6 +298,7 @@ export class RemoteService {
   /** The app's report (ui.presence); it belongs to its connection (null: from inside the core). */
   presence(conn: Connection | null, p: { idleSeconds: number; locked: boolean }): void {
     const idle = Number.isFinite(p.idleSeconds) ? Math.max(0, p.idleSeconds) : 0;
+    if (this.#presence?.conn !== conn) log.info("the app reports whether you're at this Mac");
     this.#presence = { conn, inputAt: Date.now() - idle * 1000, locked: p.locked === true };
   }
 
@@ -308,7 +309,9 @@ export class RemoteService {
 
   /** A connection closed: when it was the app's, nobody reports anymore (the app quit). */
   closed(conn: Connection): void {
-    if (this.#presence?.conn === conn) this.#presence = null;
+    if (this.#presence?.conn !== conn) return;
+    this.#presence = null;
+    log.info("the app stopped reporting: away");
   }
 
   /**
