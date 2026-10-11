@@ -103,7 +103,7 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 
 ### AR1-15-04 · Lock the shipped setting keys so a removal can't skip its migration
 
-- **Status:** open
+- **Status:** in progress (ar1-small)
 - **Severity:** medium
 - **Effort:** S (< ½ day)
 - **Where:** `packages/protocol/src/settings.ts:442-462`, `packages/protocol/src/settings.ts:534-547`

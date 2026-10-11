@@ -187,7 +187,7 @@ interface AgentAdapter {
 
 ### AR1-05-07 · Stop a reducer failure from repeating every two seconds
 
-- **Status:** open
+- **Status:** in progress (ar1-small)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/agents/tracker.ts:278-286`, `tracker.ts:260-272`, `tracker.ts:291-303`

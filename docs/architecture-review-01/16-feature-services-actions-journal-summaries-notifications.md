@@ -123,7 +123,7 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 ### AR1-16-04 · Enforce the journal's format versions with golden fixtures
 
-- **Status:** open
+- **Status:** in progress (ar1-small)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/journal/threads.ts:9-10`, `packages/protocol/src/journal.ts:27-30`, `packages/core/test/journal.test.ts`
