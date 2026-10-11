@@ -577,6 +577,50 @@ describe("the service", () => {
   });
 });
 
+describe("remembered approvals", () => {
+  it("offer a narrow rule; once remembered, that kind runs without asking (and says so); forgotten, it asks again", async () => {
+    const { DatabaseSync } = await import("node:sqlite");
+    const f = fakeFactory();
+    const core = new Core({ socketPath: "", dbPath: null, settingsPath: null, terminals: f.factory, pollMs: 0 });
+    const ws = core.workspaces.home();
+    const turns: ((r: AgentRun) => Promise<void>)[] = [];
+    const op = new OperatorService({ workspace: (id) => core.workspaces.get(id) ?? null, call: (m, p) => core.call(m, p as never), agent: async (r) => (await turns.shift()?.(r), reply()), selfIn: () => null, broadcast: () => {}, db: new DatabaseSync(":memory:") });
+    const exec = (r: AgentRun, name: string, input: Record<string, unknown>, id: string) => r.exec({ id, name, input: { why: name, ...input } });
+    const item = (id: string) => op.get(ws.id).items.find((i) => i.id === id) as Extract<OperatorItem, { kind: "tool" }> | undefined;
+    const idle = () => vi.waitFor(() => expect(op.get(ws.id).busy).toBe(false));
+    try {
+      let ref = "";
+      turns.push(async (r) => {
+        ref = /(w\d+)/.exec((await exec(r, "open", { kind: "terminal" }, "o1")).output)![1]!;
+        await exec(r, "type", { ref, text: "pnpm test --watch=false" }, "t1");
+      });
+      op.send(ws.id, "test");
+      await vi.waitFor(() => expect(item("t1")?.state).toBe("waiting"));
+      expect(item("t1")!.offer).toBe("commands starting “pnpm test”");
+      op.answer(ws.id, "t1", true, undefined, true);
+      await idle();
+      expect(op.grants(ws.id)).toMatchObject([{ key: "type:pnpm test", label: "commands starting “pnpm test”" }]);
+      // The same kind: no question.
+      turns.push(async (r) => void (await exec(r, "type", { ref, text: "pnpm test packages/core" }, "t2")));
+      op.send(ws.id, "again");
+      await idle();
+      expect(item("t2")).toMatchObject({ state: "done", remembered: "commands starting “pnpm test”" });
+      expect(f.ptys.at(-1)!.written.join("")).toContain("pnpm test packages/core\r");
+      // Another kind still asks; a forgotten one asks again.
+      op.revoke(ws.id, "type:pnpm test");
+      turns.push(async (r) => void (await exec(r, "type", { ref, text: "pnpm test" }, "t3")));
+      op.send(ws.id, "once more");
+      await vi.waitFor(() => expect(item("t3")?.state).toBe("waiting"));
+      op.answer(ws.id, "t3", false);
+      await idle();
+      expect(op.grants(ws.id)).toEqual([]);
+    } finally {
+      op.dispose();
+      await core.close();
+    }
+  });
+});
+
 describe("past conversations", () => {
   it("New Conversation puts the current one away; opening one brings it back and puts the other away", async () => {
     const { DatabaseSync } = await import("node:sqlite");

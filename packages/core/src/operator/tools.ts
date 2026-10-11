@@ -110,7 +110,7 @@ const runTool: OperatorTool = {
   async confirm(i, b) {
     if (i.list) return null;
     const { action } = await actionByName(b, String(i.name ?? ""));
-    return action.risky ? { title: `Run “${action.name}”, which is risky`, exact: action.command } : null;
+    return action.risky ? { title: `Run “${action.name}”, which is risky`, exact: action.command, rule: { key: `run:${action.id}`, label: `running “${action.name}”` } } : null;
   },
   async run(i, b) {
     if (i.list) {
@@ -146,7 +146,7 @@ const agentTool: OperatorTool = {
     const w = await windowOf(b, i.ref);
     const a = await agentIn(b, w);
     if (!a) throw new Error(`${String(i.ref)} has no agent`);
-    return { title: `Stop ${a.kind}${a.name ? ` “${a.name}”` : ""} in ${windowName(w)}`, exact: agentLine(a) };
+    return { title: `Stop ${a.kind}${a.name ? ` “${a.name}”` : ""} in ${windowName(w)}`, exact: agentLine(a), rule: { key: "agent.stop", label: "stopping agents" } };
   },
   async run(i, b) {
     if (i.do === "stop") {
@@ -258,7 +258,12 @@ const typeTool: OperatorTool = {
     const where = await terminalName(b, w, agent);
     const pressed = keys.map((k) => KEYS[k]![1]).join(" ");
     const exact = [text, keys.length ? pressed : text && i.submit !== false ? "⏎" : ""].filter(Boolean).join("  ");
-    return { title: keys.length && !text ? `Press keys in ${where}` : agent ? `Send to ${where}` : `Type in ${where}`, exact };
+    const kind = agent ? (agent.kind === "claude" ? "Claude" : agent.kind === "codex" ? "Codex" : agent.kind) : null;
+    // What "Always allow" covers: a command by its program (and subcommand), messages to an agent kind, key presses.
+    const words = text.trim().split(/\s+/);
+    const prefix = words[0] + (words[1] && /^[a-z][\w:.-]*$/.test(words[1]) ? ` ${words[1]}` : "");
+    const rule = keys.length ? { key: `keys:${agent?.kind ?? "terminal"}`, label: `key presses in ${kind ?? "terminals"}` } : agent ? { key: `send:${agent.kind}`, label: `messages to ${kind}` } : { key: `type:${prefix}`, label: `commands starting “${prefix}”` };
+    return { title: keys.length && !text ? `Press keys in ${where}` : agent ? `Send to ${where}` : `Type in ${where}`, exact, rule };
   },
   async run(i, b) {
     const w = await windowOf(b, i.ref);
@@ -348,7 +353,9 @@ const editTool: OperatorTool = {
   async confirm(i, b) {
     const e = await planEdit(i, b);
     if (e.before === e.after) throw new Error(`that changes nothing in ${e.rel}`);
-    return { title: e.before === null ? `Create ${e.rel}` : `Edit ${e.rel}`, exact: e.before === null ? lineDiff("", e.after).replace(/^- $/m, "") : lineDiff(e.before, e.after) };
+    const dir = path.dirname(e.rel);
+    const rule = { key: `edit:${dir}`, label: dir === "." ? "edits to files at the workspace's top" : `edits in ${dir}` };
+    return { title: e.before === null ? `Create ${e.rel}` : `Edit ${e.rel}`, exact: e.before === null ? lineDiff("", e.after).replace(/^- $/m, "") : lineDiff(e.before, e.after), rule };
   },
   async run(i, b) {
     const e = await planEdit(i, b);

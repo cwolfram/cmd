@@ -28,7 +28,7 @@ const TURN: OperatorItem[] = [
 
 const frame = (c: OperatorConversation | null, o: { size?: SizeName; needsAi?: boolean } = {}) => (
   <RefWindow icon="brain" name={c?.name ?? "Operator"} size={o.size}>
-    <Operator conv={c} needsAi={!!o.needsAi} focused={false} world={world} onSend={() => {}} onStop={() => {}} onNew={() => {}} onPast={() => {}} />
+    <Operator conv={c} needsAi={!!o.needsAi} focused={false} world={world} onSend={() => {}} onStop={() => {}} onNew={() => {}} onPast={() => {}} onGrants={() => {}} />
   </RefWindow>
 );
 
@@ -49,7 +49,7 @@ export const Working = () => frame(conv([...TURN.slice(0, 4), tool("agent", "Sta
 
 /** Waiting for the person: exactly what it would type, and where. */
 export const Approval = () =>
-  frame(conv([user("Migrate the staging database."), tool("look", "Looking at the board"), tool("type", "Running the staging migration", { acts: true, target: "t3", state: "waiting", ms: undefined, ask: "Type in the terminal in api", exact: "pnpm db:migrate --env staging  ⏎" })], { busy: true }));
+  frame(conv([user("Migrate the staging database."), tool("look", "Looking at the board"), tool("type", "Running the staging migration", { acts: true, target: "t3", state: "waiting", ms: undefined, ask: "Type in the terminal in api", exact: "pnpm db:migrate --env staging  ⏎", offer: "commands starting “pnpm db:migrate”" })], { busy: true }));
 
 /** News from an agent it started, and the turn it began by itself. */
 export const News = () => frame(conv([...TURN, { kind: "event", id: "e1", at: NOW, text: "Claude “Parser” is done." }, tool("read", "Reading what Claude changed", { target: "t2" }), text("Claude fixed both: the parser now keeps a split mark until it's whole, and OSC 7 paths are unescaped. The tests pass.")]));

@@ -59,7 +59,7 @@ export interface OperatorWorld {
   /** A window's name as the board shows it; null once it's closed. */
   useName(id: WindowId): string | null;
   goTo(id: WindowId): void;
-  answer(itemId: string, allow: boolean, reason?: string): Promise<unknown>;
+  answer(itemId: string, allow: boolean, reason?: string, remember?: boolean): Promise<unknown>;
 }
 
 const World = createContext<OperatorWorld>({ useName: () => null, goTo: () => {}, answer: async () => {} });
@@ -74,6 +74,7 @@ export interface OperatorProps {
   onStop(): void;
   onNew(): void;
   onPast(): void;
+  onGrants(): void;
 }
 
 export function Operator(p: OperatorProps) {
@@ -106,6 +107,7 @@ export function Operator(p: OperatorProps) {
             <WindowToolbar label="Operator">
               <ToolbarButton icon="square.and.pencil" label="New Conversation" disabled={!p.conv?.items.length} onClick={p.onNew} />
               <ToolbarSpacer />
+              <ToolbarButton icon="checkmark.shield" label="Remembered Approvals" menu onClick={p.onGrants} />
               <ToolbarButton icon="clock.arrow.circlepath" label="Past Conversations" menu onClick={p.onPast} />
             </WindowToolbar>
           }
@@ -166,7 +168,7 @@ export function OperatorView({ win, focused }: WindowViewProps) {
   const ws = win.workspaceId;
   const conv = useOperator(ws);
   const ai = useAiStatus();
-  const world = useMemo<OperatorWorld>(() => ({ useName: useBoardName, goTo: (id) => goTo(id, ws), answer: (itemId, allow, reason) => operatorCall.answer(ws, itemId, allow, reason) }), [ws]);
+  const world = useMemo<OperatorWorld>(() => ({ useName: useBoardName, goTo: (id) => goTo(id, ws), answer: (itemId, allow, reason, remember) => operatorCall.answer(ws, itemId, allow, reason, remember) }), [ws]);
   return (
     <Operator
       conv={conv}
@@ -177,6 +179,7 @@ export function OperatorView({ win, focused }: WindowViewProps) {
       onStop={() => void operatorCall.stop(ws)}
       onNew={() => void operatorCall.reset(ws).catch(() => {})}
       onPast={() => void showPast(ws)}
+      onGrants={() => void showGrants(ws)}
     />
   );
 }
@@ -194,6 +197,16 @@ async function showPast(workspaceId: string): Promise<void> {
 
 /** A run of steps (tool calls, news) stays together; messages stand apart from it. */
 const isStep = (b: Block) => b.kind === "looks" || b.item.kind === "tool" || b.item.kind === "event";
+
+/** What the person allowed for good in this workspace: picking one forgets it, so it asks again. */
+async function showGrants(workspaceId: string): Promise<void> {
+  const grants = await cmd.call("operator.grants", { workspaceId }).catch(() => []);
+  await showContextMenu(
+    grants.length
+      ? [{ label: "Choose one to ask again", run: () => {}, enabled: false }, "-", ...grants.map((g) => ({ label: `Allowed: ${g.label}`, run: () => void cmd.call("operator.revoke", { workspaceId, key: g.key }).catch(() => {}) }))]
+      : [{ label: "Nothing allowed for good here yet", run: () => {}, enabled: false }],
+  );
+}
 
 function Conversation({ conv }: { conv: OperatorConversation }) {
   const shown = useMemo(() => blocks(conv.items), [conv.items]);
@@ -259,7 +272,7 @@ function Step({ item, quiet }: { item: Tool; quiet?: boolean }) {
     >
       {(input || item.output || item.ask) && (
         <>
-          {item.ask && <Text size="sm">Asked: {item.ask}</Text>}
+          {item.remembered ? <Text size="sm">Ran without asking: you allow {item.remembered} here.</Text> : item.ask && <Text size="sm">Asked: {item.ask}</Text>}
           {item.exact && <CodeBlock>{item.exact}</CodeBlock>}
           {input && <CodeBlock>{input}</CodeBlock>}
           {item.output && <CodeBlock tone={item.state === "failed" ? "danger" : undefined}>{item.output}</CodeBlock>}
@@ -303,10 +316,11 @@ function Approval({ item }: { item: Tool }) {
     <ChatApproval
       title={item.ask}
       exact={item.exact}
+      always={item.offer}
       busy={busy}
-      onAnswer={(allow, reason) => {
+      onAnswer={(allow, reason, remember) => {
         setBusy(true);
-        void world.answer(item.id, allow, reason).catch(() => setBusy(false));
+        void world.answer(item.id, allow, reason, remember).catch(() => setBusy(false));
       }}
     />
   );

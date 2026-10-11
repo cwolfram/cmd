@@ -147,6 +147,8 @@ export const OPERATOR_ACCESS: { [M in Method]: OperatorAccess } = {
   "operator.reset": "never",
   "operator.history": "never",
   "operator.open": "never",
+  "operator.grants": "never",
+  "operator.revoke": "never",
   "sqlite.schema": "never",
   "sqlite.rows": "never",
   "sqlite.query": "never",

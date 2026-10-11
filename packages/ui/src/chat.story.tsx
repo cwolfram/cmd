@@ -74,7 +74,7 @@ export const Steps = () => (
 /** A step waiting for the person: in words, exactly, and the three answers. */
 export const Approval = () => (
   <div style={frame}>
-    <ChatApproval title="Type in the terminal “zsh — api”" exact="pnpm db:migrate --env staging" onAnswer={() => {}} />
+    <ChatApproval title="Type in the terminal in api" exact="pnpm db:migrate --env staging  ⏎" always="commands starting “pnpm db:migrate”" onAnswer={() => {}} />
   </div>
 );
 

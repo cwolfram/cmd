@@ -37,6 +37,8 @@ export type Input = Record<string, unknown>;
 export interface Ask {
   title: string;
   exact?: string;
+  /** What "Always allow" would remember for the workspace: a key for this kind of action, and its label. Left out: it always asks. */
+  rule?: { key: string; label: string };
 }
 
 const why = { type: "string", description: "One short line for the person watching, saying what this step does and why, in their words, e.g. \"Running the tests to see what fails\". Name windows by what they are, never by ref." };

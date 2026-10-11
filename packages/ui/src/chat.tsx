@@ -90,26 +90,36 @@ export function ChatStep({ icon, title, state, target, onTarget, time, quiet, ch
 
 /**
  * A step waiting for the person: `title` says what it wants in words, `exact` shows exactly what
- * would happen (the text to type and where). Allow, Deny, or Deny and Say Why (a line for the agent).
+ * would happen (the text to type and where). Allow, Deny, or Deny and Say Why (a line for the agent);
+ * with `always` (what it would remember, "commands starting “pnpm test”"), also Always Allow that here.
  */
-export function ChatApproval({ title, exact, onAnswer, busy }: { title: ReactNode; exact?: ReactNode; onAnswer: (allow: boolean, reason?: string) => void; busy?: boolean }) {
+export function ChatApproval({ title, exact, always, onAnswer, busy }: { title: ReactNode; exact?: ReactNode; always?: string; onAnswer: (allow: boolean, reason?: string, remember?: boolean) => void; busy?: boolean }) {
   const [why, setWhy] = useState<string | null>(null);
   return (
     <Callout tone="accent" icon="hand.raised" title={title}>
       <Stack gap={2}>
         {exact != null && <CodeBlock>{exact}</CodeBlock>}
         {why === null ? (
-          <Inline gap={2}>
-            <Button size="sm" variant="primary" disabled={busy} onClick={() => onAnswer(true)}>
-              Allow
-            </Button>
-            <Button size="sm" disabled={busy} onClick={() => onAnswer(false)}>
-              Deny
-            </Button>
-            <LinkButton tone="dim" disabled={busy} onClick={() => setWhy("")}>
-              Deny and Say Why…
-            </LinkButton>
-          </Inline>
+          <>
+            <Inline gap={2}>
+              <Button size="sm" variant="primary" disabled={busy} onClick={() => onAnswer(true)}>
+                Allow
+              </Button>
+              <Button size="sm" disabled={busy} onClick={() => onAnswer(false)}>
+                Deny
+              </Button>
+              <LinkButton tone="dim" disabled={busy} onClick={() => setWhy("")}>
+                Deny and Say Why…
+              </LinkButton>
+            </Inline>
+            {always && (
+              <Inline>
+                <LinkButton tone="dim" disabled={busy} onClick={() => onAnswer(true, undefined, true)}>
+                  Always allow {always} here
+                </LinkButton>
+              </Inline>
+            )}
+          </>
         ) : (
           <form
             onSubmit={(e) => {

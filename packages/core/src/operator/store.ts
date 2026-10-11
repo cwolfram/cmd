@@ -1,11 +1,12 @@
 // Where the Operator's conversations are kept (docs/51), in cmd's database: each workspace's
 // current one (operator_conversations), and the ones New Conversation put away (operator_past),
-// to open again. Without a database (tests) nothing is kept and there is no past.
+// to open again, and the approvals the person chose to remember (operator_grants). Without a
+// database (tests) nothing is kept: no past, nothing remembered.
 
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { AgentId, AgentState, OperatorItem, OperatorPast, OperatorUsage, PaneId, WindowId, WorkspaceId } from "@cmd/protocol";
+import type { AgentId, AgentState, OperatorGrant, OperatorItem, OperatorPast, OperatorUsage, PaneId, WindowId, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 
 const log = logger("operator");
@@ -32,6 +33,24 @@ export class ConversationStore {
     db?.exec(`CREATE TABLE IF NOT EXISTS operator_conversations (workspace_id TEXT PRIMARY KEY, json TEXT NOT NULL, at INTEGER NOT NULL)`);
     db?.exec(`CREATE TABLE IF NOT EXISTS operator_past (id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, at INTEGER NOT NULL, requests INTEGER NOT NULL, json TEXT NOT NULL)`);
     db?.exec(`CREATE INDEX IF NOT EXISTS operator_past_ws ON operator_past (workspace_id, at)`);
+    // Approvals the person chose to remember, per workspace.
+    db?.exec(`CREATE TABLE IF NOT EXISTS operator_grants (workspace_id TEXT NOT NULL, key TEXT NOT NULL, label TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (workspace_id, key))`);
+  }
+
+  grants(workspaceId: WorkspaceId): OperatorGrant[] {
+    return (this.#db?.prepare("SELECT key, label, at FROM operator_grants WHERE workspace_id = ? ORDER BY at DESC").all(workspaceId) ?? []) as unknown as OperatorGrant[];
+  }
+
+  granted(workspaceId: WorkspaceId, key: string): OperatorGrant | null {
+    return (this.#db?.prepare("SELECT key, label, at FROM operator_grants WHERE workspace_id = ? AND key = ?").get(workspaceId, key) as OperatorGrant | undefined) ?? null;
+  }
+
+  grant(workspaceId: WorkspaceId, key: string, label: string): void {
+    this.#db?.prepare("INSERT OR REPLACE INTO operator_grants (workspace_id, key, label, at) VALUES (?, ?, ?, ?)").run(workspaceId, key, label, Date.now());
+  }
+
+  revoke(workspaceId: WorkspaceId, key: string): void {
+    this.#db?.prepare("DELETE FROM operator_grants WHERE workspace_id = ? AND key = ?").run(workspaceId, key);
   }
 
   /** Workspaces that have a conversation. */

@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { Agent, AgentId, AgentState, Method, NewDataEvent, OperatorPast, PaneId, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { Agent, AgentId, AgentState, Method, NewDataEvent, OperatorGrant, OperatorPast, PaneId, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { AgentCall, AgentResult, AgentRun } from "../ai/backends.ts";
 import type { ToolOutput } from "../magic/tools.ts";
@@ -83,7 +83,7 @@ interface Conversation {
   commands: Map<PaneId, { label: string; url: string | null }>;
   /** News not yet told: with the next tool result while a turn runs, else in a turn of its own. */
   news: string[];
-  approvals: Map<string, (a: { allow: boolean; reason?: string }) => void>;
+  approvals: Map<string, (a: { allow: boolean; reason?: string; remember?: boolean }) => void>;
   denials: number;
 }
 
@@ -196,10 +196,20 @@ export class OperatorService {
     for (const resolve of c.approvals.values()) resolve({ allow: false, reason: "stopped" });
   }
 
-  answer(workspaceId: WorkspaceId, itemId: string, allow: boolean, reason?: string): void {
+  answer(workspaceId: WorkspaceId, itemId: string, allow: boolean, reason?: string, remember = false): void {
     const resolve = this.#all.get(workspaceId)?.approvals.get(itemId);
     if (!resolve) throw new Error("nothing is waiting for that answer");
-    resolve({ allow, reason: reason?.trim() || undefined });
+    resolve({ allow, reason: reason?.trim() || undefined, remember: allow && remember });
+  }
+
+  /** The approvals remembered for a workspace, newest first. */
+  grants(workspaceId: WorkspaceId): OperatorGrant[] {
+    return this.#store.grants(workspaceId);
+  }
+
+  /** Forget one: that kind of action asks again. */
+  revoke(workspaceId: WorkspaceId, key: string): void {
+    this.#store.revoke(workspaceId, key);
   }
 
   /** A new conversation; the current one is put away. What it started still reports back (to the new one). */
@@ -361,25 +371,33 @@ export class OperatorService {
     const item: Extract<OperatorItem, { kind: "tool" }> = { kind: "tool", id: call.id, at: Date.now(), tool: tool.spec.name, why: typeof why === "string" && why.trim() ? why.trim() : tool.spec.name, acts: tool.acts, target, state: "running", input };
     this.#add(c, item);
     const t0 = Date.now();
-    let approval: { ask: Ask; allowed: boolean | null; reason: string | null } | null = null;
+    let approval: { ask: Ask; allowed: boolean | null; reason: string | null; remembered?: string } | null = null;
     const end = (state: "done" | "failed" | "denied", output: string, isError: boolean): ToolOutput => {
-      const next = { ...item, ...(approval ? { ask: approval.ask.title, exact: approval.ask.exact } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
+      const next = { ...item, ...(approval ? { ask: approval.ask.title, exact: approval.ask.exact, ...(approval.remembered ? { remembered: approval.remembered } : {}) } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
       this.#update(c, next);
       done.push(next);
       // News that came in while this ran goes back with it.
       const news = c.news.splice(0);
       const sent = clip(output, OUTPUT_MAX) + (news.length ? `\n\n<news>\n${news.map((n) => `- ${n}`).join("\n")}\n</news>` : "");
-      this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask.title ?? null, exact: approval?.ask.exact ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, ms: next.ms }, content: sent });
+      this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask.title ?? null, exact: approval?.ask.exact ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, remembered: approval?.remembered ?? null, ms: next.ms }, content: sent });
       return { output: sent, isError };
     };
     try {
       const ask = tool.confirm ? await tool.confirm(call.input, bench) : null;
+      // Allowed here before, and remembered: it runs, and says so.
+      const grant = ask?.rule ? this.#store.granted(c.workspaceId, ask.rule.key) : null;
+      if (ask && grant) {
+        approval = { ask, allowed: true, reason: null, remembered: grant.label };
+        this.#update(c, { ...item, ask: ask.title, exact: ask.exact, remembered: grant.label });
+        return end("done", await tool.run(call.input, { ...bench, call: this.#gate(true, abort.signal) }), false);
+      }
       if (ask) {
-        this.#update(c, { ...item, state: "waiting", ask: ask.title, exact: ask.exact });
+        this.#update(c, { ...item, state: "waiting", ask: ask.title, exact: ask.exact, ...(ask.rule ? { offer: ask.rule.label } : {}) });
         this.#d.notify?.(c.workspaceId, { title: `${c.name ?? "The Operator"} asks`, body: ask.title, urgent: true });
-        const a = await new Promise<{ allow: boolean; reason?: string }>((resolve) => c.approvals.set(item.id, resolve));
+        const a = await new Promise<{ allow: boolean; reason?: string; remember?: boolean }>((resolve) => c.approvals.set(item.id, resolve));
         c.approvals.delete(item.id);
         approval = { ask, allowed: a.allow, reason: a.reason ?? null };
+        if (a.remember && ask.rule) this.#store.grant(c.workspaceId, ask.rule.key, ask.rule.label);
         if (!a.allow) {
           if (++c.denials >= DENIALS) queueMicrotask(() => abort.abort(new Error("denied")));
           return end("denied", `The person said no${a.reason ? `: ${a.reason}` : ""}. Don't do this another way; ask what they want instead.`, true);
