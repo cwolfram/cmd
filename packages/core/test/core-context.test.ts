@@ -41,7 +41,7 @@ describe("the core's context", () => {
     const naming = createNaming({ ai: noAi, settings, agents });
     await naming.settled("a1");
 
-    const summaries = createSummaries({ ai: noAi, agents, data: {} as never, transcripts: { get: () => undefined } as never, windows: {} as never, workspaces: {} as never, notifications: {} as never, ...actions }, null);
+    const summaries = createSummaries({ ai: noAi, agents, data: { onForget: () => {} } as never, transcripts: { get: () => undefined } as never, windows: {} as never, workspaces: {} as never, notifications: {} as never, ...actions }, null);
     await expect(summaries.start("a1")).rejects.toThrow();
     expect(asked).toContain("a1");
 

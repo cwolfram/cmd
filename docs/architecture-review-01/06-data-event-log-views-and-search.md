@@ -159,7 +159,7 @@ Rebuild the FTS once through `buildFts` (it exists).
 
 ### AR1-06-07 · Make forget complete: entities, file pages and subscribers
 
-- **Status:** in progress (forget)
+- **Status:** done (forget branch)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/data/service.ts:279-298`, `packages/core/src/data/describe.ts:26-29`, `packages/core/src/data/schema.ts:22-25`, `packages/core/src/core.ts:303-306`
@@ -180,10 +180,12 @@ Rebuild the FTS once through `buildFts` (it exists).
 - Keep a `forgotten-range` entity for time and type forgets, so re-reads respect them, the way sessions are refused today.
 
 **Success criteria.**
-- [ ] A test in `data-forget.test.ts` asserts `entityOf("session", id)` is null and `linksOf("session", id)` is empty after a forget.
-- [ ] After forgetting a session with a unique 32-character marker in its text, the bytes of `events.sqlite` (after `wal_checkpoint(TRUNCATE)`) don't contain the marker (test with a temp file).
-- [ ] A subscription test gets `removed` with the forgotten seqs.
-- [ ] After `forget({ before: t, types: ["transcript."] })` followed by `reindex()`, no transcript event before `t` returns.
+- [x] A test in `data-forget.test.ts` asserts `entityOf("session", id)` is null and `linksOf("session", id)` is empty after a forget.
+- [x] After forgetting a session with a unique 32-character marker in its text, the bytes of `events.sqlite` (after `wal_checkpoint(TRUNCATE)`) don't contain the marker (test with a temp file).
+- [x] A subscription test gets `removed` with the forgotten seqs.
+- [x] After `forget({ before: t, types: ["transcript."] })` followed by `reindex()`, no transcript event before `t` returns.
+
+**Progress (2026-10-11).** Without tombstones (AR1-06-02): `DataService.forget` finds what it will delete first (`DataStore.affected`: the span and, up to 10,000, the seqs), so `data.changed` carries `reset` (the subscription's whole result again) and `removed`. Entities and links go through `DataStore.dropEntity` (a project's sessions with it, panes and agents that had no other link); `describe`, `link` and the per-event entities skip forgotten ids. Deletes run under `secure_delete`, and a forget then merges the full-text index a step at a time (`scrubStep`, FTS5 `merge` with a negative page count; FTS5's own `secure-delete` option isn't allowed on a `contentless_delete` index) and empties the WAL; `scrubbed()` resolves when that's done. A forget by time or type keeps a `forgotten` range that `#refused` checks, so a re-read can't bring back what came before it. Tests in `forget-reach.test.ts` (the entity box: there, not in data-forget.test.ts; the bytes test fails without the scrub; the re-read test records what a reindex would) and `data-subscriptions.test.ts`. Not done: `auto_vacuum` and shrinking the file (a `VACUUM` of a big log on startup would block; the freed pages are zeroed and reused).
 
 ### AR1-06-08 · Record less: drop unread noise and stop storing tool output twice
 

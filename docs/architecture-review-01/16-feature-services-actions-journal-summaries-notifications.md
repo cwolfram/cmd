@@ -78,7 +78,7 @@ Timers in scope, with their period and whether they are `unref`'d or paced. Only
 
 ### AR1-16-02 · Make forget and retention reach what these services derived
 
-- **Status:** in progress (forget)
+- **Status:** done (forget branch)
 - **Severity:** high
 - **Effort:** M
 - **Where:** `packages/core/src/data/service.ts:279-288`, `packages/core/src/journal/store.ts:74-91`, `packages/core/src/summaries/service.ts:251`, `packages/core/src/actions/describe.ts:159`
@@ -90,10 +90,12 @@ Timers in scope, with their period and whether they are `unref`'d or paced. Only
 **Proposal.** Give derived stores one hook: `DataService` emits `forgot(what: ForgetWhat)` and `pruned(before)`, and every service that keeps derived state registers a handler. The journal deletes days, history and weeks whose scope or date the forget covers. Simplest and safest: delete every stored day touching the forgotten session or project, and let the next read rewrite it from what is left. Summaries record a `summary` event (`sessionId`, `path`, `hash`), so a forget of that session finds and deletes the file. The describe cache drops rows under a forgotten project. Doc 06's AR1-06-07 ("Make forget complete") is the data-layer half. This issue is the derived half, and should land as the same `forgot` hook.
 
 **Success criteria.**
-- [ ] A test: write a day and a week for a project, then `data.forget({ projectId })`. `journal_days`, `journal_days_history` and `journal_weeks` have no rows for it, and `journal.history` returns `[]`.
-- [ ] A test: summarise an agent, then forget its session. The `.md` file is gone.
-- [ ] Retention (`data.keepDays`) removes journal days older than the window.
-- [ ] docs/28 (or the forget section of DEVELOPMENT.md) lists every derived store and how forget reaches it.
+- [x] A test: write a day and a week for a project, then `data.forget({ projectId })`. `journal_days`, `journal_days_history` and `journal_weeks` have no rows for it, and `journal.history` returns `[]`.
+- [x] A test: summarise an agent, then forget its session. The `.md` file is gone.
+- [x] Retention (`data.keepDays`) removes journal days older than the window.
+- [x] docs/28 (or the forget section of DEVELOPMENT.md) lists every derived store and how forget reaches it.
+
+**Progress (2026-10-11).** `DataService.onForget(fn)` runs before a forget deletes, with what it names and the span of its events. The journal (`JournalStore.forget`, registered in its constructor) deletes days, their history and weeks the span reaches into, in every scope, plus a forgotten project's own scope and any day naming it, under `secure_delete`; `onPrune` drops days older than retention. Summaries are recorded as `summary.written` events (`notes` class, kept as long as the file) and `forgetSummaries` deletes the files a forget covers, plus older files by the session id in their name. Workspace Actions' `DescribedCache.forget` drops what the model said about a project's folders. docs/28's Forget section lists each store. The summary test calls `forgetSummaries` with a recorded event rather than running a model summary.
 
 ### AR1-16-03 · Take `journal sync` off the core thread's critical path
 
