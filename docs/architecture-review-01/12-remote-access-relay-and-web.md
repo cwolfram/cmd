@@ -100,7 +100,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-04 · Open a session only after the device's first transport message, not after a replayable message 1
 
-- **Status:** done (remote-hardening branch)
+- **Status:** done (e29223c5)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/remote/session.ts:86-92`, `packages/core/src/remote/session.ts:107-117`, `packages/core/src/remote/service.ts:284-289`
@@ -119,7 +119,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-05 · Don't let anyone who knows the route lock every device out or burn the pairing link
 
-- **Status:** mostly done (remote-hardening branch; the Settings "Reset route" button is left)
+- **Status:** mostly done (e29223c5; the Settings "Reset route" button is left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/remote/service.ts:24-25`, `packages/core/src/remote/service.ts:257-260`, `packages/core/src/remote/service.ts:291-295`, `packages/core/src/remote/session.ts:95-98`
@@ -157,7 +157,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-07 · Give the channel real backpressure instead of letting the relay drop slow phones
 
-- **Status:** done (remote-hardening branch)
+- **Status:** done (d7083558)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/remote/session.ts:11-14`, `packages/core/src/remote/session.ts:164-189`, `packages/core/src/remote/link.ts:49-51`, `apps/relay/src/relay.ts:147`
@@ -177,7 +177,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-08 · Project bootstrap and events per remote session the way calls are checked
 
-- **Status:** done (remote-hardening branch)
+- **Status:** done (56c2cb35)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/remote/policy.ts:360-379`, `packages/core/src/core.ts:869-877`, `packages/core/src/core.ts:1417-1420`, `packages/core/src/remote/policy.ts:241-250`
