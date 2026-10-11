@@ -934,7 +934,7 @@ button.ui-secret-part:hover:not(:disabled) { color: var(--text); background: var
 /* ── lists: panels, sections, rows (list.tsx) ──
    The Navigator's and the file browser's sidebar look. --list-inset is the rows'
    inset from the panel's edges (a View's body sets it, the Navigator's too). */
-.ui-panel { --list-inset: 6px; flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--well); color: var(--text); font: var(--text-md) var(--font-ui); }
+.ui-panel { --list-inset: calc(var(--inset) - var(--list-pad)); flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--well); color: var(--text); font: var(--text-md) var(--font-ui); }
 .ui-panel-head { flex: none; display: flex; align-items: center; gap: var(--space-0-5); height: 28px; padding: 0 var(--space-1-5) 0 var(--space-1); box-shadow: inset 0 -1px 0 var(--separator); }
 .ui-panel-title { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-1-5); font: 600 var(--text-xs) var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); background: none; border: 0; border-radius: var(--radius-sm); }
 button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
@@ -950,7 +950,7 @@ button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
 .ui-panel-body > .ui-empty { flex: 1; min-height: max-content; }
 
 .ui-list-section + .ui-list-section { margin-top: var(--space-1-5); }
-.ui-list-heading { display: flex; align-items: center; gap: var(--space-1-5); height: 24px; margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--space-2); border-radius: var(--radius); font: 600 var(--text-xs) var(--font-ui); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+.ui-list-heading { display: flex; align-items: center; gap: var(--space-1-5); height: 24px; margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--list-pad); border-radius: var(--radius); font: 600 var(--text-xs) var(--font-ui); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
 .ui-list-count { font-weight: 500; letter-spacing: 0; opacity: 0.75; font-variant-numeric: tabular-nums; }
 .ui-list-heading[data-tone="needs"] { color: var(--state-needs); }
 .ui-list-heading[data-tone="danger"] { color: var(--danger); }
@@ -959,9 +959,9 @@ button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
 .ui-list-heading.collapsible:hover .ui-twisty, .ui-list-heading[aria-expanded="false"] .ui-twisty { opacity: 1; }
 .ui-list-heading.collapsible:hover { color: var(--text); }
 
-.ui-list-row { --depth: 0; display: flex; align-items: center; gap: var(--space-2); margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--space-2) 0 calc(var(--space-2) + var(--depth) * var(--space-3)); border-radius: var(--radius); cursor: default; }
+.ui-list-row { --depth: 0; display: flex; align-items: center; gap: var(--list-icon-gap); margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--list-pad) 0 calc(var(--list-pad) + var(--depth) * var(--space-3)); border-radius: var(--radius); cursor: default; }
 .ui-list-row.short { height: 28px; }
-.ui-list-row + .ui-list-row { margin-top: var(--space-0-5); } /* a hovered or selected row stands apart from the next */
+.ui-list-row + .ui-list-row { margin-top: var(--list-gap); } /* a hovered or selected row stands apart from the next */
 .ui-list-row.tall { min-height: 44px; padding-top: var(--space-1); padding-bottom: var(--space-1); }
 .ui-list-row:hover { background: var(--bg-hover); }
 .ui-list-row.sel { background: var(--bg-selected); }
@@ -1148,7 +1148,6 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   outline: none;
 }
 /* One inset for the title row, the body and the footer, so every sheet lines up the same way. */
-.ui-dialog { --dialog-pad: 20px; }
 .ui-dialog-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-3) 0 var(--dialog-pad); }
 .ui-dialog-title { flex: 1; min-width: 0; font: 600 var(--text-base) var(--font-ui); }
 .ui-dialog-body { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; line-height: 1.45; }
@@ -1251,7 +1250,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   box-sizing: border-box;
   height: var(--toolbar-h);
   /* The line at the bottom is inside the height: items centre in the 30px above it. */
-  padding: 0 var(--space-1-5) 1px;
+  padding: 0 var(--toolbar-pad) 1px;
   overflow: hidden;
   font: var(--text-sm) var(--font-ui);
   color: var(--text);
@@ -1259,7 +1258,7 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   /* The line under it: the window's outline colour, as the title bar's is. */
   box-shadow: inset 0 -1px 0 var(--window-edge);
 }
-.ui-tb[data-bottom] { overflow: visible; padding: 1px var(--space-1-5) 0; box-shadow: inset 0 1px 0 var(--window-edge); }
+.ui-tb[data-bottom] { overflow: visible; padding: 1px var(--toolbar-pad) 0; box-shadow: inset 0 1px 0 var(--window-edge); }
 .ui-tb[data-floating] { height: auto; padding: var(--space-1); border-radius: var(--radius-md); background: var(--toolbar-bg); box-shadow: 0 0 0 1px var(--window-edge), 0 4px 14px var(--shadow); }
 .ui-tb > *, .ui-tb-group > * { flex: none; }
 .ui-tb-group { display: flex; align-items: center; gap: 0; }

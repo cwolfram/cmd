@@ -118,5 +118,33 @@
         "unit": "px"
       }
     }
+  },
+  "list-pad": {
+    "$description": "Inside a list row's highlight to its icon or text (and a heading's): the highlight reaches out of the inset by this, so the text sits on the inset.",
+    "$value": "{space.2}"
+  },
+  "list-gap": {
+    "$description": "Between list rows, so a hovered or selected row's highlight doesn't touch the next.",
+    "$value": "{space.0-5}"
+  },
+  "list-icon-gap": {
+    "$description": "A list row's icon (or mark) to its label.",
+    "$value": "{space.2}"
+  },
+  "section-gap": {
+    "$description": "Between sections of a grouped list, panes of an inspector.",
+    "$value": "{space.4}"
+  },
+  "heading-gap": {
+    "$description": "A grouped list's section heading to its first row.",
+    "$value": "{space.1}"
+  },
+  "dialog-pad": {
+    "$description": "A dialog's or sheet's edges to its content.",
+    "$value": "{space.5}"
+  },
+  "toolbar-pad": {
+    "$description": "The window toolbar's items from its edges: tighter than the content, on purpose (docs/40).",
+    "$value": "{space.1-5}"
   }
 }

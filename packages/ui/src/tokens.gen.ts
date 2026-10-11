@@ -414,6 +414,41 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "How wide a page of settings rows grows (the Settings window): rows keep their label and control within reach in a wide window; the page centres past it."
   },
   {
+    "name": "--list-pad",
+    "value": "var(--space-2)",
+    "description": "Inside a list row's highlight to its icon or text (and a heading's): the highlight reaches out of the inset by this, so the text sits on the inset."
+  },
+  {
+    "name": "--list-gap",
+    "value": "var(--space-0-5)",
+    "description": "Between list rows, so a hovered or selected row's highlight doesn't touch the next."
+  },
+  {
+    "name": "--list-icon-gap",
+    "value": "var(--space-2)",
+    "description": "A list row's icon (or mark) to its label."
+  },
+  {
+    "name": "--section-gap",
+    "value": "var(--space-4)",
+    "description": "Between sections of a grouped list, panes of an inspector."
+  },
+  {
+    "name": "--heading-gap",
+    "value": "var(--space-1)",
+    "description": "A grouped list's section heading to its first row."
+  },
+  {
+    "name": "--dialog-pad",
+    "value": "var(--space-5)",
+    "description": "A dialog's or sheet's edges to its content."
+  },
+  {
+    "name": "--toolbar-pad",
+    "value": "var(--space-1-5)",
+    "description": "The window toolbar's items from its edges: tighter than the content, on purpose (docs/40)."
+  },
+  {
     "name": "--control-h-sm",
     "type": "dimension",
     "value": "20px",

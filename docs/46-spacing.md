@@ -1,6 +1,6 @@
 # Spacing system
 
-**Status:** proposal
+**Status:** partly built: steps 1–3 (the scale, roles, windows on them, `audit --all`) on branch `spacing`; grid heights and size classes not yet.
 
 One unit, a numeric scale of it, and roles on top that components read, so a change of inset or density is one token and every window follows. Builds on docs/40-window-design.md (the tokens, the kit, the audit) and the `window-design` skill (the rules). Written 2026-10-11, after a day of fixing spacing window by window.
 
@@ -18,7 +18,7 @@ The scale (`space.tokens.json`) is eight steps with t-shirt names: 2, 4, 6, 8, 1
 
 ### 1. One unit, a numeric scale
 
-`--unit: 4px`. Steps are multiples of it, named by the multiple:
+A 4px unit. Steps are multiples of it, named by the multiple:
 
 | token | `--space-0-5` | `-1` | `-1-5` | `-2` | `-3` | `-4` | `-5` | `-6` | `-8` | `-10` | `-12` |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -26,7 +26,7 @@ The scale (`space.tokens.json`) is eight steps with t-shirt names: 2, 4, 6, 8, 1
 
 The names are the familiar ones (Tailwind's). Twice `--space-4` is `--space-8`; a value between is the next multiple, added when a role needs it. The half steps (2, 6) stay for hairline gaps and controls' insides, where the old scale used them; nothing new lays out on them. In TSX, `Stack`/`Inline` take the multiple as a number: `gap={2}`, `pad={4}` (typed to the scale).
 
-Each step is `calc(var(--unit) * n)`, so a density mode is a different `--unit` for the steps that follow it (see 4).
+The steps are plain px for now (DTCG dimensions); when density comes (see 4) they become `calc(var(--unit) * n)` and a mode is a different `--unit`.
 
 ### 2. Roles, which components read
 
@@ -37,22 +37,21 @@ A component's stylesheet reads a role where one exists, and a step only for its 
 | `--inset` | 16 | content from the window's edges, measured to the letters: padded bodies, list text, table edge columns |
 | `--bar-inset` | 12 | a bar's items from its edges: window bar, footer, Magic's toolbars |
 | `--page-inset` | 32 | a `Page` (Settings beside its sidebar); its View takes it as `--inset` |
-| `--row-pad` | 8 | inside a row's highlight, to its icon or text |
-| `--row-gap` | 2 | between rows, so highlights don't touch |
-| `--row-gap-icon` | 8 | a row's icon to its label |
+| `--list-pad` | 8 | inside a list row's highlight, to its icon or text (and a heading's) |
+| `--list-gap` | 2 | between rows, so highlights don't touch |
+| `--list-icon-gap` | 8 | a row's icon to its label |
 | `--section-gap` | 16 | between sections of a list, panes of an inspector |
-| `--heading-gap` | 4 | a section heading to its first row |
+| `--heading-gap` | 4 | a grouped list's section heading to its first row |
 | `--dialog-pad` | 20 | a dialog's or sheet's edges (was a literal) |
-| `--control-pad` / `-sm` / `-lg` | 8 / 6 / 12 | a control's text from its edges |
 | `--toolbar-pad` | 6 | the window toolbar's items from its edges (tighter on purpose, docs/40) |
 
 ### 3. Relations are tokens, not sums
 
 What follows from the roles is written once:
 
-- `--list-inset: calc(var(--inset) - var(--row-pad))`: a row's highlight reaches out of the inset by its padding, so its text sits on the inset. Every list (plain, grouped, nav, tree) uses it; grouped differs only in section gaps, nav in putting the highlight on the inset instead (`--list-inset: var(--inset)`).
+- `--list-inset: calc(var(--inset) - var(--list-pad))`: a row's highlight reaches out of the inset by its padding, so its text sits on the inset. Every list (plain, grouped, nav, tree) uses it; grouped differs only in section gaps, nav in putting the highlight on the inset instead (`--list-inset: var(--inset)`).
 - Heights are the line plus padding, rounded up to the grid: a one-line row `--row-h` = 28 (18 + 2 × 5 → 28), a two-line row `--row-h-tall` = 44 (34 + 2 × 5 → 44), a heading 24. Bars move onto the grid too: toolbar 32 (was 31), footer and window bar 28 (26), title bar 40 (38). Each of these changes how a window looks and is decided in the Workbench, one at a time.
-- The top of a list or body lands on the inset the same way as its sides: the list's padding is `--inset` less the space above its first row's letters (`calc(var(--inset) - var(--row-pad))`), and `text-box: trim` handles text in padded bodies, as now.
+- The top of a list or body lands on the inset the same way as its sides: the list's padding is `--inset` less the space above its first row's letters (`calc(var(--inset) - var(--list-pad))`), and `text-box: trim` handles text in padded bodies, as now.
 
 ### 4. Size classes and modes remap roles
 
@@ -64,9 +63,9 @@ Roles change with where they are, never in a view:
 
 ## Enforcement
 
-- `design-css.test.ts` already counts literal spacing per stylesheet. It also counts, per file outside `packages/ui`, uses of `--space-*` where a role exists (`padding` or `margin` at a window's edge), against the same debt file, only going down.
-- The layout audit (`pnpm workbench audit`) checks each window against its roles (body on `--inset` at the top as well as the sides, bars on `--bar-inset`, a page on `--page-inset`) and every reference and window story runs it. Add `pnpm workbench audit --all`, which walks every story and exits 1 on a problem, and run it before handing back layout work.
-- Magic: the scale's rename is in kit 3 (current, unreleased on 2026-10-11) so no rename table is needed; after release a rename is a new kit with one.
+- `design-css.test.ts` already counts literal spacing per stylesheet. Not yet: counting a view's `--space-*` at a window's edge where a role exists.
+- The layout audit (`pnpm workbench audit`) checks each window against its roles (body on `--inset` at the top as well as the sides, bars on `--bar-inset`, a page on `--page-inset`) and every reference and window story runs it. `pnpm workbench audit --all` walks every story (and its `Sizes`), prints only problems and exits 1 on one: run it before handing back layout work.
+- Magic: the scale's rename and the 16px inset are kit 3 (current, unreleased on 2026-10-11; kit 2 frozen with the old names and 12px), so kit 2 → 3 needs no rename table; after release a rename is a new kit with one.
 
 ## Migration
 
@@ -74,7 +73,7 @@ Each step lands green (`pnpm typecheck && pnpm test`, e2e, audit) and in its own
 
 1. **Scale.** `--unit`, the numeric steps, `Space` as numbers in `Stack`/`Inline`; rename every `--space-<size>` and `gap="…"`/`pad="…"` mechanically (2xs→0-5, xs→1, sm→1-5, md→2, lg→3, xl→4, 2xl→6, 3xl→8). No pixel moves. Magic's kit 3 and prompt follow.
 2. **Roles.** Add the role tokens at today's values; move the kit's CSS onto them (lists, rows, headings, bars, dialogs, controls, toolbar). No pixel moves except where two lists disagreed.
-3. **Windows.** Each built-in window and widget onto roles and kit pieces: no `--space-*` at its edges, `pad="inset"` for panes, the audit clean at every size. The audit of 2026-10-11 lists what's off: the Files tree and tables to their header (6–7px), Agent Activity (left 17), SQLite (top 14), the chart window (top 13).
+3. **Windows.** Each built-in window and widget onto roles and kit pieces: no `--space-*` at its edges, `pad="inset"` for panes, the audit clean at every size. Done 2026-10-11: `audit --all` is clean; the JSON window's tree is on the inset like the Files tree; the files sidebar panel's rows moved 14 → 16px. Left as their own: tables and trees to their header row (6–7px), the SQLite query field (8px, a bar-like row over its grid).
 4. **Grid heights** (visual, one at a time with Jan in the Workbench): rows, headings, toolbar, footer, title bar.
 5. **Size classes** (visual): compact windows on 12px.
 

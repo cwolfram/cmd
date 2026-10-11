@@ -55,6 +55,20 @@
   --measure: 68ch;
   /* How wide a page of settings rows grows (the Settings window): rows keep their label and control within reach in a wide window; the page centres past it. */
   --page-w: 680px;
+  /* Inside a list row's highlight to its icon or text (and a heading's): the highlight reaches out of the inset by this, so the text sits on the inset. */
+  --list-pad: var(--space-2);
+  /* Between list rows, so a hovered or selected row's highlight doesn't touch the next. */
+  --list-gap: var(--space-0-5);
+  /* A list row's icon (or mark) to its label. */
+  --list-icon-gap: var(--space-2);
+  /* Between sections of a grouped list, panes of an inspector. */
+  --section-gap: var(--space-4);
+  /* A grouped list's section heading to its first row. */
+  --heading-gap: var(--space-1);
+  /* A dialog's or sheet's edges to its content. */
+  --dialog-pad: var(--space-5);
+  /* The window toolbar's items from its edges: tighter than the content, on purpose (docs/40). */
+  --toolbar-pad: var(--space-1-5);
   /* Small controls: buttons in a row, inline actions. */
   --control-h-sm: 20px;
   /* Controls: buttons, fields, popups. Every control in a row shares one height, so they line up. */

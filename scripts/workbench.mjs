@@ -10,7 +10,7 @@
 // always 2x: the window is emulated at 2x for the shot (SF Symbols re-render), then restored.
 //   pnpm workbench matrix <story> [--themes a,b,c]   every variant × themes, into .cmd-dev/shots/wb
 //   pnpm workbench eval '<js>'                    run JS in the window (await works), print the result
-//   pnpm workbench audit [story] [variant] [--theme id]   where each window's content sits against its
+//   pnpm workbench audit [story] [variant] [--theme id]   (or audit --all: every story, its Sizes too) where each window's content sits against its
 //                                                 edges (window-design skill); exits 1 on a problem
 //   pnpm workbench stop                           quit it, its core and PTY host
 import { spawn } from "node:child_process";
@@ -188,8 +188,10 @@ async function shoot(page, cdp, file, whole) {
  * Measured in the page, per window (.ui-window) of the story: how far its content sits from
  * the edges, to the nearest visible text (its glyph box, not the element), icon or drawing.
  * The body: top, left, right; the toolbar and footer: left, right. Problems: a body whose
- * left and right differ, a footer not at --bar-inset (window-design skill, Rules). Toolbars are
- * reported only: their items sit tighter than the content, for now.
+ * left and right differ; a padded body or a list whose content isn't on its view's --inset
+ * (16px, a Page's 32) at the left and the top; a footer not at --bar-inset (window-design
+ * skill, Rules; docs/46). Tables, trees, documents, media, splits and empty states have insets
+ * of their own and are only reported. Toolbars are reported only: their items sit tighter.
  */
 function AUDIT() {
   const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--inset")) || 16;
@@ -264,7 +266,15 @@ function AUDIT() {
         const m = part === "toolbar" ? span(el, el, items) : span(el, el);
         if (!m) continue;
         const problems = [];
-        if (part === "body" && Math.abs(m.left - m.right) > 1 && el.querySelector(".ui-grid, .ui-list, .ui-measure, .ui-page, .ui-media, .ui-split") === null) problems.push(`left ${m.left} ≠ right ${m.right}`);
+        if (part === "body" && Math.abs(m.left - m.right) > 1 && el.querySelector(".ui-grid, .ui-list, .ui-measure, .ui-doc, .ui-page, .ui-media, .ui-split") === null) problems.push(`left ${m.left} ≠ right ${m.right}`);
+        // On the inset: a padded body or a list, unless it holds something with its own (a table, tree, document, media, split, state).
+        const own = el.querySelector(".ui-grid, .ui-tree, .ui-measure, .ui-doc, .ui-media, .ui-split, .ui-viewstate, .ui-diff, .ui-tiles") !== null;
+        const viewInset = parseFloat(getComputedStyle(view).getPropertyValue("--inset")) || inset;
+        if (part === "body" && !own && (el.hasAttribute("data-inset") || el.querySelector(":scope > .ui-list"))) {
+          // An icon's box sits a pixel or two outside its glyph; text trims to the cap.
+          if (Math.abs(m.left - viewInset) > 2) problems.push(`left ${m.left}, not --inset (${viewInset})`);
+          if (Math.abs(m.top - viewInset) > 3) problems.push(`top ${m.top}, not --inset (${viewInset})`);
+        }
         // Toolbars are reported, not checked: their items sit tighter than the content (6–8px), an open decision (window-design skill).
         if (part === "footer" && Math.abs(m.left - barInset) > 1) problems.push(`left ${m.left}, not --bar-inset (${barInset})`);
         if (part === "footer" && el.querySelector(".ui-status-line-end") && Math.abs(m.right - barInset) > 1) problems.push(`right ${m.right}, not --bar-inset (${barInset})`);
@@ -275,7 +285,22 @@ function AUDIT() {
   return { inset, barInset, rows: out };
 }
 
+/** Every story file's name (what the Workbench calls it) and whether it has a Sizes variant. */
+function allStories() {
+  const out = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".story.tsx")) out.push({ story: e.name.replace(/\.story\.tsx$/, "").toLowerCase(), sizes: /export const Sizes\b/.test(fs.readFileSync(p, "utf8")) });
+    }
+  };
+  walk(path.join(root, "apps/desktop/src/renderer/src"));
+  return out.sort((a, b) => a.story.localeCompare(b.story));
+}
+
 async function audit(story, variant) {
+  if (story === "--all" || flag("all")) return auditAll();
   const { browser, page } = await connect();
   if (story) console.log(await show(page, { story, variant, theme: flag("theme") }));
   const { inset, barInset, rows } = await page.evaluate(`(${AUDIT.toString()})()`);
@@ -293,6 +318,30 @@ async function audit(story, variant) {
     console.log(`${bad} problem${bad > 1 ? "s" : ""}.`);
     process.exitCode = 1;
   } else console.log("No problems.");
+}
+
+/** `audit --all`: every story's default variant, and its Sizes; only what has a problem is printed. */
+async function auditAll() {
+  const { browser, page } = await connect();
+  let bad = 0;
+  for (const { story, sizes } of allStories()) {
+    for (const variant of sizes ? [undefined, "Sizes"] : [undefined]) {
+      try {
+        await show(page, { story, variant, theme: flag("theme") });
+      } catch {
+        console.log(`${story}${variant ? "/" + variant : ""}: didn't render`);
+        continue;
+      }
+      const { rows } = await page.evaluate(`(${AUDIT.toString()})()`);
+      for (const r of rows.filter((r) => r.problems.length)) {
+        bad++;
+        console.log(`${story}${variant ? "/" + variant : ""}  ${r.window}  ${r.part}: ${r.problems.join("; ")}`);
+      }
+    }
+  }
+  await browser.close();
+  console.log(bad ? `${bad} problem${bad > 1 ? "s" : ""}.` : "No problems.");
+  if (bad) process.exitCode = 1;
 }
 
 async function goto(story, variant) {

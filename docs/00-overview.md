@@ -65,7 +65,7 @@ Every doc says under its title what it is: **research**, a **proposal**, **partl
 | 43 | [Performance and resource usage](43-performance.md) | partly built | An audit of idle, per-terminal and scrolling cost, the rule (looks the same, costs less) and a log of wins with numbers |
 | 44 | [JSON viewer](44-json-viewer.md) | built | A window for `.json` and JSON Lines: a collapsible live tree, ⌘E to the text editor and back |
 | 45 | [Image viewer](45-image-viewer.md) | built | A window for images: fit or zoomed, the folder's other images a key away, live reload |
-| 46 | [Spacing system](46-spacing.md) | proposal | One 4px unit, a numeric scale, roles (inset, bar and page insets, row padding and gaps) that components read, size classes; the migration |
+| 46 | [Spacing system](46-spacing.md) | partly built | One 4px unit, a numeric scale, roles (inset, bar and page insets, row padding and gaps) that components read, size classes; the migration |
 
 ## Key findings
 1. **Nothing has to be invented for agent awareness.** Every tool in this space combines three things:

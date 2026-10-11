@@ -27,7 +27,7 @@
 /* The view is a size container too, so its toolbar's items can follow the window's width (Hide). */
 .ui-view { container-type: inline-size; flex: 1; min-height: 0; height: 100%; display: flex; flex-direction: column; background: var(--well); color: var(--text); font: var(--text-md) var(--font-ui); }
 /* Lists in a view: rows' hover pills 4px from the edges, their content at --inset (4 + the row's 8). */
-.ui-view-body { --list-inset: calc(var(--inset) - var(--space-2)); flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; container-type: inline-size; }
+.ui-view-body { --list-inset: calc(var(--inset) - var(--list-pad)); flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; container-type: inline-size; }
 .ui-view-body[data-scroll] { overflow: auto; }
 .ui-view-body[tabindex] { outline: none; }
 .ui-view-body[data-inset] { padding: var(--inset); }
@@ -177,18 +177,18 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-stack[data-pad] > .ui-stack:first-child > .ui-inline:first-child > .ui-text { text-box: trim-start cap alphabetic; }
 
 /* Rows in a view (ListSection, ListRow): a little room above and below; the sides are the rows' own. */
-.ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--space-2)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
+.ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--list-pad)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
 .ui-list-rows { display: contents; }
 /* Nav: the pages beside a page; a selected row's pill lines up with the field above it. */
 .ui-list[data-variant="nav"] { --list-inset: var(--inset); }
 /* Grouped: sections apart, headings in line with the rows' icons, no boxes: the window is
    the frame. In a View with `inset`, rows and headings reach out into it by their padding,
    so their letters sit on the inset like a plain list's and they highlight as pills there. */
-.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--space-2)); gap: var(--space-4); padding: 0; margin-block: calc(-1 * var(--space-2)); }
+.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--list-pad)); gap: var(--section-gap); padding: 0; margin-block: calc(-1 * var(--list-pad)); }
 .ui-list[data-variant="grouped"] .ui-list-section + .ui-list-section { margin-top: 0; }
-.ui-list[data-variant="grouped"] .ui-list-heading { height: 20px; margin-bottom: var(--space-1); padding: 0 var(--space-2); }
-.ui-list[data-variant="grouped"] .ui-list-row { gap: var(--space-2); }
-.ui-list[data-variant="grouped"] .ui-list-rows { display: flex; flex-direction: column; gap: var(--space-0-5); }
+.ui-list[data-variant="grouped"] .ui-list-heading { height: 20px; margin-bottom: var(--heading-gap); padding: 0 var(--list-pad); }
+.ui-list[data-variant="grouped"] .ui-list-row { gap: var(--list-icon-gap); }
+.ui-list[data-variant="grouped"] .ui-list-rows { display: flex; flex-direction: column; gap: var(--list-gap); }
 .ui-list[data-variant="grouped"] .ui-list-row + .ui-list-row { margin-top: 0; } /* the gap above spaces them */
 
 /* ── a document to read (Document): rendered Markdown, in the person's text font ── */
