@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PROTOCOL, UNKNOWN_METHOD } from "@cmd/protocol";
 import { connect, type Connection } from "@cmd/protocol/node";
 import { Core } from "../src/kernel/core.ts";
 import { nodePtyFactory } from "../src/terminals/panes.ts";
@@ -42,8 +43,17 @@ afterAll(async () => {
 });
 
 describe("core over the socket", () => {
-  it("answers hello", async () => {
-    expect(await conn.client.call("core.hello", {})).toMatchObject({ socket: socketPath });
+  it("answers hello with its protocol and methods, which connect() asked first", async () => {
+    expect(await conn.client.call("core.hello", {})).toMatchObject({ socket: socketPath, protocol: PROTOCOL, app: expect.any(String) });
+    expect(conn.hello?.methods).toEqual(expect.arrayContaining(["core.hello", "pane.list", "journal.day"]));
+    expect(conn.hello?.methods).toHaveLength(Object.keys(core.handlers).length);
+    expect(conn.client.has("pane.list")).toBe(true);
+  });
+
+  it("refuses a method it doesn't have with -32601", async () => {
+    const c = await connect(socketPath, { hello: false });
+    await expect(c.client.call("no.such" as "pane.list", {})).rejects.toMatchObject({ code: UNKNOWN_METHOD, message: "unknown method: no.such" });
+    c.close();
   });
 
   it("reports diagnostics", async () => {

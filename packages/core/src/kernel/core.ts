@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import type { AgentId, AiModel, AiProvider, AppWindow, Method, Methods, Params, Placement, Result, Settings, Workspace } from "@cmd/protocol";
+import { PROTOCOL, RpcError, UNKNOWN_METHOD, type AgentId, type AiModel, type AiProvider, type AppWindow, type CoreHello, type Method, type Methods, type Params, type Placement, type Result, type Settings, type Workspace } from "@cmd/protocol";
 import { logger, machineId } from "@cmd/protocol/node";
 import { createActions } from "../actions/feature.ts";
 import type { ActionsService } from "../actions/service.ts";
@@ -29,6 +29,7 @@ import { createJournal } from "../journal/feature.ts";
 import { createWatches } from "../lib/watch.ts";
 import { createMagic, type MagicService } from "../magic/service.ts";
 import { createNotifications, type NotificationCenter } from "../notifications/center.ts";
+import { REMOTE_ACCESS, scopeAllows } from "../remote/policy.ts";
 import { createRemote, type RemoteService } from "../remote/service.ts";
 import { registerBuiltinSources } from "../search/builtin.ts";
 import { Search } from "../search/search.ts";
@@ -64,7 +65,6 @@ import { createUsage, type UsageStats } from "./usage.ts";
 export { SOCKET_PATH_MAX, widgetsSocketPath } from "./server.ts";
 export type { Methods };
 
-export const VERSION = "0.0.1";
 
 const log = logger("core");
 
@@ -254,7 +254,7 @@ export class Core {
   }
 
   readonly handlers: Handlers = {
-    "core.hello": () => ({ version: VERSION, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") }),
+    "core.hello": (_p, { conn } = IN_CORE) => this.#hello(conn),
     "core.info": async () => {
       const mem = process.memoryUsage();
       const cpu = process.cpuUsage();
@@ -414,9 +414,16 @@ export class Core {
   }
 
   /** A method, as a caller inside the core (or the server, for a connection) calls it. */
+  /** The protocol, and the methods the caller may use: a paired device hears only what its scope allows. */
+  #hello(conn: Connection | null): CoreHello {
+    const methods = (Object.keys(this.handlers) as Method[]).filter((m) => !conn || conn.access === "local" || scopeAllows(conn.access, REMOTE_ACCESS[m]));
+    const app = process.env.CMD_APP_VERSION || "source";
+    return { protocol: PROTOCOL, app, methods, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") };
+  }
+
   async call<M extends Method>(method: M, params: Params<M>, call: Call = IN_CORE): Promise<Result<M>> {
     const h = this.handlers[method] as (p: Params<M>, call: Call) => Result<M> | Promise<Result<M>>;
-    if (!h) throw new Error(`unknown method: ${method}`);
+    if (!h) throw new RpcError(UNKNOWN_METHOD, `unknown method: ${method}`);
     return h(params, call);
   }
 

@@ -12,6 +12,7 @@ import { AGENTS_HELP, agentsCommand, pickAgent } from "./agents.ts";
 import { JOURNAL_HELP, journalCommand } from "./journal.ts";
 import { DATA_HELP, dataCommand } from "./data.ts";
 import { REMOTE_HELP, remoteCommand } from "./remote.ts";
+import { skewMessage } from "./skew.ts";
 
 const HELP = `cmd — terminal + agent workbench
 
@@ -152,6 +153,12 @@ async function main(): Promise<number> {
     console.error(`cmd: no core running at ${defaultSocketPath()} (start it with: pnpm core)`);
     process.exit(2);
   });
+  const skew = skewMessage(conn.hello);
+  if (skew) {
+    console.error(`cmd: ${skew}`);
+    conn.close();
+    return 2;
+  }
   try {
     return await run(conn);
   } finally {
@@ -457,7 +464,7 @@ async function hook(kind: string): Promise<number> {
   if (!event) return 0;
   const timer = setTimeout(() => process.exit(0), 2000);
   try {
-    const conn = await connect();
+    const conn = await connect(undefined, { hello: false });
     const { context } = await conn.client.call("hook.ingest", { paneId, agent: kind, event, payload });
     conn.close();
     // Claude, Codex and Gemini all read extra context from this shape.

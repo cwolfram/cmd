@@ -1,6 +1,6 @@
 // Transport-agnostic JSON-RPC client. Node transport lives in ./node.ts.
 
-import type { CoreEvent, Method, Params, Result, RpcMessage } from "./rpc.ts";
+import { UNKNOWN_METHOD, type CoreEvent, type CoreHello, type Method, type Params, type Result, type RpcMessage } from "./rpc.ts";
 
 export class RpcError extends Error {
   code: number;
@@ -20,7 +20,25 @@ export class RpcClient {
     this.#send = send;
   }
 
+  /** core.hello's answer once `hello()` had it; null before, or from a core that has no core.hello. */
+  core: CoreHello | null = null;
+  #methods: Set<string> | null = null;
+
+  /** Ask the core what it is and what it serves: `has()` and `call()` know from then on. */
+  async hello(): Promise<CoreHello> {
+    const h = await this.call("core.hello", {});
+    this.core = h;
+    this.#methods = h.methods ? new Set(h.methods) : null;
+    return h;
+  }
+
+  /** Whether the core serves `method`. True until `hello()` answered, and for a core that doesn't list its methods. */
+  has(method: Method): boolean {
+    return !this.#methods || this.#methods.has(method);
+  }
+
   call<M extends Method>(method: M, params: Params<M>): Promise<Result<M>> {
+    if (!this.has(method)) return Promise.reject(new RpcError(UNKNOWN_METHOD, `this core has no ${method}`));
     const id = this.#nextId++;
     return new Promise((resolve, reject) => {
       this.#pending.set(id, { resolve: resolve as (v: unknown) => void, reject });

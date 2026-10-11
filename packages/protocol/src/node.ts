@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { RpcClient, lineSplitter } from "./client.ts";
+import { RpcClient, RpcError, lineSplitter } from "./client.ts";
+import type { CoreHello } from "./rpc.ts";
 import { defaultSocketPath } from "./instance.ts";
 
 export * from "./log.ts";
@@ -40,11 +41,29 @@ export function ipcPath(socketPath: string): string {
 
 export interface Connection {
   client: RpcClient;
+  /** What the core said it is (core.hello), or null when not asked or it couldn't say. */
+  hello: CoreHello | null;
   close(): void;
   closed: Promise<void>;
 }
 
-export function connect(socketPath = defaultSocketPath()): Promise<Connection> {
+/**
+ * Connect and ask core.hello first, so `client.has()` knows what the core
+ * serves. `hello: false` skips the round trip (the hook, which runs per event).
+ */
+export async function connect(socketPath = defaultSocketPath(), o: { hello?: boolean } = {}): Promise<Connection> {
+  const conn = await open(socketPath);
+  if (o.hello === false) return conn;
+  try {
+    conn.hello = await conn.client.hello();
+  } catch (err) {
+    // A core without core.hello still serves; one that hung up doesn't.
+    if (!(err instanceof RpcError)) throw (conn.close(), err);
+  }
+  return conn;
+}
+
+function open(socketPath: string): Promise<Connection> {
   return new Promise((resolve, reject) => {
     const sock = net.createConnection(ipcPath(socketPath));
     sock.setEncoding("utf8");
@@ -60,7 +79,7 @@ export function connect(socketPath = defaultSocketPath()): Promise<Connection> {
     sock.once("connect", () => {
       sock.off("error", reject);
       sock.on("error", () => {});
-      resolve({ client, close: () => sock.end(), closed });
+      resolve({ client, hello: null, close: () => sock.end(), closed });
     });
   });
 }

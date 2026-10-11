@@ -12,6 +12,35 @@ import type { JournalMethods } from "./journal.ts";
 import type { SqliteQuery, SqliteResult, SqliteRowsQuery, SqliteSchema } from "./sqlite.ts";
 import type { ActionsEvent, ActionsMethods } from "./actions.ts";
 
+/**
+ * The wire's version, the same for the core, the app, the CLI and the web
+ * client of one build. Bump it on any change a client or core of the previous
+ * value can't read: a method or event removed or renamed, a param or result
+ * field removed, renamed or changed in meaning. Additions never bump it: a
+ * client asks `has(method)` (core.hello's `methods`) before using a new one.
+ * The app restarts a core of another protocol; the CLI refuses to talk to one.
+ */
+export const PROTOCOL = 1;
+
+/** JSON-RPC's code for a method the core doesn't have (an older core, or a newer client). */
+export const UNKNOWN_METHOD = -32601;
+
+export interface CoreHello {
+  /** PROTOCOL of the core's build; absent from cores before it existed. */
+  protocol?: number;
+  /** The app version the core came with ($CMD_APP_VERSION), "source" when run from a checkout. */
+  app?: string;
+  /** Every method this core serves; absent from cores before it existed. */
+  methods?: Method[];
+  pid: number;
+  socket: string;
+  build: string;
+  /** The core's $CMD_HOME, so an app can tell its own core from another instance's (older cores omit it). */
+  stateDir?: string;
+  /** The code folder it runs from, so an app restarts a core of another checkout even when the code is the same. */
+  root?: string;
+}
+
 export interface CoreInfo {
   pid: number;
   build: string;
@@ -73,11 +102,8 @@ export interface Placement {
 
 /** Every method: the core's own, plus each feature's (declared in its own file, merged here). */
 export interface Methods extends JournalMethods, ActionsMethods {
-  /**
-   * stateDir: the core's $CMD_HOME, so an app can tell its own core from another instance's (older cores omit it).
-   * root: the code folder it runs from, so an app restarts a core of another checkout even when the code is the same.
-   */
-  "core.hello": { params: {}; result: { version: string; pid: number; socket: string; build: string; stateDir?: string; root?: string } };
+  /** What a client asks first: which protocol the core speaks and what it can do (CoreHello). */
+  "core.hello": { params: {}; result: CoreHello };
   /** Diagnostics for the Settings window's Updates & About page. */
   "core.info": { params: {}; result: CoreInfo };
   /** The core's and PTY host's own usage (Task Manager); CPU% is since the previous call. Null where unknown. */

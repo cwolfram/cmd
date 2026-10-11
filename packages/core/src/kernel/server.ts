@@ -7,7 +7,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import type { CoreEvent, DataQuery, Method } from "@cmd/protocol";
-import { lineSplitter } from "@cmd/protocol";
+import { lineSplitter, RpcError } from "@cmd/protocol";
 import { ipcPath, logger, recordCrash } from "@cmd/protocol/node";
 import { widgetRead, type WidgetIdentity } from "../data/widgets.ts";
 import { checkRemoteCall, RemoteDenied, type PolicyContext } from "../remote/policy.ts";
@@ -306,7 +306,7 @@ export class CoreServer {
         rpcLog.error(`${req.method} threw`, err);
         recordCrash({ process: "core", kind: `rpc ${req.method}`, message: `${err.name}: ${err.message}`, stack: err.stack ?? null, context: { build: this.#o.build ?? "" } });
       } else rpcLog.warn(`${req.method} failed: ${(err as Error).message}`);
-      reply({ error: { code: -32000, message: (err as Error).message } });
+      reply({ error: { code: err instanceof RpcError ? err.code : -32000, message: (err as Error).message } });
     }
   }
 

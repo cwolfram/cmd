@@ -1,4 +1,4 @@
-export { Core, VERSION, type CoreOptions } from "./kernel/core.ts";
+export { Core, type CoreOptions } from "./kernel/core.ts";
 export { PaneManager, nodePtyFactory, type Pty, type PtyFactory } from "./terminals/panes.ts";
 export { AgentTracker, launchCommand } from "./agents/tracker.ts";
 export { shq, envPrefix } from "./terminals/shell.ts";
