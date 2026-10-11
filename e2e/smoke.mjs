@@ -1169,7 +1169,7 @@ await scenario("stats", async () => {
   await shot(win, "11-stats.png");
   check(stats >= 6, `the Stats widget shows its headline numbers (${stats})`);
   await tile.locator("button.ui-stat", { has: win.locator(".ui-stat-label", { hasText: /^Commands$/ }) }).click();
-  const back = tile.locator(".ui-tb-label", { hasText: /^Stats$/ });
+  const back = tile.locator('button[aria-label="Stats"]'); // its label hides when the tile is narrow
   const opened = await until(() => back.isVisible(), Boolean);
   await back.click();
   const closed = await until(() => tile.locator("button.ui-stat").count(), (n) => n >= 6);
