@@ -199,9 +199,12 @@ export class StatsService {
    */
   async built(progress?: (done: number, total: number) => void): Promise<void> {
     const left = () => [...this.#builds.values()].reduce((n, b) => n + Math.max(0, b.next - b.floor), 0);
-    const total = left();
+    let total = left();
     while (!this.#disposed && this.#builds.size) {
-      progress?.(total - left(), total);
+      // A rebuild started meanwhile adds hours: the total grows with it rather than the count going below zero.
+      const l = left();
+      total = Math.max(total, l);
+      progress?.(total - l, total);
       await new Promise((r) => setTimeout(r, 250));
     }
   }

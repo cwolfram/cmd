@@ -49,7 +49,6 @@ export const Dials = () => {
   );
 };
 
-/** Rendered Markdown in a reading column: headings, a list, code, a quote, a table. */
 /** A paragraph as it wraps by default (pretty: no lone last word), and `balance`d: lines of about one length, for a short intro under a title. */
 export const Paragraphs = () => (
   <div style={{ width: 340 }}>
@@ -60,6 +59,7 @@ export const Paragraphs = () => (
   </div>
 );
 
+/** Rendered Markdown in a reading column: headings, a list, code, a quote, a table. */
 export const Reading = () => (
   <Box w={560} h={360}>
     <View>

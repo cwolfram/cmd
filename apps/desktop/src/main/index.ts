@@ -458,7 +458,7 @@ async function coreFailed(coreUp: () => void): Promise<void> {
     case "Restart to Update":
       return u.installUpdate();
     case "Try Again":
-      return void restartCore().then(coreUp, (err: Error) => (log.error("the core did not start", err), void coreFailed(coreUp)));
+      return void restartCore().then(coreUp, (err: Error) => (bootDone(), log.error("the core did not start", err), void coreFailed(coreUp)));
     case "Check for Updates":
       return checkForUpdates();
     case "Show Log":
@@ -975,7 +975,7 @@ app.whenReady().then(async () => {
   const coreUp = () => (performance.mark("boot:core-reachable"), workspaces.followCore(socketPath, appWindows), servePreviews(socketPath), void countLaunch());
   ensureCore()
     .finally(coreChecked)
-    .then(coreUp, (err: Error) => (log.error("the core did not start", err), void coreFailed(coreUp)));
+    .then(coreUp, (err: Error) => (bootDone(), log.error("the core did not start", err), void coreFailed(coreUp)));
   followCrashReports(socketPath);
   // Its bundle (about 570 KB) is parsed on this thread; its first check is 30 s away anyway.
   setTimeout(() => void startUpdater(), 5000);

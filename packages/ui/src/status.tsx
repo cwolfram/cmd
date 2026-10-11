@@ -105,7 +105,7 @@ export function ProgressRing({ value, state, size = 14, label }: { value?: numbe
   const at = (x: number, y: number) => `${x * size} ${y * size}`;
   if (state)
     return (
-      <svg className="ui-ring" data-state={state} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label}>
+      <svg className="ui-ring" data-state={state} width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={label ? `${label}: ${state}` : state}>
         <circle className="ui-ring-badge" cx={size / 2} cy={size / 2} r={size / 2} />
         <path className="ui-ring-mark" d={state === "done" ? `M${at(0.29, 0.52)} L${at(0.44, 0.67)} L${at(0.72, 0.37)}` : `M${at(0.35, 0.35)} L${at(0.65, 0.65)} M${at(0.65, 0.35)} L${at(0.35, 0.65)}`} />
       </svg>

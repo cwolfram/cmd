@@ -324,7 +324,6 @@ export class Core {
     // Commands from before their output was searchable: once, from what they printed.
     if (o.stateDir) s.startup("command-output", "Indexing command output", () => void indexCommandOutput(this.data, s).then((n) => n && log.info("command output indexed", { commands: n })));
     if (o.stateDir && o.statusRoot) s.startup("homes", "Looking for agents", () => this.agentSetup.discover());
-    if (o.stateDir) for (const f of ALL) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this.#ctx));
     if (o.stateDir) s.startup("retention", "Scheduling retention", () => this.data.start());
     // The event log's copy aside from a migration is the way back for a week (migrations.ts), then it goes.
     if (o.stateDir) s.startup("log-backups", "Removing old event log copies", () => void removeOldBackups(path.join(o.stateDir!, "data", "events.sqlite")));
@@ -335,8 +334,9 @@ export class Core {
         this.#workspacesTimer = setInterval(() => this.workspaces.check(), 30_000);
         this.#workspacesTimer.unref();
       });
-    // A full-text index older than fts.ts's format: built again beside it in paced steps, the old one serving searches
-    // meanwhile. Minutes on a big log, and only makes search faster: in the background, so startup is ready without it.
+    // Last, the jobs that wait for long work (the stats build, the full-text index): retention mustn't queue behind them.
+    if (o.stateDir) for (const f of ALL) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this.#ctx));
+    // A full-text index older than fts.ts's format: built again beside it in paced steps, the old one serving meanwhile.
     if (o.stateDir && this.data.store.needsFtsRebuild) s.startup("fts", "Indexing for search", () => this.search.rebuildFts());
     s.ready();
   }

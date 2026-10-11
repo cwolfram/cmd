@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DataStore } from "../src/data/store.ts";
 import { COMPACT_VERSION, compactLog, reclaim } from "../src/data/compact.ts";
 import { TOOL_RESULT_KEEP, claudeLine, codexLine } from "../src/data/sources/transcripts.ts";
@@ -126,6 +126,29 @@ describe("compacting a log written before", () => {
     expect(s.db.prepare(`PRAGMA auto_vacuum`).get()).toEqual({ auto_vacuum: 2 });
     expect(s.db.prepare(`PRAGMA journal_mode`).get()).toEqual({ journal_mode: "wal" });
     expect(compactLog(s)).toBe(false); // once
+    s.close();
+  });
+
+  it("changes nothing the second time: what was cut stays as it was", async () => {
+    const { trimLine } = await import("../src/data/sources/transcripts.ts");
+    const once = trimLine(JSON.parse(claudeResult("u1")))!;
+    expect(trimLine(once)).toBeNull();
+    const thinking = trimLine({ message: { content: [{ type: "redacted_thinking", data: "x".repeat(900) }, { type: "tool_use", input: { content: "y".repeat(9000) } }] } })!;
+    expect(trimLine(thinking)).toBeNull();
+  });
+
+  it("leaves the vacuum for next launch when it fails, with the rows done and the log in WAL", async () => {
+    const s = oldLog(path.join(dir, "events.sqlite"));
+    const exec = s.db.exec.bind(s.db);
+    const spy = vi.spyOn(s.db, "exec").mockImplementation((sql: string) => {
+      if (sql.includes("VACUUM")) throw new Error("database is locked");
+      return exec(sql);
+    });
+    expect(compactLog(s)).toBe(true);
+    spy.mockRestore();
+    expect(s.get("claude:other")).toBeNull(); // the rows are done
+    expect(s.meta("compact")).toBeNull(); // the vacuum: next launch
+    expect(s.db.prepare(`PRAGMA journal_mode`).get()).toEqual({ journal_mode: "wal" });
     s.close();
   });
 

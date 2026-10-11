@@ -71,7 +71,9 @@ export function textOf(content: unknown): string {
     .join("\n");
 }
 
-const cutText = (s: string) => (s.length > TOOL_RESULT_KEEP ? `${s.slice(0, TOOL_RESULT_KEEP)}…[+${s.length - TOOL_RESULT_KEEP}]` : s);
+/** A string cut to TOOL_RESULT_KEEP with how much went; one cut before stays as it is (its marker makes it longer than the limit). */
+const CUT_MARK = /…\[\+\d+\]$/;
+const cutText = (s: string) => (s.length <= TOOL_RESULT_KEEP || (s.length <= TOOL_RESULT_KEEP + 24 && CUT_MARK.test(s)) ? s : `${s.slice(0, TOOL_RESULT_KEEP)}…[+${s.length - TOOL_RESULT_KEEP}]`);
 
 /** Long strings anywhere in a value cut (a tool call's input: a file Write wrote, a heredoc). */
 function cutStrings(v: unknown, cut: { any: boolean }, depth = 0): unknown {
@@ -90,7 +92,8 @@ function cutResult(content: unknown, cut: { any: boolean }): unknown {
   if (!Array.isArray(content)) return cutStrings(content, cut);
   return content.map((b) => {
     if (!isObj(b)) return b;
-    if (typeof b.type === "string" && b.type.includes("image")) return (cut.any = true), { type: b.type, omitted: true };
+    // Cut once: an image already without its bytes isn't a change (a second pass over the log rewrites nothing).
+    if (typeof b.type === "string" && b.type.includes("image")) return b.omitted === true ? b : ((cut.any = true), { type: b.type, omitted: true });
     return typeof b.text === "string" ? { ...b, text: cutStrings(b.text, cut) } : b;
   });
 }
@@ -100,7 +103,7 @@ function trimBlock(b: unknown, cut: { any: boolean }): unknown {
   if (!isObj(b)) return b;
   if (b.type === "tool_result") return { ...b, content: cutResult(b.content, cut) };
   if ((b.type === "tool_use" || b.type === "server_tool_use") && b.input !== undefined) return { ...b, input: cutStrings(b.input, cut) };
-  if (b.type === "redacted_thinking") return (cut.any = true), { type: b.type };
+  if (b.type === "redacted_thinking") return Object.keys(b).length > 1 ? ((cut.any = true), { type: b.type }) : b;
   if (b.type === "thinking" && "signature" in b) {
     const { signature: _, ...rest } = b;
     return (cut.any = true), rest;

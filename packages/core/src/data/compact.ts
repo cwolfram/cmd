@@ -64,7 +64,17 @@ export function compactLog(store: DataStore): boolean {
       return true;
     }
     boot?.detail("Freeing disk space");
-    vacuum(db, store.file);
+    try {
+      vacuum(db, store.file);
+    } catch (err) {
+      // Another program has the file open, or the disk filled after all: the rows are done, the vacuum waits for next launch.
+      log.warn(`event log: not vacuumed (${(err as Error).message}); trying again next launch`);
+      // Back in WAL if the switch back failed too (every open sets it again anyway).
+      try {
+        db.exec(`PRAGMA journal_mode = WAL`);
+      } catch {}
+      return true;
+    }
   } finally {
     boot?.end();
   }

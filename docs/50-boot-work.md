@@ -22,11 +22,11 @@ No registry of steps: the blocking work is already a sequence (`main.ts` → `pr
 
 `kernel/boot.ts` is that: `bootStep(id, label)` starts a step and returns `progress(done, total, detail?)` and `end()`. Until `startBootReport(home)` (main.ts, right after the pid file) it does nothing, so tests and the in-memory core pay nothing. It writes `<home>/core.boot.json`: `{ pid, at, steps: [{ id, label, done?, total?, detail?, ended? }] }`, with a temp file and a rename, synchronously (it runs inside a migration's transaction, on a thread that's blocked anyway), at most four times a second except when a step starts or ends. `listen()` succeeding deletes it, and so does the core's exit.
 
-Reported now: the event log's migration ("Upgrading your history": the copy aside, each step with its rows, the commit) and the compaction ("Making your history smaller": the rows, then the vacuum). A single `VACUUM`, `VACUUM INTO`, `CREATE INDEX` or `COMMIT` can't report while it runs; the step says what it's doing before it starts (`detail`), with no count, and the app's wait allows for that (below). `cmd.sqlite`'s migration is milliseconds and isn't reported.
+Reported now: the event log's migration ("Updating recorded data": the copy aside, each step with its rows, the commit) and the compaction ("Shrinking recorded data": the rows, then the vacuum). A single `VACUUM`, `VACUUM INTO`, `CREATE INDEX` or `COMMIT` can't report while it runs; the step says what it's doing before it starts (`detail`), with no count, and the app's wait allows for that (below). `cmd.sqlite`'s migration is milliseconds and isn't reported.
 
 ### The app waits on it
 
-`main/boot.ts` reads the file while `waitForCore` waits (it moved there from `index.ts`). It trusts it only when its `pid` is `core.pid`'s, that process is alive and the lock is held: a core that crashed mid-step leaves a file nobody reads. A core started by `pnpm core` or still running from before the app opened writes the same file, so it works for every core of the instance; worktrees and `CMD_HOME` are separate by construction.
+`main/boot.ts` reads the file while `waitForCore` waits (it moved there from `index.ts`). It trusts it only when its `pid` is `core.pid`'s, that process is alive and the lock is held: a core that crashed mid-step leaves a file nobody reads. It's read only while the app waits for a core: at launch, after Restart Core and after an update restarts an old core, whoever started the core (the app, `pnpm core`). A core restarted behind the app's back later (stopped and started from a terminal while the app stays open) reconnects with "Connecting to core…" and no sheet: rare, and only in development, so the preload doesn't read the file too. Worktrees and `CMD_HOME` are separate by construction.
 
 The fixed ten minutes are gone: the app waits as long as the file changes, and gives up after `STALL_MS` (10 minutes, longer than any single statement on a big log) without a new write. Each read goes to the windows as `core-boot` (null once the core answers); a window that opens meanwhile asks with `core-boot` too.
 
@@ -44,7 +44,7 @@ The fixed ten minutes are gone: the app waits as long as the file changes, and g
 
 ### The CLI
 
-`cmd` against a core that isn't listening yet reads the same file and says "cmd is getting its data ready: Upgrading your history (41%)…", waiting up to a few minutes, instead of "no core running".
+`cmd` against a core that isn't listening yet reads the same file and says "cmd is getting its data ready: Updating recorded data (41%)…", waiting up to 10 minutes (`BOOT_WAIT_MS`), instead of "no core running". So a script that runs `cmd` right after an update waits too, rather than failing. Hooks never wait: `cmd hook` returns before connecting.
 
 ## Crashes and other cases
 

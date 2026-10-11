@@ -6,7 +6,7 @@
 /** One piece of work: its count when it has one, else a line on what it does now. */
 export interface BootStep {
   id: string;
-  /** For people: "Upgrading your history". */
+  /** For people: "Updating recorded data". */
   label: string;
   done?: number;
   total?: number;
@@ -28,7 +28,7 @@ export const BOOT_FILE = "core.boot.json";
 /** The step running now (the last one not ended), or null. */
 export const runningStep = (r: BootReport | null): BootStep | null => r?.steps.findLast((s) => !s.ended) ?? null;
 
-/** "Upgrading your history (41%)", "Making your history smaller: Vacuuming": a step in one line. */
+/** "Updating recorded data (41%)", "Shrinking recorded data: Freeing disk space": a step in one line. */
 export function stepLine(s: BootStep): string {
   if (s.total) return `${s.label} (${Math.min(100, Math.floor(((s.done ?? 0) / s.total) * 100))}%)`;
   return s.detail ? `${s.label}: ${s.detail}` : s.label;

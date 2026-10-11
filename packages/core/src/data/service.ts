@@ -35,7 +35,7 @@ const PRUNE_BATCH = 1000;
 const PRUNE_PAUSE_MS = 100;
 /** Retention runs this often while the core is up. */
 const PRUNE_EVERY_MS = 6 * 3600_000;
-/** Free pages given back to the disk per step once retention is done (4 MB at 4 KB pages: well under the lag watchdog's 100 ms). */
+/** Free pages given back to the disk per step once retention is done (4 MB at 4 KB pages: a few ms on an SSD, more on a slow disk). */
 const RECLAIM_PAGES = 1024;
 
 export interface DataServiceOptions {
@@ -117,14 +117,22 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
    * pages it freed go back to the disk, a step at a time too.
    */
   start(): void {
+    // On a timer, so a throw would be uncaught: the log busy for longer than its timeout (a checkpoint truncating) waits for the next run.
     const run = () => {
       if (this.#disposed) return;
-      const r = this.prune(PRUNE_BATCH);
-      if (r.more) this.#batch = setTimeout(run, PRUNE_PAUSE_MS);
-      else this.#batch = setTimeout(give, PRUNE_PAUSE_MS);
+      try {
+        const r = this.prune(PRUNE_BATCH);
+        this.#batch = setTimeout(r.more ? run : give, PRUNE_PAUSE_MS);
+      } catch (err) {
+        log.warn(`retention: ${(err as Error).message}; trying again later`);
+      }
     };
     const give = () => {
-      if (!this.#disposed && reclaim(this.store.db, RECLAIM_PAGES)) this.#batch = setTimeout(give, PRUNE_PAUSE_MS);
+      try {
+        if (!this.#disposed && reclaim(this.store.db, RECLAIM_PAGES)) this.#batch = setTimeout(give, PRUNE_PAUSE_MS);
+      } catch (err) {
+        log.warn(`couldn't give pages back: ${(err as Error).message}; trying again after the next retention run`);
+      }
     };
     this.#batch = setTimeout(run, PRUNE_FIRST_MS);
     this.#batch.unref?.();

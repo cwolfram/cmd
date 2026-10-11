@@ -141,10 +141,11 @@ describe("startup jobs", () => {
 describe("the watchdog", () => {
   it("doesn't count boot work as a stall", async () => {
     const s = new Scheduler();
+    // Twice the stall threshold (STALL_MS, 100 ms), then a few ticks for the watchdog to look.
     s.unwatched(() => {
-      for (const t0 = Date.now(); Date.now() - t0 < 1200; );
+      for (const t0 = Date.now(); Date.now() - t0 < 200; );
     });
-    await new Promise((r) => setTimeout(r, 1100));
+    await new Promise((r) => setTimeout(r, 200));
     expect(s.stalls()).toEqual([]);
     s.dispose();
   });
