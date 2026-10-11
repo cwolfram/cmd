@@ -40,6 +40,8 @@ export class HostChannel {
   since = 0;
   /** Windows the device follows (window.follow). */
   watching: string[] = [];
+  /** The client is in front on its device (push.visible): it shows notifications itself, so none is pushed. */
+  visible = false;
   #host: ChannelHost;
   #send: (b: Bytes) => void;
   #drop: () => void;

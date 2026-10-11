@@ -207,12 +207,20 @@ describe("remote access", () => {
     const sent = JSON.parse(decryptPush(pushes[0]!.body, browser.private, browser.auth));
     expect(sent).toMatchObject({ host: Buffer.from(hostKey).toString("base64url"), title: "Build", body: "Done in 4m", urgent: true });
 
+    // While the client is in front, it shows notifications itself.
+    await client.call("push.visible", { visible: true });
+    await core.call("notify.send", { body: "seen in the app" });
+    await client.call("push.visible", { visible: false });
+    await core.call("notify.send", { body: "in the background" });
+    await expect.poll(() => pushes.length).toBe(2);
+    expect(JSON.parse(decryptPush(pushes[1]!.body, browser.private, browser.auth)).body).toBe("in the background");
+
     // Remote access off: nothing leaves the Mac.
     await core.call("remote.disable", {});
     await core.call("notify.send", { body: "quiet" });
     await core.call("remote.enable", {});
     await until("the relay link online", () => core.remote.status().state === "online");
-    expect(pushes).toHaveLength(1);
+    expect(pushes).toHaveLength(2);
 
     // The push service says the subscription is gone: it's dropped.
     pushStatus = 410;

@@ -1635,7 +1635,8 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
    pointer: coarse (the web client on a phone). tokens.css scales the type, controls,
    rows and inset; this is what isn't a token: rows and headings a finger can hit,
    marks and lights that grow with the text, no hover states left on after a tap,
-   and dialogs as sheets from the bottom edge. The desktop never matches it. */
+   dialogs as sheets from the bottom edge, and toasts across the top, under the
+   status bar, where a phone shows its banners. The desktop never matches it. */
 @media (pointer: coarse) {
   .ui-list-heading { height: var(--control-h-sm); }
   .ui-list-row.short { height: var(--row-h); }
@@ -1649,6 +1650,8 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
   .ui-dialog { width: 100% !important; max-height: 90%; border-width: var(--sheet-edge-width) 0 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: env(safe-area-inset-bottom); }
   .ui-dialog[data-motion="pop"] { animation-name: ui-sheet-in; animation-duration: var(--dur); }
   .ui-dialog[data-motion="pop"][data-closing] { animation-name: ui-sheet-out; animation-duration: var(--dur-fast); }
+  .ui-toaster { left: var(--space-md); right: var(--space-md); top: calc(env(safe-area-inset-top) + var(--space-md)); bottom: auto; flex-direction: column-reverse; align-items: stretch; transform: none; }
+  .ui-toast { max-width: none; padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-lg); border-radius: var(--radius-lg); }
 }
 @keyframes ui-sheet-in { from { transform: translateY(100%); } }
 @keyframes ui-sheet-out { to { transform: translateY(100%); } }

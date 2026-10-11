@@ -290,10 +290,21 @@ export class RemoteService {
     this.#dropPush(d.id, "push-off");
   }
 
-  /** Sends a notification the Mac shows (alert set) to every device that subscribed, while remote access is on. */
+  /** A session's page came to the front or left it (push.visible). */
+  visible(conn: Connection, visible: boolean): void {
+    const s = this.#sessions.get(conn);
+    if (s) s.visible = visible;
+  }
+
+  /**
+   * Sends a notification the Mac shows (alert set) to every device that
+   * subscribed, while remote access is on; not to one showing the client in
+   * front, which shows the notification event itself.
+   */
   notify(n: AppNotification): void {
     if (!n.alert || !this.#key || !this.#o.settings.settings["remote.enabled"]) return;
-    const devices = this.#o.store.remoteDevices().filter((d) => d.push);
+    const looking = new Set([...this.#channels.values()].filter((c) => c.open && c.visible).map((c) => c.deviceId));
+    const devices = this.#o.store.remoteDevices().filter((d) => d.push && !looking.has(d.id));
     if (!devices.length) return;
     const payload = new TextEncoder().encode(
       JSON.stringify({

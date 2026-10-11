@@ -53,6 +53,7 @@ export const remoteHandlers = (core: CoreContext) =>
     // A paired device's own: its subscription is kept on its record (docs/13, "Push notifications").
     "push.subscribe": (p, { conn } = IN_CORE) => (core.remote.subscribe(device(conn), p), null),
     "push.unsubscribe": (_, { conn } = IN_CORE) => (core.remote.unsubscribe(device(conn)), null),
+    "push.visible": (p, { conn } = IN_CORE) => (core.remote.visible(device(conn), p.visible === true), null),
   });
 
 /** The paired device's connection behind a call; nobody else has notifications to switch. */

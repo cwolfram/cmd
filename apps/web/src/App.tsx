@@ -5,14 +5,18 @@
 // paired with several Macs (identity.ts); it opens the one used last, and the
 // settings sheet switches. A pairing link pairs only when the person says so,
 // in every browser, and offers installing the app as the other choice (install.ts).
+// Notifications (push.ts): asked for once on Now, switched in the settings
+// sheet; while the page is open the Mac's notifications show as toasts, and a
+// tapped one opens its Mac and terminal.
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { bucketOf } from "@cmd/protocol";
-import { Button, Callout, IconButton, StatusDot } from "@cmd/ui";
+import { Button, Callout, IconButton, StatusDot, Toaster, toast } from "@cmd/ui";
 import { Connection, pair, type Phase } from "./connection.ts";
 import { forgetIdentity, listMacs, loadIdentity, macKey, touchIdentity, type Identity, type Mac } from "./identity.ts";
 import { itemOf, useModel } from "./model.ts";
 import { Now } from "./Now.tsx";
+import { disablePush, enablePush, forgetPush, onOpenRequest, openRequestFromUrl, pushState, type PushState } from "./push.ts";
 import { AddMac, PairLink } from "./Pairing.tsx";
 import { MacsSheet, Settings } from "./Settings.tsx";
 import { TerminalScreen } from "./Terminal.tsx";
@@ -25,25 +29,29 @@ type Screen =
   /** A pairing link, held in memory until the person taps Pair This Browser. */
   | { kind: "link"; fragment: string }
   | { kind: "pairing"; words: string[] | null; error: string | null; back: Connection | null }
-  | { kind: "paired"; conn: Connection; n: number };
+  /** pane: the terminal to open first (a tapped notification). */
+  | { kind: "paired"; conn: Connection; n: number; pane: string | null };
 
 let started = 0;
 
 export function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "loading" });
 
-  const show = (id: Identity) => {
+  const current = useRef(screen);
+  current.current = screen;
+
+  const show = (id: Identity, pane: string | null = null) => {
     const conn = new Connection(id);
     conn.start();
     void touchIdentity(macKey(id.hostKey), { lastUsed: Date.now() }).catch(() => {});
-    setScreen({ kind: "paired", conn, n: ++started });
+    setScreen({ kind: "paired", conn, n: ++started, pane });
   };
-  /** The Mac with this key, or, without one, the one used last; Add a Mac when there's none. */
-  const open = async (key?: string) => {
+  /** The Mac with this key (and its terminal), or, without one, the one used last; Add a Mac when there's none. */
+  const open = async (key?: string, pane: string | null = null) => {
     const macs = await listMacs().catch(() => [] as Mac[]);
     for (const k of key ? [key, ...macs.map((m) => m.key)] : macs.map((m) => m.key)) {
       const id = await loadIdentity(k).catch(() => undefined);
-      if (id) return show(id);
+      if (id) return show(id, k === key ? pane : null);
     }
     setScreen({ kind: "add", back: null });
   };
@@ -55,7 +63,9 @@ export function App() {
     );
   };
   const forget = async (conn: Connection) => {
+    await disablePush(conn).catch(() => {});
     conn.close();
+    await forgetPush(conn.key).catch(() => {});
     await forgetIdentity(conn.key).catch(() => {});
     await open();
   };
@@ -74,8 +84,21 @@ export function App() {
       setScreen({ kind: "link", fragment });
       return;
     }
-    void open();
+    const req = openRequestFromUrl();
+    void open(req?.mac, req?.paneId ?? null);
   }, []);
+
+  // A notification tapped while this page is open: its Mac, at its terminal. Never in the middle of pairing.
+  useEffect(
+    () =>
+      onOpenRequest((r) => {
+        const s = current.current;
+        if (s.kind === "paired" && s.conn.key === r.mac) setScreen({ ...s, n: ++started, pane: r.paneId });
+        else if (s.kind === "paired") (s.conn.close(), void open(r.mac, r.paneId));
+        else if (s.kind === "loading" || s.kind === "add") void open(r.mac, r.paneId);
+      }),
+    [],
+  );
 
   switch (screen.kind) {
     case "loading":
@@ -86,7 +109,7 @@ export function App() {
         <AddMac
           title={back ? "Add a Mac" : "Pair with Your Mac"}
           onPair={(f) => startPairing(f, back)}
-          onCancel={back ? () => setScreen({ kind: "paired", conn: back, n: ++started }) : undefined}
+          onCancel={back ? () => setScreen({ kind: "paired", conn: back, n: ++started, pane: null }) : undefined}
         />
       );
     }
@@ -126,6 +149,7 @@ export function App() {
         <Paired
           key={screen.n}
           conn={conn}
+          pane={screen.pane}
           onAdd={() => setScreen({ kind: "add", back: conn })}
           onSwitch={(key) => switchTo(conn, key)}
           onForget={() => void forget(conn)}
@@ -148,10 +172,33 @@ interface MacActions {
   onForget: () => void;
 }
 
-function Paired({ conn, onAdd, onSwitch, onForget }: { conn: Connection } & MacActions) {
+function Paired({ conn, pane: first, onAdd, onSwitch, onForget }: { conn: Connection; pane: string | null } & MacActions) {
   const phase = usePhase(conn);
   const model = useModel(conn, phase);
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(first);
+  const push = usePush(conn, phase);
+  // For the toasts: the terminal on screen, and how to open one (it needs the model).
+  const shown = useRef(open);
+  shown.current = open;
+  const openRef = useRef<(id: string) => void>(setOpen);
+
+  // The Mac's notifications while this page is open: a toast, unless it's about the terminal on screen.
+  useEffect(
+    () =>
+      conn.onEvent((e) => {
+        if (e.type !== "notification" || !e.notification.alert) return;
+        const n = e.notification;
+        if (n.paneId && n.paneId === shown.current) return;
+        const paneId = n.paneId;
+        toast(
+          <>
+            <strong>{n.title}</strong> {n.body}
+          </>,
+          { icon: "bell", duration: n.urgent ? 8000 : 4000, action: paneId ? { label: "Open", run: () => openRef.current(paneId) } : undefined },
+        );
+      }),
+    [conn],
+  );
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
   const [macs, setMacs] = useState(false);
@@ -207,6 +254,7 @@ function Paired({ conn, onAdd, onSwitch, onForget }: { conn: Connection } & MacA
     if (a && bucketOf(a) !== "rest") void conn.client?.call("agent.markSeen", { agentId: a.id }).catch(() => {});
     if (p?.attention) void conn.client?.call("pane.clearAttention", { paneId: id }).catch(() => {});
   };
+  openRef.current = openPane;
 
   return (
     <div className="app">
@@ -228,6 +276,25 @@ function Paired({ conn, onAdd, onSwitch, onForget }: { conn: Connection } & MacA
               {offlineText(phase)}
             </Callout>
           )}
+          {push.ask && (
+            <Callout
+              icon="bell"
+              banner
+              title="Get notified on this device"
+              actions={
+                <>
+                  <Button variant="primary" onClick={() => void push.set(true)}>
+                    Turn On
+                  </Button>
+                  <Button variant="ghost" onClick={push.dismiss}>
+                    Not Now
+                  </Button>
+                </>
+              }
+            >
+              Know when an agent needs you, even with cmd closed.
+            </Callout>
+          )}
           <Now conn={conn} model={model} workspaceId={workspaceId} onWorkspace={setWorkspaceId} onOpen={openPane} />
         </>
       )}
@@ -236,10 +303,57 @@ function Paired({ conn, onAdd, onSwitch, onForget }: { conn: Connection } & MacA
           <Callout tone="warning">{offlineText(phase)}</Callout>
         </div>
       )}
-      <Settings open={settings} conn={conn} phase={phase} model={model} {...actions} onClose={() => setSettings(false)} />
+      <Settings open={settings} conn={conn} phase={phase} model={model} push={push.state} onPush={(on) => void push.set(on)} {...actions} onClose={() => setSettings(false)} />
+      <Toaster />
     </div>
   );
 }
 
 const offlineText = (p: Extract<Phase, { kind: "offline" }>) =>
   `${p.reason === "mac" ? "It may be asleep, or remote access is off." : "Can't reach it right now."} Since ${new Date(p.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Retrying…`;
+
+/** Don't ask again on Now for this Mac (per browser; Settings still switches it). */
+const askedKey = (mac: string) => `cmd.push.asked.${mac}`;
+function asked(mac: string): boolean {
+  try {
+    return localStorage.getItem(askedKey(mac)) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** This device's notifications from this Mac: their state, switching them, and whether Now asks. */
+function usePush(conn: Connection, phase: Phase) {
+  const [state, setState] = useState<PushState | null>(null);
+  const [dismissed, setDismissed] = useState(() => asked(conn.key));
+  const boot = phase.kind === "online" ? phase.boot : null;
+  useEffect(() => {
+    if (!boot) return;
+    let live = true;
+    void pushState(conn.key, boot.push).then((s) => live && setState(s), () => live && setState("unsupported"));
+    return () => void (live = false);
+  }, [conn, boot]);
+  const dismiss = () => {
+    try {
+      localStorage.setItem(askedKey(conn.key), String(Date.now()));
+    } catch {
+      // private mode: asks again next time
+    }
+    setDismissed(true);
+  };
+  const set = async (on: boolean) => {
+    dismiss();
+    if (!boot?.push) return;
+    try {
+      if (on) setState(await enablePush(conn, boot.push));
+      else (await disablePush(conn), setState("off"));
+    } catch (err) {
+      setState(await pushState(conn.key, boot.push).catch(() => "unsupported" as const));
+      console.warn(`notifications: ${(err as Error).message}`);
+      toast(on ? "Couldn't turn on notifications. Try again, or check this browser's notification settings." : "Couldn't turn off notifications. Try again.", { tone: "danger" });
+    }
+  };
+  // Asked once, where it can work: never in an iOS tab (Add to Home Screen first) or once blocked.
+  const ask = state === "off" && !dismissed && typeof Notification !== "undefined" && Notification.permission === "default";
+  return { state, ask, set, dismiss };
+}

@@ -1,13 +1,14 @@
 // The settings sheet: which Mac this is, how it's reached, what this device may
-// do, the paired Macs to switch between, Add a Mac, and Forget This Mac (the
+// do, its notifications from this Mac, the paired Macs to switch between, Add a Mac, and Forget This Mac (the
 // Mac keeps listing it until unpaired there). MacsSheet is the list alone, for
 // when the Mac isn't connected.
 
 import { useEffect, useState } from "react";
-import { Button, Callout, Dialog, Icon, KeyValue, ListRow, ListSection } from "@cmd/ui";
+import { Button, Callout, Dialog, Icon, KeyValue, ListRow, ListSection, Switch } from "@cmd/ui";
 import type { Connection, Phase } from "./connection.ts";
 import { deviceName, listMacs, type Mac } from "./identity.ts";
 import type { Model } from "./model.ts";
+import type { PushState } from "./push.ts";
 import { ago } from "./ui.tsx";
 
 interface MacActions {
@@ -16,7 +17,18 @@ interface MacActions {
   onForget: () => void;
 }
 
-export function Settings({ open, conn, phase, model, onClose, onAdd, onSwitch, onForget }: { open: boolean; conn: Connection; phase: Phase; model: Model; onClose: () => void } & MacActions) {
+export function Settings({
+  open,
+  conn,
+  phase,
+  model,
+  push,
+  onPush,
+  onClose,
+  onAdd,
+  onSwitch,
+  onForget,
+}: { open: boolean; conn: Connection; phase: Phase; model: Model; push: PushState | null; onPush: (on: boolean) => void; onClose: () => void } & MacActions) {
   const [confirm, setConfirm] = useState(false);
   const address = conn.identity.socket.replace(/^wss?:\/\//, "");
   const status = phase.kind === "online" ? "Connected" : phase.kind === "offline" ? "Offline" : "Connecting…";
@@ -32,6 +44,16 @@ export function Settings({ open, conn, phase, model, onClose, onAdd, onSwitch, o
         ]}
       />
       <Callout icon="lock">End-to-end encrypted. Anything in between sees only scrambled bytes; your Mac decides who gets in.</Callout>
+      {push && (
+        <ListSection title="Notifications">
+          <ListRow
+            icon="bell"
+            title="Notifications"
+            detail={PUSH_DETAIL[push]}
+            end={<Switch checked={push === "on"} disabled={push !== "on" && push !== "off"} label="Notifications" onChange={onPush} />}
+          />
+        </ListSection>
+      )}
       {open && <MacList current={conn.key} currentName={model.host} onAdd={onAdd} onSwitch={onSwitch} />}
       <Button
         size="lg"
@@ -87,6 +109,15 @@ function MacList({ current, currentName, onAdd, onSwitch }: { current: string; c
     </div>
   );
 }
+
+const PUSH_DETAIL: Record<PushState, string> = {
+  on: "When your Mac notifies you",
+  off: "Off",
+  denied: "Blocked in this browser's settings",
+  install: "Add cmd to your Home Screen first",
+  unsupported: "This browser can't show them",
+  old: "Update cmd on your Mac first",
+};
 
 const used = (t: number) => {
   if (!t) return "Not opened yet";

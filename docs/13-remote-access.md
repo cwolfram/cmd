@@ -489,7 +489,7 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 
 ### Push notifications
 
-> Plan (2026-10-10), being built on branch `push`. Built: delivery in the core (`remote/webpush.ts`, `push.subscribe`/`push.unsubscribe`, the VAPID key in `remote.bootstrap`). Approving from the notification (below) is left for later.
+> Plan (2026-10-10), being built on branch `push`. Built: delivery in the core (`remote/webpush.ts`, `push.subscribe`/`push.unsubscribe`/`push.visible`, the VAPID key in `remote.bootstrap`) and the client (`sw.js`, `push.ts`, the Notifications row, the ask on Now, toasts). Not yet: the when-setting and presence, the settings on the Mac. Approving from the notification (below) is left for later.
 
 **Behaviour:**
 - **When:** one global setting on the Mac, `remote.push.when`: Always · When I'm away (default) · Never. Away is the app closed, the screen locked, or no input on the Mac for `remote.push.awayMinutes` (default 5). Main reports these to the core with `ui.presence` (window focus, `powerMonitor` lock and idle time). Whatever the setting, a device whose client is open in front gets no push: it shows the `notification` event as an in-app banner instead.
@@ -501,18 +501,19 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 - **Keys:** a VAPID key pair (P-256) in `host.json` next to the host key. Its public key reaches the client in `remote.bootstrap`.
 - **Subscription:** the client's service worker subscribes through `PushManager` and sends the subscription (endpoint, `p256dh`, `auth`) to the core with `push.subscribe` over the encrypted channel (view scope; `push.unsubscribe` removes it). The core keeps it on the device's record; revoking or expiring the device drops it.
 - **Sending:** `remote/push.ts` sends Web Push itself over `node:https`, with an RFC 8292 VAPID JWT and an RFC 8291 (`aes128gcm`) payload encrypted to the subscription, so Apple and Google see only that a push happened. No push server of our own, no relay. A 404 or 410 drops the subscription; other failures are logged and the notification is not retried. A device may only subscribe with an endpoint on the browsers' push services (`*.push.apple.com`, `fcm.googleapis.com`, Mozilla, WNS): it names the URL the Mac posts to, so anything else would let a paired phone make the Mac send requests into its own network.
-- **Several Macs:** the hosted client is one origin with one subscription, shared by every Mac it's paired with. Each payload carries the sending Mac's host key, so a tap opens that pairing. In direct modes each Mac is its own origin.
+- **Several Macs:** a subscription is made with one Mac's VAPID key, and the hosted client is one origin paired with several Macs. So `sw.js` is registered once per Mac, with the scope `/m/<host key>/` (no page lives there; the scope only keeps the registrations apart), each with its own subscription; having that registration is what "on" means for a Mac. Each payload carries the sending Mac's host key, so a tap opens that pairing. In direct modes each Mac is its own origin anyway. To check on an iPhone: that iOS keeps several registrations, each with its own subscription.
 - **Payload:** `{ host, id, title, body, paneId, windowId, workspaceId, urgent }`, under the 4 KB limit (bodies are truncated).
 
 **Client:**
-- `sw.js` (`apps/web/public`, scope `/`) handles `push` and `notificationclick` only. No `fetch` handler: loading and caching stay as they are until the pinned app shell (below).
+- `sw.js` (`apps/web/public`) handles `push` and `notificationclick` only. No `fetch` handler: loading and caching stay as they are until the pinned app shell (below). A tap focuses an open client and tells it which Mac and terminal (`postMessage`), or opens `/?mac=<host key>&pane=<id>`.
+- **In front:** while the page is visible the session says so (`push.visible`) and the Mac pushes nothing to that device; the page shows the `notification` event as a toast (across the top on a phone), with Open for its terminal, and none about the terminal on screen.
 - Both CSPs (`.htaccess`, `direct.ts`) allow `worker-src 'self'`.
-- A Notifications row in the client's settings, and a one-time prompt after pairing in the installed app. Permission needs a tap. On iOS push only works from the Home Screen (16.4+), so a Safari tab shows the Add to Home Screen steps instead.
+- A Notifications row in the client's settings (`push.ts`: on, off, blocked, Home Screen first, unsupported, Mac too old), and a one-time ask on Now while permission hasn't been asked. Permission needs a tap. On iOS push only works from the Home Screen (16.4+), so a Safari tab is "Home Screen first" and isn't asked. Forgetting a Mac unsubscribes and drops its registration.
 - Each start checks the subscription and subscribes again when it's gone (iOS drops them now and then) or when the Mac's VAPID key changed.
 
 **On the Mac:** `remote.push.when`, `remote.push.awayMinutes` and `remote.pushDetails` in Settings → Remote Access; the device list says which devices get notifications.
 
-**Tests:** core tests against a fake push service (payload decrypts with the subscription's keys, VAPID JWT verifies, 410 drops the subscription, the when/away rule, presence from the client); a Chromium e2e that subscribes and receives a push; a real iPhone over Tailscale by hand.
+**Tests:** core tests against a fake push service (`webpush.test.ts`: the RFC 8291 example byte for byte, the VAPID JWT verifies, which endpoints; `remote.test.ts`: subscribe, push, decrypt, nothing while the page is in front or remote access is off, 410 drops it); `sw.js` against a stand-in worker scope (`apps/web/test/sw.test.ts`); `e2e/web.mjs`: the Settings row in an iOS tab, toasts and their Open. Headless Chromium can't subscribe to a real push service (permission denied even when granted), so the whole chain is checked by hand: a real iPhone over Tailscale.
 
 **Approving from the notification (later).** Both agents have an official, JSON-based way to answer permission requests, so this needs no screen reading:
 - **Claude Code:** a `PermissionRequest` hook gets `tool_name`, `tool_input` and `permission_mode`, and can return `hookSpecificOutput.decision.behavior` = `allow` / `deny`. The dialog appears only if the hook returns no decision. `ExitPlanMode` goes through the same hook. `AskUserQuestion` can't be answered this way; it stays in the terminal.
