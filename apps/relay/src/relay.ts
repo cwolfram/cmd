@@ -9,7 +9,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket, WebSocketServer, type RawData } from "ws";
-import { decodeRelayFrame, encodeRelayFrame, RELAY_LIMITS, RelayClose, RelayFrameType } from "@cmd/protocol";
+import { decodeCloseCode, decodeRelayFrame, encodeRelayFrame, RELAY_LIMITS, RelayClose, RelayFrameType } from "@cmd/protocol";
 
 export interface RelayOptions {
   port?: number;
@@ -142,7 +142,7 @@ export async function startRelay(o: RelayOptions = {}): Promise<Relay> {
       }
       const dev = r.channels.get(f.channel);
       if (!dev) return;
-      if (f.type === RelayFrameType.close) return dev.close(1000);
+      if (f.type === RelayFrameType.close) return dev.close(decodeCloseCode(f.payload));
       if (f.type !== RelayFrameType.data) return;
       if (dev.bufferedAmount > limits.bufferedBytes) return dev.terminate();
       r.bytesOut += f.payload.length;

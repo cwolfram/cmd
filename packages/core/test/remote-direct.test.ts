@@ -71,15 +71,17 @@ async function connect(route: string, o: { hostKey: Bytes; device: KeyPair; psk?
   const ws = socket(route, origin, p);
   ws.binaryType = "arraybuffer";
   let closed = false;
+  let code: number | null = null;
   await new Promise((r, j) => (ws.once("open", r), ws.once("error", j)));
   const { receive, closed: onClosed, session } = openDeviceSession({ ...o, hello: { name: "Tailnet Phone" }, socket: { send: (b) => ws.send(b), close: () => ws.close() } });
   ws.on("message", (d) => receive(new Uint8Array(d as ArrayBuffer)));
-  ws.on("close", () => {
+  ws.on("close", (c) => {
     closed = true;
+    code = c;
     onClosed();
   });
   session.catch(() => {});
-  return { session, ws, closed: () => closed };
+  return { session, ws, closed: () => closed, code: () => code };
 }
 
 /** The status code an upgrade is refused with. */
@@ -142,6 +144,8 @@ describe("direct remote access", () => {
   it("refuses a key it never paired", async () => {
     const c = await connect(route, { hostKey, device: await generateKeyPair() });
     await expect.poll(c.closed).toBe(true);
+    // A clean close before the handshake is how the page knows it was refused (anything else, it retries).
+    expect(c.code()).toBe(1000);
     expect((await core.call("remote.log", {})).map((e) => e.kind)).toContain("handshake-failed");
   });
 

@@ -5,7 +5,7 @@
 // session checks this device's notifications (push.ts) and tells the Mac
 // whether the page is in front, so it doesn't push what the page shows.
 
-import { RpcClient, type CoreEvent, type Result } from "@cmd/protocol";
+import { RelayClose, RpcClient, type CoreEvent, type Result } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import { deviceName, loadIdentity, macKey, saveIdentity, touchIdentity, type Identity } from "./identity.ts";
 import { syncPush } from "./push.ts";
@@ -14,13 +14,16 @@ export type Phase =
   | { kind: "connecting" }
   | { kind: "pairing"; words: string[] }
   | { kind: "online"; boot: Result<"remote.bootstrap"> }
-  /** The Mac isn't reachable (asleep, remote access off, relay down). */
-  | { kind: "offline"; since: number; reason: string }
+  /** The Mac isn't reachable (mac: asleep, remote access off; busy: too many devices, or it isn't ready; network: anything else). */
+  | { kind: "offline"; since: number; reason: "mac" | "busy" | "network" }
   /** The Mac refused this browser's key: unpaired, or never paired. */
   | { kind: "refused" };
 
-/** The relay's close code for a route with no Mac behind it. */
-const UNAVAILABLE = 4404;
+/** Why the socket closed, as the phase it leaves the page in. */
+function closed(code: number, since: number): Phase {
+  const reason = code === RelayClose.unavailable ? "mac" : code === RelayClose.busy || code === RelayClose.later ? "busy" : "network";
+  return { kind: "offline", since, reason };
+}
 
 export class Connection {
   client: RpcClient | null = null;
@@ -85,6 +88,12 @@ export class Connection {
     this.#ws?.close();
   }
 
+  /** Try again now ("Not paired anymore" doesn't retry by itself: the Mac counts each refusal as a failed attempt). */
+  retry(): void {
+    if (this.phase.kind === "refused") this.#set({ kind: "connecting" });
+    this.#connectNow();
+  }
+
   #connectNow(): void {
     if (this.#timer) clearTimeout(this.#timer);
     this.#retry = 0;
@@ -103,9 +112,10 @@ export class Connection {
       this.client?.fail(new Error("disconnected"));
       this.client = null;
       if (this.#closed) return;
-      // The relay reached the Mac, and the Mac hung up mid-handshake: it doesn't know this key.
-      if ((await opened) && !established && e.code !== UNAVAILABLE) return this.#set({ kind: "refused" });
-      this.#set({ kind: "offline", since: this.phase.kind === "offline" ? this.phase.since : Date.now(), reason: e.code === UNAVAILABLE ? "mac" : "network" });
+      // The Mac hung up cleanly mid-handshake: it doesn't know this key. Anything else (the relay
+      // busy, the Mac not ready or gone, the network) is worth another try.
+      if ((await opened) && !established && e.code === 1000) return this.#set({ kind: "refused" });
+      this.#set(closed(e.code, this.phase.kind === "offline" ? this.phase.since : Date.now()));
       if (document.visibilityState === "visible") this.#timer = setTimeout(() => void this.#connect(), Math.min(30_000, 1000 * 2 ** this.#retry++));
     });
     try {
@@ -120,15 +130,24 @@ export class Connection {
         client.receive(l);
         if (received - acked >= 65_536 && client.has("remote.ack")) (acked = received), void client.call("remote.ack", { received }).catch(() => {});
       });
-      client.onEvent((e) => this.#events.forEach((fn) => fn(e)));
+      // Events during the bootstrap wait for it, then replay in order on top of it: those before its reply are
+      // already in it (each carries a whole object, so again changes nothing), those after would be lost under it.
+      let held: CoreEvent[] | null = [];
+      const emit = (e: CoreEvent) => this.#events.forEach((fn) => fn(e));
+      client.onEvent((e) => (held ? held.push(e) : emit(e)));
       this.client = client;
       this.#retry = 0;
       // What the Mac serves, so client.has() can tell a feature its cmd doesn't have yet (a Mac without the list has all of them).
       await client.hello().catch(() => {});
       // The first ack turns the window on for this session (a Mac without remote.ack has none).
       if (client.has("remote.ack") && client.core?.methods) void client.call("remote.ack", { received }).catch(() => {});
-      const boot = await client.call("remote.bootstrap", {});
+      const boot = await client.call("remote.bootstrap", {}).catch((err: Error) => {
+        held = null;
+        throw err;
+      });
       this.#set({ kind: "online", boot });
+      for (const e of held.splice(0)) emit(e);
+      held = null;
       this.#visible();
       void syncPush(this, boot.push).catch((err: Error) => console.warn(`notifications: ${err.message}`));
       // The name a list of Macs shows; it follows a renamed Mac.

@@ -4,8 +4,8 @@
 // never what's on a screen.
 
 import { useEffect, useState } from "react";
-import { bucketOf, type Agent, type CoreEvent, type Pane, type Workspace } from "@cmd/protocol";
-import type { Connection, Phase } from "./connection.ts";
+import { bucketOf, type Agent, type CoreEvent, type Pane, type Result, type Workspace } from "@cmd/protocol";
+import type { Connection } from "./connection.ts";
 import { setMacTheme } from "./theme.ts";
 import type { Light } from "./ui.tsx";
 
@@ -17,21 +17,31 @@ export interface Model {
   host: string;
 }
 
-/** The bootstrap, kept current by events. Stays (stale) while offline. Applies the Mac's theme as it comes and changes. */
-export function useModel(conn: Connection, phase: Phase): Model | null {
+/**
+ * The bootstrap, kept current by events. Stays (stale) while offline. Applies the Mac's theme as it comes and changes.
+ * A new bootstrap replaces the model when the connection goes online, not in an effect after the render: the events
+ * the connection replays right after it (connection.ts) then queue on top of it instead of being overwritten.
+ */
+export function useModel(conn: Connection): Model | null {
   const [model, setModel] = useState<Model | null>(null);
   useEffect(() => {
-    if (phase.kind !== "online") return;
-    const b = phase.boot;
-    setMacTheme(b.theme);
-    setModel({
-      panes: new Map(b.panes.map((p) => [p.id, p])),
-      agents: new Map(b.agents.map((a) => [a.id, a])),
-      workspaces: new Map((b.workspaces ?? []).map((s) => [s.id, s])),
-      scope: b.device?.scope ?? "view",
-      host: b.host?.name ?? "your Mac",
-    });
-  }, [phase]);
+    let boot: Result<"remote.bootstrap"> | null = null;
+    const sync = () => {
+      const p = conn.phase;
+      if (p.kind !== "online" || p.boot === boot) return;
+      const b = (boot = p.boot);
+      setMacTheme(b.theme);
+      setModel({
+        panes: new Map(b.panes.map((p) => [p.id, p])),
+        agents: new Map(b.agents.map((a) => [a.id, a])),
+        workspaces: new Map((b.workspaces ?? []).map((s) => [s.id, s])),
+        scope: b.device?.scope ?? "view",
+        host: b.host?.name ?? "your Mac",
+      });
+    };
+    sync();
+    return conn.onChange(sync);
+  }, [conn]);
   useEffect(
     () =>
       conn.onEvent((e: CoreEvent) => {

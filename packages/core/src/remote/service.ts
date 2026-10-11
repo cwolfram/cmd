@@ -11,6 +11,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import type { CoreEvent, PaneId, RemoteAccessMode, RemoteTheme, RemoteDevice, RemoteLogEntry, RemotePairRequest, RemoteScope, RemoteSession, RemoteStatus, SettingKey, Settings } from "@cmd/protocol";
+import { RelayClose } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import { encodePairing, equal, fromBase64Url, randomBytes, toBase64Url, type Bytes, type KeyPair } from "@cmd/remote-crypto";
 import type { Connection, Served } from "../kernel/connection.ts";
@@ -196,7 +197,8 @@ export class RemoteService {
 
   #stop(): void {
     if (!this.#transport) return;
-    for (const c of this.#channels.values()) c.close();
+    // Remote access off: a device mid-handshake hears "unavailable", not that it was refused.
+    for (const c of this.#channels.values()) c.close(RelayClose.unavailable);
     this.#transport.close();
     this.#transport = null;
     this.#mode = null;
@@ -376,17 +378,18 @@ export class RemoteService {
   }
 
   #openChannel(t: Transport, channel: number, ip: string, user: string | null): void {
-    if (this.#failures.blocked(ip) || !this.#key) return t.closeChannel(channel);
+    // Not now (too many failures from there, keys not loaded): the device tries again later instead of thinking it was unpaired.
+    if (this.#failures.blocked(ip) || !this.#key) return t.closeChannel(channel, RelayClose.later);
     const session = new HostChannel({
       channel,
       ip,
       user,
       host: this.#channelHost(this.#key),
       send: (b) => t.send(channel, b),
-      drop: () => {
+      drop: (code) => {
         if (this.#channels.get(channel) !== session) return;
         this.#channels.delete(channel);
-        t.closeChannel(channel);
+        t.closeChannel(channel, code);
         if (session.deviceId) {
           this.audit("session-end", session.deviceId, ip);
           this.#changed();

@@ -4,7 +4,7 @@
 // every device's channel. The relay mode's Transport.
 
 import { EventEmitter } from "node:events";
-import { decodeRelayFrame, encodeRelayFrame, RelayFrameType } from "@cmd/protocol";
+import { decodeRelayFrame, encodeCloseCode, encodeRelayFrame, RelayFrameType } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { Endpoint, Transport, TransportEvents, TransportState } from "./transport.ts";
 
@@ -51,8 +51,8 @@ export class RelayLink extends EventEmitter<TransportEvents> implements Transpor
     if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(encodeRelayFrame({ channel, type: RelayFrameType.data, payload }));
   }
 
-  closeChannel(channel: number): void {
-    if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(encodeRelayFrame({ channel, type: RelayFrameType.close, payload: new Uint8Array(0) }));
+  closeChannel(channel: number, code?: number): void {
+    if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(encodeRelayFrame({ channel, type: RelayFrameType.close, payload: code ? encodeCloseCode(code) : new Uint8Array(0) }));
   }
 
   close(): void {

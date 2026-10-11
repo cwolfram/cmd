@@ -30,6 +30,7 @@ export interface Transport extends EventEmitter<TransportEvents> {
   endpoint(): Endpoint | null;
   start(): void;
   send(channel: number, payload: Uint8Array): void;
-  closeChannel(channel: number): void;
+  /** code: what the device is told (RelayClose; default 1000, which before the handshake means refused). */
+  closeChannel(channel: number, code?: number): void;
   close(): void;
 }

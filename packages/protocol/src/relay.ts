@@ -34,7 +34,26 @@ export const RELAY_LIMITS = {
 } as const;
 
 /** Close codes the relay uses on device links. */
-export const RelayClose = { unavailable: 4404, busy: 4429, tooLarge: 4413, forbidden: 4403 } as const;
+export const RelayClose = { unavailable: 4404, busy: 4429, tooLarge: 4413, forbidden: 4403, later: 4503 } as const;
+
+/**
+ * Why the host drops a channel, as a `close` frame's payload (u16, big endian)
+ * the relay closes the device with. A clean close (1000, or no payload, as from
+ * hosts before this) before the handshake means the host refused the device's
+ * key; `later` means it couldn't take it now (not ready, too many failures).
+ */
+export function encodeCloseCode(code: number): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array(2);
+  new DataView(out.buffer).setUint16(0, code, false);
+  return out;
+}
+
+/** The device close code a `close` frame asks for: one of the app's (4000–4999), else 1000. */
+export function decodeCloseCode(payload: Uint8Array): number {
+  if (payload.length !== 2) return 1000;
+  const code = new DataView(payload.buffer, payload.byteOffset, 2).getUint16(0, false);
+  return code >= 4000 && code <= 4999 ? code : 1000;
+}
 
 export function encodeRelayFrame(f: RelayFrame): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(5 + f.payload.length);

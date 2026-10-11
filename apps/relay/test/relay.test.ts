@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { decodeRelayFrame, encodeRelayFrame, RelayClose, RelayFrameType, type RelayFrame } from "@cmd/protocol";
+import { decodeRelayFrame, encodeCloseCode, encodeRelayFrame, RelayClose, RelayFrameType, type RelayFrame } from "@cmd/protocol";
 import { startRelay, type Relay } from "../src/relay.ts";
 
 let relay: Relay;
@@ -91,6 +91,20 @@ describe("relay", () => {
     const good = await open(`${relay.url}/h`);
     good.ws.send(JSON.stringify({ route: h.route, secret: h.secret }));
     await expect.poll(() => good.got).toEqual([JSON.stringify({ ok: true })]);
+  });
+
+  it("closes a device with the code its host asks for, an app's code or else 1000", async () => {
+    await start();
+    const h = await host();
+    const codes: (number | null)[] = [];
+    for (const payload of [encodeCloseCode(RelayClose.later), new Uint8Array(0), encodeCloseCode(1011)]) {
+      const d = await open(`${relay.url}/r/${h.route}`);
+      await expect.poll(() => h.frames().filter((f) => f.type === RelayFrameType.open).length).toBe(codes.length + 1);
+      h.send({ channel: h.frames().findLast((f) => f.type === RelayFrameType.open)!.channel, type: RelayFrameType.close, payload });
+      await expect.poll(() => d.closed()).not.toBeNull();
+      codes.push(d.closed());
+    }
+    expect(codes).toEqual([RelayClose.later, 1000, 1000]);
   });
 
   it("caps channels per route", async () => {

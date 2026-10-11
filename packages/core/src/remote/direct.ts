@@ -180,10 +180,10 @@ export class DirectListener extends EventEmitter<TransportEvents> implements Tra
     ws.send(payload);
   }
 
-  closeChannel(channel: number): void {
+  closeChannel(channel: number, code = 1000): void {
     const ws = this.#channels.get(channel);
     this.#channels.delete(channel);
-    ws?.close(1000);
+    ws?.close(code);
   }
 
   close(): void {

@@ -174,7 +174,7 @@ interface MacActions {
 
 function Paired({ conn, pane: first, onAdd, onSwitch, onForget }: { conn: Connection; pane: string | null } & MacActions) {
   const phase = usePhase(conn);
-  const model = useModel(conn, phase);
+  const model = useModel(conn);
   const [open, setOpen] = useState<string | null>(first);
   const push = usePush(conn, phase);
   // For the toasts: the terminal on screen, and how to open one (it needs the model).
@@ -220,7 +220,10 @@ function Paired({ conn, pane: first, onAdd, onSwitch, onForget }: { conn: Connec
           title="Not paired anymore"
           action={
             <>
-              <Button size="lg" onClick={onForget}>
+              <Button size="lg" onClick={() => conn.retry()}>
+                Try Again
+              </Button>
+              <Button size="lg" variant="ghost" onClick={onForget}>
                 Forget This Mac
               </Button>
               {switchMac}
@@ -310,7 +313,7 @@ function Paired({ conn, pane: first, onAdd, onSwitch, onForget }: { conn: Connec
 }
 
 const offlineText = (p: Extract<Phase, { kind: "offline" }>) =>
-  `${p.reason === "mac" ? "It may be asleep, or remote access is off." : "Can't reach it right now."} Since ${new Date(p.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Retrying…`;
+  `${p.reason === "mac" ? "It may be asleep, or remote access is off." : p.reason === "busy" ? "It's busy right now." : "Can't reach it right now."} Since ${new Date(p.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Retrying…`;
 
 /** Don't ask again on Now for this Mac (per browser; Settings still switches it). */
 const askedKey = (mac: string) => `cmd.push.asked.${mac}`;

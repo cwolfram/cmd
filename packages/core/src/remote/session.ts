@@ -56,7 +56,7 @@ export class HostChannel {
   visible = false;
   #host: ChannelHost;
   #send: (b: Bytes) => void;
-  #drop: () => void;
+  #drop: (code?: number) => void;
   /** confirming: the handshake is done and the device's first message hasn't come (message 1 can be replayed, IK has no freshness). */
   #state: "hello" | "busy" | "confirming" | "open" | "closed" = "hello";
   #transport: Transport | null = null;
@@ -69,7 +69,7 @@ export class HostChannel {
   #confirmMs: number;
 
   /** confirmMs: how long the device has for its first message (tests). */
-  constructor(o: { channel: number; ip: string; user?: string | null; host: ChannelHost; send: (b: Bytes) => void; drop: () => void; confirmMs?: number }) {
+  constructor(o: { channel: number; ip: string; user?: string | null; host: ChannelHost; send: (b: Bytes) => void; drop: (code?: number) => void; confirmMs?: number }) {
     this.#confirmMs = o.confirmMs ?? CONFIRM_MS;
     this.channel = o.channel;
     this.ip = o.ip;
@@ -163,13 +163,14 @@ export class HostChannel {
     return this.#conn?.queued ?? 0;
   }
 
-  close(): void {
+  /** code: what the device is told (RelayClose); the default, before the handshake, says its key was refused. */
+  close(code?: number): void {
     if (this.#state === "closed") return;
     this.#state = "closed";
     if (this.#confirm) clearTimeout(this.#confirm);
     this.#gone.abort();
     this.#served?.closed();
-    this.#drop();
+    this.#drop(code);
   }
 
   get open(): boolean {
