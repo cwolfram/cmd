@@ -1,4 +1,4 @@
-// Reference window, content (pnpm workbench contentwindow): a document to read,
+// Reference window, content: a document to read,
 // in a column at a reading width, with its outline in a sidebar that follows
 // the scroll. The spec for Markdown, the Journal, What's New and any window
 // whose content is text.

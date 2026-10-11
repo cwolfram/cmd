@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench markdownview): the Markdown window on real
+// The Markdown window on real
 // files, read by the real core: the README (headings, tables, code), a long doc,
 // a file that isn't there, and every size.
 

@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench filesview): the Files window on this checkout,
+// The Files window on this checkout,
 // through the Workbench's real core: a window at every size, the sidebar's dense
 // version, a folder that can't be read, and one file of every kind (their icons).
 

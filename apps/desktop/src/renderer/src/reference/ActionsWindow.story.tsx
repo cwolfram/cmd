@@ -1,4 +1,4 @@
-// Reference window, actions (pnpm workbench actionswindow): a list of things to
+// Reference window, actions: a list of things to
 // run, grouped, the main one first with its own Run button, running and failed
 // ones marked, the filter in the toolbar and where they run in the footer. The
 // spec for Workspace Actions, Commands and any list you act on.
@@ -17,7 +17,7 @@ const ACTS: Act[] = [
   { id: "build", name: "build", detail: "Bundle the desktop app", icon: "hammer", kind: "Build", took: "1m 04s" },
   { id: "dist", name: "dist", detail: "Package a signed cmd dev build", icon: "hammer", kind: "Build" },
   { id: "typecheck", name: "typecheck", detail: "tsc for the packages and the desktop app", icon: "checklist", kind: "Check", took: "12s" },
-  { id: "ui", name: "ui", detail: "The @cmd/ui gallery in a browser", icon: "terminal", kind: "Other" },
+  { id: "ui", name: "workbench", detail: "The UI Workbench: every component and story", icon: "terminal", kind: "Other" },
   { id: "workbench", name: "workbench", detail: "One component from a story, in the real app", icon: "terminal", kind: "Other" },
   { id: "release", name: "release", detail: "Bump, tag and push; CI publishes the release", icon: "paperplane", kind: "Deploy" },
   { id: "core:stop", name: "core:stop", detail: "Stop this instance's core", icon: "trash", kind: "Clean" },

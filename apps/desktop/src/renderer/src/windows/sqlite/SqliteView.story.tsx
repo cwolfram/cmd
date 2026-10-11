@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench sqliteview): the SQLite window on a real
+// The SQLite window on a real
 // database, the Workbench instance's own state (cmd.sqlite, read by the real core),
 // with the window's state (table, tab, query) kept here: no table yet, a table's
 // rows, its structure, a query, a file that isn't a database, and every size.

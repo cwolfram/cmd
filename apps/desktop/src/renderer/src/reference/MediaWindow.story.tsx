@@ -1,4 +1,4 @@
-// Reference window, media (pnpm workbench mediawindow): one picture on a dark
+// Reference window, media: one picture on a dark
 // stage, a filmstrip of its siblings along the bottom edge, an inspector with
 // what's known about it. The spec for Image, PDF, YouTube and any viewer.
 

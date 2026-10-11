@@ -3,7 +3,7 @@
 //   ../src/tokens.css      the base set on :root (and .ui-theme), reduced motion and touch screens as media queries
 //   ../src/tokens.gen.ts   the scales as types (the kit's props take only these names),
 //                          LIGHT_VARS for light themes, and TOKENS: every token with its
-//                          description, for the gallery, docs and agents
+//                          description, for the UI Workbench, docs and agents
 //   core/src/magic/prompt/tokens.css           the same inside a Magic widget's frame (kit 2)
 //   core/src/magic/prompt/preview-themes.json  the built-in Dark and Light themes' variables,
 //                                              for the core's widget previews
@@ -198,7 +198,7 @@ export function build(): { css: string; ts: string; widgetCss: string; previewTh
     "  light?: string;",
     "}",
     "",
-    "/** Every token, in the order of its files: for the gallery, docs and agents. */",
+    "/** Every token, in the order of its files: for the UI Workbench, docs and agents. */",
     `export const TOKENS: readonly TokenInfo[] = ${JSON.stringify(info, null, 2)};`,
     "",
   ].join("\n");

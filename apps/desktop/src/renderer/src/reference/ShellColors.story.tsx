@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench shellcolors): a tuning bench for the window shell's
+// A tuning bench for the window shell's
 // colours. The backdrop behind windows, the title bar, the toolbar, the outline and how
 // unselected windows are dimmed are each a recipe over the theme's tokens (a base token,
 // shifted lighter or darker), so one recipe is judged in every theme at once. Board is

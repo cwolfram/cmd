@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench onboarding): the onboarding sheet. The
+// The onboarding sheet. The
 // Workbench's core has no AI key, so the AI step waits for one.
 import { Onboarding } from "./Onboarding.tsx";
 

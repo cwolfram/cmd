@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench journal): the Journal widget, on two days
+// The Journal widget, on two days
 // of this repo's own history as a summariser might write them up.
 import { Window, WindowBar, WindowBarMenu, WindowBody, WindowFrame } from "@cmd/ui";
 import type { ReactNode } from "react";

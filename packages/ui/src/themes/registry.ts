@@ -1,7 +1,7 @@
 // Theme registry and the active theme: applyTheme writes a theme's tokens on
 // :root and tells listeners (terminals, editors). Which theme is active is the
 // app's business (the desktop picks it from the theme.* settings and tells the
-// native window, apps/desktop/src/renderer/src/lib/theme.ts); the gallery picks one
+// native window, apps/desktop/src/renderer/src/lib/theme.ts); the UI Workbench picks one
 // from a menu.
 
 import { useSyncExternalStore } from "react";

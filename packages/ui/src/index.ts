@@ -1,7 +1,7 @@
 // @cmd/ui: cmd's controls and the tokens they're drawn with. Import the styles
 // once per page ("@cmd/ui/ui.css"), wrap the app in <UIProvider icon={…}> to
 // draw icons natively, and build views from these instead of new CSS. The
-// gallery (pnpm ui) shows every component in every theme.
+// UI Workbench (pnpm workbench, docs/48) shows every component, its stories beside it.
 //
 // Themes: "@cmd/ui/themes" (registry, applyTheme) and "@cmd/ui/themes/builtin"
 // (registers the built-in themes).

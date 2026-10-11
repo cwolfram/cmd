@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench remote): the direct access setup checklist
+// The direct access setup checklist
 // in Settings → Remote Access, in each state the Tailscale and "Your own URL"
 // adapters report (their real strings), and the page as it looks before setup.
 import type { ReactNode } from "react";

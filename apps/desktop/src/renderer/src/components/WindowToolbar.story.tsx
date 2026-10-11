@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench windowtoolbar): the kit's WindowToolbar as each
+// The kit's WindowToolbar as each
 // window type uses it, at the widths windows get (a narrow sidebar to a wide tile),
 // selected and at rest. The toolbars here are the specs the views follow.
 // Fields: Fields shows the three kinds (text, search, address) at rest and in use.

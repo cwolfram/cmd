@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench imageview): the Image window on real files, read
+// The Image window on real files, read
 // by the real core: a screenshot fit to the window, at actual size, a file that isn't
 // an image, and every size.
 

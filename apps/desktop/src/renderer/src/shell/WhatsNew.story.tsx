@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench whatsnew): the What's New sheet.
+// The What's New sheet.
 import { RELEASES, WhatsNew } from "./WhatsNew.tsx";
 
 const noop = () => {};

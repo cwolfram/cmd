@@ -258,9 +258,6 @@ function text(parts: ts.SymbolDisplayPart[]): string | undefined {
 
 // ── stories ────────────────────────────────────────────
 
-// What story headers said before the catalog read them: "Workbench stories (pnpm workbench x): …".
-const OLD_PREFIX = /^(UI )?Workbench stor(y|ies)\s*\([^)]*\):\s*/i;
-const OLD_COMMAND = /\s*\(pnpm workbench [^)]*\)/g;
 
 function story(file: string, roots: CatalogRoots, byFile: Map<string, ComponentInfo[]>, kitByName: Map<string, ComponentInfo>): StoryInfo {
   const kit = file.startsWith(roots.kit);
@@ -319,7 +316,7 @@ function story(file: string, roots: CatalogRoots, byFile: Map<string, ComponentI
   const named = kitByName.get(base.toLowerCase())?.id;
   const rank = (id: string) => (own.has(id) ? 0 : id === named ? 1 : 2);
   const components = [...new Set(variants.flatMap((v) => v.components ?? []))].sort((a, b) => rank(a) - rank(b));
-  const doc = headerOf(src)?.replace(OLD_PREFIX, "").replace(OLD_COMMAND, "").replace(/^./, (c) => c.toUpperCase());
+  const doc = headerOf(src);
   const info: StoryInfo = { id, title, group, file: path.relative(roots.repo, file), variants, components };
   if (doc) info.doc = doc;
   return info;

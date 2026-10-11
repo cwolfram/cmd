@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench pdfview): the PDF window on a real file (a
+// The PDF window on a real file (a
 // fixture of several pages), read by the real core: its pages, dark pages, a file
 // that isn't a PDF, and every size.
 

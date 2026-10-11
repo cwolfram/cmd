@@ -37,7 +37,7 @@ export interface TokenInfo {
   light?: string;
 }
 
-/** Every token, in the order of its files: for the gallery, docs and agents. */
+/** Every token, in the order of its files: for the UI Workbench, docs and agents. */
 export const TOKENS: readonly TokenInfo[] = [
   {
     "name": "--bg",

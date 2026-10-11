@@ -12,9 +12,6 @@
     "./lucide": "./src/lucide.ts"
   },
   "scripts": {
-    "gallery": "vite --config gallery/vite.config.ts",
-    "build": "vite build --config gallery/vite.config.ts",
-    "shots": "node gallery/shots.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

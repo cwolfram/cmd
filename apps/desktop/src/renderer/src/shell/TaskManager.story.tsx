@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench taskmanager): the Task Manager's content with a
+// The Task Manager's content with a
 // stand-in snapshot: cmd's processes, a few terminals (one opened to its
 // processes), the sheet as the app shows it, the core not answering, loading,
 // and every size.

@@ -1,4 +1,4 @@
-// The Settings window (pnpm workbench settingswindow), on the Workbench's own
+// The Settings window, on the Workbench's own
 // core: its real settings, at the window's default and smallest sizes, and the
 // pages drawn by hand (Browser, shortcuts, Remote Access, About).
 

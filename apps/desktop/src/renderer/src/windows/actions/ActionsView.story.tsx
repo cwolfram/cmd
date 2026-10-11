@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench actionsview): the Workspace Actions widget,
+// The Workspace Actions widget,
 // Actions with stand-in lists, every state: running and idle, a long list with its
 // filter, describing, AI not set up, a file it can't read, a run in another
 // checkout, nothing to run, no folder, loading, an error, and every size.
@@ -30,7 +30,7 @@ const ACTIONS: WorkspaceAction[] = [
   act("build", "build", { description: "Bundle the desktop app" }),
   act("dist", "build", { description: "Package a signed cmd dev build" }),
   act("typecheck", "check", { description: "tsc for the packages and the desktop app" }),
-  act("ui", "run", { long: true, description: "The @cmd/ui gallery in a browser" }),
+  act("ui", "run", { long: true, description: "The UI Workbench: every component and story" }),
   act("release", "deploy", { risky: true, description: "Bump, tag and push; CI publishes the release" }),
   act("prototype", "agent", { agent: "claude", command: "/prototype", source: { kind: "skills", file: ".claude/skills/prototype/SKILL.md" }, description: "Iterate on UI in the Workbench" }),
 ];

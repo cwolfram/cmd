@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench feedback): the feedback sheet, with a stand-in
+// The feedback sheet, with a stand-in
 // for main's webhook. Sent and Fails press Send themselves to reach their state.
 import { useEffect } from "react";
 import { Feedback, type FeedbackApi } from "./Feedback.tsx";

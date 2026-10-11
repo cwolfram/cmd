@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench secretfield): the kit's SecretField in every
+// The kit's SecretField in every
 // state, as the AI rows use it (live, with the provider's verdict attached).
 // Checking and Rejected paste a key themselves to get there.
 import { useEffect, useRef, type ReactNode } from "react";

@@ -34,7 +34,7 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
   - `Stack`, `Inline`, `Tiles`, `Text`, `Measure` (a reading column), `MediaStage`, `Filmstrip`.
   - `Hide below | above="narrow" | "regular"`: what gives way as a window narrows, or what only shows when it's narrow. A window's sizes are narrow (< 360px), regular (< 600px) and wide; everything that follows the width uses these two breakpoints. Works in the toolbar too (a `View` is a size container).
   - Gaps and paddings take only steps of the spacing scale, multiples of 4px (`gap={2}` is 8px, `pad={1.5}` 6px; docs/46-spacing.md), checked by the types. A pane's padding at a window's edge is `pad="inset"`.
-- **Reference windows** (`apps/desktop/src/renderer/src/reference/*.story.tsx`, `pnpm workbench <story>`): the spec for each kind of window, every state and size included. Start from the closest one:
+- **Reference windows** (`apps/desktop/src/renderer/src/reference/*.story.tsx`, `pnpm workbench reference/<name>`, in the UI Workbench): the spec for each kind of window, every state and size included. Start from the closest one:
 
   | Story | For | Example windows |
   |---|---|---|
@@ -47,7 +47,7 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
 
 ## Rules
 
-Each was settled by measuring in the Workbench; keep them unless the user changes one, and then change it here too.
+Each was settled by measuring in the UI Workbench; keep them unless the user changes one, and then change it here too.
 
 - **One inset, on every side, to the letters.** Content sits `--inset` (16px) from the window's edges: padded bodies, a table's first and last column, list rows' content. Bars sit tighter, at `--bar-inset` (12px): the window's title bar, the footer's text, Magic's toolbars. A title band's heading is content: it stays on `--inset`, over the page. A `Page` (Settings beside its sidebar) doubles it: its View takes `--page-inset` (32px) as `--inset`. A pane of a `Split` (an inspector, a settings sidebar) pads with `Stack pad="inset"`, never a step of the scale, so it moves with the inset. Components read roles, not steps, where one exists (docs/46-spacing.md): `--inset`, `--bar-inset`, `--page-inset`, `--list-pad` (inside a row's highlight; `--list-inset` is `--inset` less it), `--list-gap`, `--list-icon-gap`, `--section-gap`, `--heading-gap`, `--dialog-pad`, `--toolbar-pad`. Top as well as sides: a body that opens with a line of text trims its leading (`text-box: trim-start`, done by `View` and padded `Stack`s), so the letters, not the line box, sit at the inset.
 - **A row that holds controls is a toolbar.** Filters, ranges, view switches and actions go in the `WindowToolbar`, not in a line inside the content. The body opens with content.
@@ -64,16 +64,16 @@ Each was settled by measuring in the Workbench; keep them unless the user change
 
 ## Building or changing a window
 
-1. Pick the reference window closest to it and copy its structure: `View` → `Split`/`List`/`Panes` → kit components. No view CSS: if the kit lacks something, add it to the kit (with a gallery specimen), using tokens.
+1. Pick the reference window closest to it and copy its structure: `View` → `Split`/`List`/`Panes` → kit components. No view CSS: if the kit lacks something, add it to the kit (documented in JSDoc, shown in a story beside it), using tokens.
 2. Put it in a story beside the component with every state reachable and an `AllSizes` variant (`RefWindow.tsx` has the frame and stand-in data helpers).
 3. Measure, don't eyeball (below), in a dark and a light theme, and at narrow, regular and wide.
 4. `pnpm typecheck && pnpm test`: `tokens.test.ts` (generated files current; every variable the kit's CSS reads exists) and `design-css.test.ts` (no new literal colours, font sizes, radii or spacing; see below).
 
 ## Measuring
 
-Shots catch what is wrong; numbers say by how much. `pnpm workbench audit <story> [variant] [--theme id]` measures every window in a story: the body's top, left and right to the nearest visible text, icon or drawing (clipped to what shows), and the toolbar's and footer's items to what's visible (a field's box, a borderless button's icon). It flags a body whose left and right differ (unless it holds a table, list, reading column, media or split, which have their own insets) and a footer whose text isn't at `--bar-inset`, and exits 1 then. Toolbars are reported only (see Rules). Run it after every layout change, at every size (the `Sizes` variant); `pnpm workbench audit --all` walks every story and its `Sizes`, prints only problems and exits 1 on one: run that before handing back.
+Shots catch what is wrong; numbers say by how much. `pnpm workbench audit <story> [variant] [--theme id]` measures every window in a story: the body's top, left and right to the nearest visible text, icon or drawing (clipped to what shows), and the toolbar's and footer's items to what's visible (a field's box, a borderless button's icon). It flags a body whose left and right differ (unless it holds a table, list, reading column, media or split, which have their own insets) and a footer whose text isn't at `--bar-inset`, and exits 1 then. Toolbars are reported only (see Rules). The UI Workbench's ruler button draws the same measurements over the stage, live (`renderer/src/workbench/audit.ts` is the one copy). Run it after every layout change, at every size (the `Sizes` variant); `pnpm workbench audit --all` walks every story and its `Sizes`, prints only problems and exits 1 on one: run that before handing back.
 
-For anything it doesn't cover, run JS in the Workbench (`pnpm workbench eval`; code with `;` needs an explicit `return`):
+For anything it doesn't cover, run JS in the UI Workbench (`pnpm workbench eval`; code with `;` needs an explicit `return`):
 
 ```js
 // The insets of each window body in the current story: to the nearest visible element on each side.

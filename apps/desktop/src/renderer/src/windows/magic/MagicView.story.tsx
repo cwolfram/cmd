@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench magicview): the Magic window's own states, at
+// The Magic window's own states, at
 // a regular size: asking (no provider, an error), a first build (with steps),
 // a command to run, a media request over a widget.
 

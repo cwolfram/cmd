@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench youtubeview): the YouTube widget before it has a
+// The YouTube widget before it has a
 // video (paste a link), at every size. The player is a webview on a Stage.
 
 import type { AppWindow, WindowId, WorkspaceId } from "@cmd/protocol";

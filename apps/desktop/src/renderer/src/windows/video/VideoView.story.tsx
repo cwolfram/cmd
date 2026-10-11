@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench videoview): the Video window on a real file, read
+// The Video window on a real file, read
 // by the real core: playing, trimming (saved by a stand-in, failing, or for real), a file that isn't a video,
 // and every size. The sample is .cmd-dev/fixtures/sample.mp4 in the checkout (any short clip).
 

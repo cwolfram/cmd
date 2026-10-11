@@ -1,6 +1,6 @@
 // Reference: what a window shows instead of its content (View state: empty, no
 // results, error, loading), with texts of very different lengths at three window
-// widths, for how centred titles and texts wrap (pnpm workbench states).
+// widths, for how centred titles and texts wrap.
 
 import { Button, View, type ViewStateSpec } from "@cmd/ui";
 import { RefWindow } from "./RefWindow.tsx";

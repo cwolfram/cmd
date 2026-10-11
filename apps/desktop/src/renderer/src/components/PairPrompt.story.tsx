@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench pairprompt): "Allow “iPhone” to use cmd?", as the
+// "Allow “iPhone” to use cmd?", as the
 // main window's sheet shows it, and inline as Settings does.
 
 import type { RemotePairRequest } from "@cmd/protocol";

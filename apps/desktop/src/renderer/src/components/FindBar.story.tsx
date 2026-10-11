@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench findbar): the kit's FindBar, docked as a second
+// The kit's FindBar, docked as a second
 // toolbar row (PDF, browser, text) and floating over content without a toolbar
 // (terminals), at the widths windows get, in each state. Live finds in real text.
 

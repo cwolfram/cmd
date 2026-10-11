@@ -1,7 +1,7 @@
 // Icons outside macOS. The UI names its icons by SF Symbol name (see
 // apps/desktop renderer/src/components/Symbol.tsx); on macOS a native helper
 // renders the real symbols. SF Symbols may only be used on Apple platforms, so
-// elsewhere (the main process's fallback, the gallery in a browser) each name
+// elsewhere (the main process's fallback, the kit's stories in a browser) each name
 // maps to its closest Lucide icon (ISC licence), as an SVG used as a mask, like
 // the helper's bitmaps.
 
@@ -92,7 +92,7 @@ import {
 
 /** SF Symbol name → Lucide SVG. Unknown names render nothing, as on macOS. */
 const LUCIDE: Record<string, string> = {
-  // The window pieces and reference windows (frame.tsx, the gallery's Windows page).
+  // The window pieces and reference windows (frame.tsx, the reference windows' stories).
   "checkmark.circle": CircleCheck,
   checklist: ListChecks,
   "exclamationmark.triangle": TriangleAlert,

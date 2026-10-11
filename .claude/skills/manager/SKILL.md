@@ -45,8 +45,8 @@ Take the work items from Jan's message. For each one, write a brief before anyth
   must load (`copywriting` for any user-facing string, `window-design` for anything inside a
   window, `motion` for anything that moves, `changelog` never: the changelog is written at
   release time).
-- **How Jan will look at it**: `pnpm dev`, a workbench story, the gallery, a CLI command, a
-  test. The worker has to leave it in that state.
+- **How Jan will look at it**: `pnpm dev`, the UI Workbench (a story or a component's page),
+  a CLI command, a test. The worker has to leave it in that state.
 
 Ask Jan only when two readings of the request lead to materially different work
 (`AskUserQuestion`, all questions in one go). Otherwise decide like a careful colleague would,
@@ -153,7 +153,7 @@ Ready items go to Jan in one message, one block per item:
   ```sh
   cd ~/src/cmd-<topic> && CMD_NO_SANDBOX=1 pnpm dev
   ```
-  or `pnpm workbench <story>`, `pnpm ui`, `pnpm cmd <args>` with `CMD_HOME` exported, or
+  or `pnpm workbench <story or component>` (the UI Workbench), `pnpm cmd <args>` with `CMD_HOME` exported, or
   the test file. Say what to click or type, and what he should see: the criteria, as a
   checklist for him.
 - what was assumed, left out, or is worth a second look (an API change, a new setting, a

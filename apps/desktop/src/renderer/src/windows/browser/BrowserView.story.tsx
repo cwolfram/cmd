@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench browserview): the Browser window, blank (New Tab),
+// The Browser window, blank (New Tab),
 // a page that didn't load (a closed port), and a phone's size; every size.
 
 import { AllSizes, RefWindow, type SizeName } from "../../reference/RefWindow.tsx";

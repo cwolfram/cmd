@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench livediff): the Live Diff widget with stand-in
+// The Live Diff widget with stand-in
 // changes: files open and closed, a new file, a binary, a staged rename; nothing
 // uncommitted; not a repository; loading; every size.
 

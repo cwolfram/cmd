@@ -42,7 +42,7 @@ This doc is what other design systems do about that, what cmd has today, and wha
 9. **Two token vocabularies.** In Magic, `--bg` is the app's `--well`, and `--radius` is 8 against the app's 6. Magic has `--surface`/`--line`/`--fill`/`--good`/`--warn`/`--bad` where the app has `--group-bg`/`--separator`/`--success`/`--warning`/`--danger`.
 10. **Off-scale type.** Renderer CSS has 61 literal font sizes against 33 `var(--text-*)`. Some aren't on the scale at all: 11, 12, 14, 16. Radii: 32 literal, 12 tokens.
 11. **No enforcement.** There are no lint rules for spacing, sizes or font sizes. The rules exist only as prose in CLAUDE.md, the prototype skill and the `tokens.css` header. `magic/lint.ts` checks Magic widgets for literal colours only.
-12. **References cover components, not windows.** The gallery's Patterns page has one pattern, and the Workbench has 9 stories, none of them a whole window.
+12. **References cover components, not windows.** The kit's old gallery had one pattern page, and the Workbench 9 stories, none of them a whole window (both since replaced by the UI Workbench, docs/48).
 
 **The surprise:** Magic's prompt (`packages/core/src/magic/prompt/prompt.md`, "Layout" and "How cmd looks") is the best written guide to cmd's window design in the repo:
 - cover the window edge to edge, never a block floating in the middle;
@@ -158,7 +158,7 @@ Sources: [Primer DataTable](https://primer.style/product/components/data-table),
 **For cmd:**
 - No linter setup is needed. `motion-css.test.ts` already shows how: a test that scans the CSS. Extend it to colours, font sizes, radii and (once there is a scale) spacing.
 - An allowlist with a reason per line counts the remaining debt; the number only goes down.
-- Diff the gallery shots (`pnpm --filter @cmd/ui shots`) across themes.
+- Compare a component in every theme at once: `pnpm workbench shot <target> --themes all` (docs/48).
 
 Sources: [ensure-design-token-usage](https://atlassian.design/components/eslint-plugin-design-system/ensure-design-token-usage), [UI Styling Standard](https://atlassian.design/components/eslint-plugin-ui-styling-standard/overview), [stylelint-polaris](https://polaris.shopify.com/tools/stylelint-polaris/rules), [Primer sx migration](https://primer.style/product/primitives/migrating/).
 
@@ -214,7 +214,7 @@ Sources: [Atlassian llms.txt](https://atlassian.design/llms.txt), [Primer MCP](h
   - `tokens.css`;
   - **TypeScript unions** for the primitives' props (`Space = "1" | … | "8"`), so the kit's types can't drift from the scale;
   - Magic's widget tokens (today `widgetTokens()` in `protocol/src/magic.ts` keeps a second vocabulary by hand);
-  - the gallery's token page;
+  - the tokens story (`packages/ui/src/tokens.story.tsx`, in the UI Workbench);
   - the manifest and skill an AI reads, with each token's `$description` as its rule ("between rows in a list", "a window's inset");
   - the CSS test's list of allowed values.
 - **Generator:**
@@ -259,7 +259,7 @@ For the next agent picking this up. Read the `window-design` skill first (`.clau
 ### What exists
 
 - **Tokens**: `packages/ui/tokens/*.tokens.json` (DTCG 2025.10, `cmd.resolver.json`), built by `pnpm tokens` into `packages/ui/src/tokens.css`, `tokens.gen.ts` (scales as types, `LIGHT_VARS`, the `TOKENS` manifest) and Magic's `prompt/tokens.css` and `preview-themes.json`. `tokens.test.ts` keeps them current and fails on any variable the kit's CSS reads that nothing defines.
-- **Window pieces** in `@cmd/ui` (`frame.tsx`, `chart.tsx`, `timeline.tsx`, styles in `frame.css`): `View` (toolbar, body, footer, `state`, `inset`, `focusable`, `bodyRef`), `ViewState`, `StatusLine`, `Split`, `List` (plain, grouped), `ListGroup`, `Panes`/`Pane`, `Stat`, `Chart`/`Sparkline`/`Legend`, `Stack`/`Inline`/`Tiles`/`Hide` (`below`, `above`), `Text`, `Measure`, `Document`, `MediaStage`, `Filmstrip`, `Viewport`, `Picture`, `Ribbon`, `Timeline`/`TimelineEntry`. `DataGrid` has `grow`, `hide`, `icon` columns and selection. The gallery's Windows page shows them.
+- **Window pieces** in `@cmd/ui` (`frame.tsx`, `chart.tsx`, `timeline.tsx`, styles in `frame.css`): `View` (toolbar, body, footer, `state`, `inset`, `focusable`, `bodyRef`), `ViewState`, `StatusLine`, `Split`, `List` (plain, grouped), `ListGroup`, `Panes`/`Pane`, `Stat`, `Chart`/`Sparkline`/`Legend`, `Stack`/`Inline`/`Tiles`/`Hide` (`below`, `above`), `Text`, `Measure`, `Document`, `MediaStage`, `Filmstrip`, `Viewport`, `Picture`, `Ribbon`, `Timeline`/`TimelineEntry`. `DataGrid` has `grow`, `hide`, `icon` columns and selection. The UI Workbench shows each on its page, with the stories that render it.
 - **Reference windows** (`renderer/src/reference/*.story.tsx`): data, chart, content, media, actions, and `States` (every view state, short and long texts, three widths).
 - **Floating scrollbars** in every app window (`installScrollbars` uses the page overlay); nothing compensates for scrollbars any more.
 - **Magic** shares the tokens through kit versions (`KIT_FILES` in `packages/protocol/src/magic.ts`): kit 1 frozen (`prompt/kits/1.css`, hash pinned in `kits.test.ts`), kit 2 frozen with the 12px inset (`prompt/kits/2.css`), kit 3 current; a widget's manifest pins its kit.
@@ -282,7 +282,7 @@ Design debt went 539 → 136. What's left, by file (`design-debt.json`): the kit
 
 1. New worktree per window (`git -C ~/src/cmd worktree add ~/src/cmd-migrate-<name> -b migrate-<name> master`, `pnpm install`), as CLAUDE.md says.
 2. Split the view: the window keeps data and effects; a presentational component (or the same one with injected bits) draws, so a **story** can show every state. Patterns used: `Actions`/`ActionsView`, `Resources`/`ResourcesView`; an optional `update` prop for window state (`SqliteView`); real files through the Workbench's real core (`reference/RepoFile.tsx`: `useRepoFile`, `storyWindow`); the instance's own `cmd.sqlite` as a database (`core.hello` gives `stateDir` and `root`).
-3. Rebuild on the pieces, closest reference window first; delete the view's CSS. A look the kit lacks becomes a kit piece (with tokens, a gallery specimen when it's general), not view CSS. Third-party markup (pdf.js) may keep a small stylesheet on tokens.
+3. Rebuild on the pieces, closest reference window first; delete the view's CSS. A look the kit lacks becomes a kit piece (with tokens, and a story beside it in the kit), not view CSS. Third-party markup (pdf.js) may keep a small stylesheet on tokens.
 4. Check: `pnpm workbench shot` in a dark and a light theme, `pnpm workbench audit` on every variant (incl. `Sizes`), before/after shots (`git stash push -- packages apps`, shoot, `git stash pop`: the story keeps working against the old component when its props didn't change).
 5. `pnpm design-debt`, `pnpm typecheck && pnpm test`, commit; update the skill when a piece or rule is added. Show the user in the Workbench, iterate, merge when they say so.
 

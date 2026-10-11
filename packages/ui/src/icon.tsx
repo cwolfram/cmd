@@ -1,7 +1,7 @@
 // Icons in the kit. Components name icons by SF Symbol name ("chevron.down",
 // "magnifyingglass") and draw them through the host's renderer: the app passes
 // its native SF Symbol component (<UIProvider icon={Symbol}>); without one (the
-// gallery in a browser) they are Lucide outlines (lucide.ts), tinted with
+// kit's stories in a browser, test/stage) they are Lucide outlines (lucide.ts), tinted with
 // currentColor through a mask like the native ones.
 
 import { createContext, useContext, type ComponentType, type ReactNode } from "react";

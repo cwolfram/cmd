@@ -1,8 +1,8 @@
 # UI Workbench: one place to see and work on every component
 
-**Status:** partly built: step 1 (the catalog and the pages built from it)
+**Status:** built: steps 1–5 (the catalog, the pages, every theme and the audit drawn, a story for every kit component, the browser stage and smoke test, the CLI, the gallery gone); section 8 and the variants-against-CSS check open
 
-> Status (2026-10-11): step 1 built on branch `workbench`: `renderer/src/workbench/catalog/` (extract.ts, plugin.ts), the sidebar, component and story pages, `DialogLayer` in the kit, `--headless`. Proposal before that, branch `workbench` (on top of `wb-dock`, which keeps the Workbench from opening app windows). Replaces the `@cmd/ui` gallery (`pnpm ui`) with the UI Workbench (today's Workbench, grown), driven from the component sources and the story files.
+> Status (2026-10-11): built on branch `workbench`. `renderer/src/workbench/` (catalog/extract.ts and plugin.ts, the pages, audit.ts), kit stories beside the kit (`packages/ui/src/*.story.tsx`), `packages/ui/test/stage` with `stories.test.ts`, `scripts/workbench.mjs` (`ls`, `shot --themes all`, `--headless`), the gallery deleted and every doc and skill moved over. Not built: the variants-against-CSS test (its first run found `Mark`'s `tone` taking agent states the CSS doesn't style: working, done, idle, off; narrowing the type or styling them is a design call), section 8, and `review`.
 
 There are two tools for looking at UI today, and they overlap:
 
@@ -82,8 +82,8 @@ The window becomes the gallery's layout, built from the kit (`Split`, `List`, `V
 ### 5. Tests
 
 - **A browser stage for kit stories** (`packages/ui/test/stage.html`): no frame, mounts `?story=&variant=&theme=` from the kit's stories and the catalog's matrices, in Playwright's Chromium. Kit stories need no bridge, so they don't need Electron. `dialog.test.ts` moves onto it.
-- **Story smoke test:** every kit component's matrix and every kit story variant renders, in a few themes, with no page errors. A component is covered the moment it is exported.
-- **Coverage:** every kit component either has a story or a matrix that renders something; the test lists the ones with neither (props the matrix can't generate and no story).
+- **Story smoke test:** every kit story variant renders, in a dark, a light and a tinted light theme, with no page error, render error or failed load. Since a story renders every kit component (the coverage test), every component renders as it's used.
+- **Coverage:** a story renders every kit component (the catalog knows what each variant renders); the test lists any it doesn't.
 - **Variants against CSS:** the kit draws variants as data attributes (`data-variant`, `data-size`, `data-tone`). With the unions extracted, a test checks that every union value has a rule in the kit's CSS and that no rule targets a value the type doesn't have, so styles can't drift from types.
 - App stories (renderer) stay Electron-only; the UI Workbench's own smoke run covers them in `pnpm workbench matrix`.
 

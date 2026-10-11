@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench agentactivity): the Agent Activity widget with
+// The Agent Activity widget with
 // stand-in agents: one waiting, two working with a subagent, some finished; every
 // workspace; none; every size.
 

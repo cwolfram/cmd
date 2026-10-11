@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench timerview): the Timer widget in each phase (set,
+// The Timer widget in each phase (set,
 // running, paused, done), a custom time, and every size.
 
 import { useState } from "react";

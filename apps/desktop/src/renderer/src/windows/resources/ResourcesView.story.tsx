@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench resourcesview): the Resources widget, Resources
+// The Resources widget, Resources
 // with stand-in samples: a busy workspace, one terminal, every workspace, nothing
 // running, loading, and every size.
 

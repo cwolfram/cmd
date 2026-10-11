@@ -1,4 +1,4 @@
-// Workbench stories (pnpm workbench aifield): the kit's AiField in every state and
+// The kit's AiField in every state and
 // size, and Live, which runs a pretend request (thinking, then done or an error)
 // so the motion between states can be watched and interrupted with Stop.
 import { useRef, useState, type ReactNode } from "react";

@@ -582,7 +582,7 @@ const openSettings = (at?: string) => openUtility("settings", { title: "Settings
 const workbench = process.env.ELECTRON_RENDERER_URL ? process.env.CMD_WORKBENCH : undefined;
 /** The Workbench is the only window: nothing opens an app window (Dock, menu commands, stories), closing it quits. */
 const workbenchOnly = workbench !== undefined;
-const openWorkbench = () => openUtility("workbench", { title: "Workbench", width: 1100, height: 760, minWidth: 600, minHeight: 400 }, workbench || undefined);
+const openWorkbench = () => openUtility("workbench", { title: "UI Workbench", width: 1100, height: 760, minWidth: 600, minHeight: 400 }, workbench || undefined);
 
 /** App windows, not Settings or the Workbench. */
 const appWindows = () => BrowserWindow.getAllWindows().filter((w) => !isUtility(w));

@@ -41,7 +41,7 @@ Two keys, each meaning one thing everywhere, both with the field, the keys and t
 
 ### ⌘F: Find in the window
 
-One `FindBar` in `@cmd/ui`, with a gallery specimen: the field, "n of m" / "No matches", previous and next, toggles for Match Case, Whole Word and Regex, ⎋ to close, ↩ / ⇧↩ to step. A window type implements a small interface and gets the bar:
+One `FindBar` in `@cmd/ui`, with a story (`components/FindBar.story.tsx`): the field, "n of m" / "No matches", previous and next, toggles for Match Case, Whole Word and Regex, ⎋ to close, ↩ / ⇧↩ to step. A window type implements a small interface and gets the bar:
 
 ```ts
 interface Findable {
@@ -106,7 +106,7 @@ Where each surface sits:
 - **Search** (⇧⌘F): the palette, as it is; its rows draw snippets with the kit's `Highlight`.
 - **Navigator** keeps its `ToolbarSearchField`; the palette keeps its own input (it is a command field, not a search field).
 
-What the kit lacks, added to it (with gallery specimens), not to views' CSS:
+What the kit lacks, added to it (with stories), not to views' CSS:
 
 1. **Text glyphs as toolbar icons.** "Aa", "ab" (whole word) and ".*" are app CSS today (`.find-glyph` in `renderer/src/styles.css`). Either SF Symbols that say it (`textformat` for case; no good one for regex) or a kit `glyph` icon kind that `iconNode` draws at `ICON.toolbar`, so every find bar's toggles match.
 2. **Highlighted text.** `Highlighted` (`\x01…\x02` marks → `<mark>`) lives in `Palette.tsx`. Move it to the kit as `<Highlight text>`, with the match colour token (`--match`) the terminal and CodeMirror already use, so a snippet looks the same in the palette and the Navigator. Built.

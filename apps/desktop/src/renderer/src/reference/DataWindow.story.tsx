@@ -1,4 +1,4 @@
-// Reference window, data (pnpm workbench datawindow): a table with a filter bar,
+// Reference window, data: a table with a filter bar,
 // an inspector for the selected row and a status footer, plus each state the
 // body can be in. The spec for SQLite, Task Manager, Events and every window
 // whose content is rows.

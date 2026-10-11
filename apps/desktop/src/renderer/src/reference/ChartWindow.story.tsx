@@ -1,4 +1,4 @@
-// Reference window, charts (pnpm workbench chartwindow): a dashboard. A status
+// Reference window, charts: a dashboard. A status
 // line first, then sections (Panes) most important first: metrics with
 // sparklines, a chart over time, a breakdown, a short table. The spec for
 // Resources, Agent Activity and any widget that watches numbers.
