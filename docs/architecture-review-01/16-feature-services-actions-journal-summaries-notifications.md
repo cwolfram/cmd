@@ -178,7 +178,6 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 **Progress (2026-10-11).** `TimerAlarms` keeps its per-timer timeout and runs a `CHECK_MS` (15 s, unref'd) interval only while a timer is armed; it rings any timer whose `endsAt` the wall clock passed, so a wake, a clock change or a `MAX_WAIT` re-arm all go through one place. `test/timers.test.ts` moves the system clock 11 minutes without moving timers and sees one ring within a check, and no timer or interval once none runs. Not done: the manual check across a real sleep (needs the Mac to sleep).
 
-
 ### AR1-16-07 · Key the actions' pins and descriptions by repository, not by absolute folder
 
 - **Status:** done (feature-fixes branch)
@@ -198,7 +197,6 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 - [x] The `inputOf` hash no longer contains the absolute root (prefix bumped to `v3`).
 
 **Progress (2026-10-11).** `folderKey(root)` (actions/describe.ts): the checkout's shared git folder and the root's path in it, the folder itself outside git. Pins and the describe cache use it (the service caches each root's key; pins kept under the absolute folder move over the first time). `inputOf` hashes `v3` with the folder's name only (all the model sees of where it is). The 60 s timer sweeps describe rows unused for 90 days once an hour (`get` touches a row). Tests in `actions.test.ts`. The tables still aren't in a schema registry (AR1-03-05).
-
 
 ### AR1-16-08 · Declare each feature as one contribution, as a dry run for plugins
 
@@ -280,7 +278,6 @@ interface Feature<O> {
 
 **Progress (2026-10-11).** The `summary.written` event (AR1-16-02) carries `input` (a hash of the model's input) and `written` (a hash of the file cmd last wrote, recorded when the answer or the error is in). Asking again: a file whose contents don't match what cmd wrote (the person edited it, or it's from before the records) is left alone and the summary goes to the next free `-2.md`, `-3.md`…; an untouched file with the same input is shown again without a model call. Tests in `summaries.test.ts` with the records in a map; `createSummaries` writes them to the log (`summary:<file>`) and reads them back.
 
-
 ### AR1-16-11 · Use the shared JSONC parser in Workspace Actions
 
 - **Status:** done (feature-fixes branch)
@@ -299,7 +296,6 @@ interface Feature<O> {
 - [x] An actions test reads a `tasks.json` whose command contains `, ]` and gets it unchanged.
 
 **Progress (2026-10-11).** `actions/sources.ts` imports `parseJsonc` from `@cmd/protocol` (jsonc-parser); its own is gone. The test reads a `.vscode/tasks.json` with a comment, trailing commas and a command containing `, ]` and `, }` through `scan`.
-
 
 ## Course corrections
 
