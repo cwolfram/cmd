@@ -439,15 +439,56 @@ export interface Event {
  * runs with the token cmd issued for this run.
  */
 export async function events(query: EventQuery = {}): Promise<Event[]> {
+  return (await widgetCall("events()", "data.query", { query })) as Event[];
+}
+
+/** A stat to ask cmd for (`cmd stats ls` lists them): one range, optionally split by a dimension and ranked. */
+export interface StatQuery {
+  /** "agents.time", "commands.runs", "agents.tokens", "git.commits", "you.active"… */
+  stat: string;
+  range?: "today" | "24h" | "week" | "7d" | "month" | "30d" | "year" | "365d";
+  grain?: "hour" | "day" | "week" | "month";
+  /** One series per value of this dimension ("agent", "project", "command"…). */
+  by?: string;
+  filter?: Record<string, string | string[]>;
+  measure?: "n" | "sum" | "mean" | "max" | "p50" | "p90";
+  /** Also the period before, for a change ("+18%"). */
+  compare?: boolean;
+  /** The largest values of `by` over the range, at most 50. */
+  top?: number;
+}
+
+export interface StatResult {
+  stat: { id: string; title: string; unit: "count" | "ms" | "bytes" | "tokens" | "percent"; dims: { id: string; title: string }[] };
+  grain: string;
+  /** Each bucket's start (ms, local time), and per series a value per bucket (null: no data there). */
+  buckets: number[];
+  series: { key: string; label: string; values: (number | null)[]; total: number }[];
+  total: number;
+  previous?: { total: number; values: (number | null)[] };
+  quantiles?: { p50: number; p90: number };
+  ranking?: { key: string; label: string; value: number }[];
+}
+
+/**
+ * A stat cmd keeps (docs/49): numbers over time for the window's workspace, already counted
+ * (agent time, turns, commands and failures, tokens, commits…), so a widget needn't add up
+ * events itself. Needs the stat's class in the manifest's permissions.events, as events() does.
+ */
+export async function stats(query: StatQuery): Promise<StatResult> {
+  return (await widgetCall("stats()", "stats.query", query)) as StatResult;
+}
+
+async function widgetCall(what: string, method: string, params: unknown): Promise<unknown> {
   const path = Deno.env.get("CMD_SOCKET");
   const token = Deno.env.get("CMD_WIDGET_TOKEN");
-  if (!path || !token) throw new Error("events(): this widget runs without access to cmd's log");
+  if (!path || !token) throw new Error(`${what}: this widget runs without access to cmd's log`);
   const bytes = new TextEncoder().encode(path).length;
-  if (bytes > SOCKET_PATH_MAX) throw new Error(`events(): cmd's socket path is ${bytes} bytes, more than the ${SOCKET_PATH_MAX} macOS allows. Set CMD_HOME to a shorter folder. (${path})`);
+  if (bytes > SOCKET_PATH_MAX) throw new Error(`${what}: cmd's socket path is ${bytes} bytes, more than the ${SOCKET_PATH_MAX} macOS allows. Set CMD_HOME to a shorter folder. (${path})`);
   const conn = await connectUnix(path);
   try {
     await conn.call("widget.hello", { token });
-    return (await conn.call("data.query", { query })) as Event[];
+    return await conn.call(method, params);
   } finally {
     conn.close();
   }

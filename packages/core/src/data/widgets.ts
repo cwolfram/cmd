@@ -7,8 +7,8 @@
 // nothing the widget passes in a query widens it.
 
 import { randomBytes } from "node:crypto";
-import type { DataEvent, DataQuery } from "@cmd/protocol";
-import { clampQuery, clampRows, type Reader } from "./policy.ts";
+import type { DataClass, DataEvent, DataQuery, StatQuery, StatResult } from "@cmd/protocol";
+import { clampQuery, clampRows, PolicyError, readsClass, type Reader } from "./policy.ts";
 
 export interface WidgetIdentity {
   widgetId: string;
@@ -71,4 +71,16 @@ export function widgetQuery(id: WidgetIdentity, q: DataQuery): DataQuery {
 export function widgetRead(id: WidgetIdentity, q: DataQuery, run: (q: DataQuery) => DataEvent[]): DataEvent[] {
   const clamped = widgetQuery(id, q);
   return clampRows(reader(id), clamped, run(clamped));
+}
+
+/**
+ * A widget's stat (docs/49, `stats()` in data.ts): only of a class it may read, only its own
+ * workspace (whatever the query names), and its rankings no longer than a query's limit.
+ */
+export function widgetStats(id: WidgetIdentity, q: StatQuery, classOf: (stat: string) => DataClass, run: (q: StatQuery) => StatResult): StatResult {
+  if (!q || typeof q !== "object" || typeof q.stat !== "string") throw new PolicyError("stats(): name a stat ({ stat: \"commands.runs\" })");
+  const c = classOf(q.stat);
+  if (!readsClass(reader(id), c)) throw new PolicyError(`stats(): "${q.stat}" is ${c} data: add "${c}" to permissions.events in the manifest`);
+  const { workspaceId: _ignored, ...rest } = q;
+  return run({ ...rest, ...(id.workspaceId ? { workspaceId: id.workspaceId } : {}), ...(q.top ? { top: Math.min(q.top, 50) } : {}) });
 }

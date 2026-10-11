@@ -336,6 +336,11 @@ export class StatsService {
     this.#changedTimer.unref?.();
   }
 
+  /** A stat's declaration (throws for an unknown one). */
+  def(id: string): StatDef {
+    return this.#must(id);
+  }
+
   #must(id: string): StatDef {
     const d = this.#defs.get(id);
     if (!d) throw new Error(`no stat "${id}" (cmd stats ls)`);

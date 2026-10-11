@@ -6,10 +6,10 @@
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import type { CoreEvent, DataQuery, Method } from "@cmd/protocol";
+import type { CoreEvent, DataQuery, Method, StatQuery } from "@cmd/protocol";
 import { lineSplitter, MAX_LINE, RPC_CODES, RpcError } from "@cmd/protocol";
 import { ipcPath, logger, recordCrash } from "@cmd/protocol/node";
-import { widgetRead, type WidgetIdentity } from "../data/widgets.ts";
+import { widgetRead, widgetStats, type WidgetIdentity } from "../data/widgets.ts";
 import { checkRemoteCall, RemoteDenied, remoteResult, type PolicyContext } from "../remote/policy.ts";
 import type { Connection, Served } from "./connection.ts";
 import { ConnectionWriter } from "./writer.ts";
@@ -45,7 +45,7 @@ export interface ServerOptions {
   policy: () => PolicyContext;
 }
 
-type ServerCore = Pick<CoreContext, "scheduler" | "remote" | "widgetTokens" | "data" | "watches">;
+type ServerCore = Pick<CoreContext, "scheduler" | "remote" | "widgetTokens" | "data" | "watches" | "stats">;
 
 export class CoreServer {
   #core: ServerCore;
@@ -348,7 +348,8 @@ export class CoreServer {
     const who = this.#widgetConns.get(conn);
     if (!who) throw new Error("say widget.hello first");
     if (method === "data.query") return widgetRead(who, params.query as DataQuery, (q) => this.#core.data.query(q));
-    throw new Error(`widgets may only read events (data.query), not ${String(method)}`);
+    if (method === "stats.query") return widgetStats(who, params as unknown as StatQuery, (id) => this.#core.stats.info(this.#core.stats.def(id)).class, (q) => this.#core.stats.query(q));
+    throw new Error(`widgets may only read events and stats (data.query, stats.query), not ${String(method)}`);
   }
 
   /** Stops listening and cuts every client; the socket file goes if it is still this core's. */

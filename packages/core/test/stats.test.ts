@@ -8,6 +8,7 @@ import { bucketIndex, ranking, shift, startOf, toSeries, windowOf } from "../src
 import { commandName } from "../src/stats/builtin.ts";
 import { Acc, binOf, HOUR, quantile, spanHours, type StatRow } from "../src/stats/stat.ts";
 import { fakeFactory } from "./fake-pty.ts";
+import { widgetStats } from "../src/data/widgets.ts";
 import { blockBar, formatCompact, formatDelta, formatDuration, formatValue, sparkline } from "@cmd/protocol";
 
 const DAY = 24 * HOUR;
@@ -222,6 +223,17 @@ describe("stats service", () => {
     expect(stalls.total).toBe(2);
     expect(stalls.ranking).toEqual([{ key: "startup: stats", label: "startup: stats", value: 2 }]);
     expect(core.stats.query({ stat: "core.stalls", range: "today", measure: "max" }).total).toBe(400);
+  });
+
+  it("gives Magic widgets stats only of classes they may read, in their workspace", () => {
+    const id = { widgetId: "w", workspaceId: "w1", events: [] as string[] };
+    const classOf = (stat: string) => core.stats.info(core.stats.def(stat)).class;
+    let asked: unknown = null;
+    const run = (q: Parameters<typeof core.stats.query>[0]) => ((asked = q), core.stats.query(q));
+    expect(() => widgetStats(id, { stat: "agents.time" }, classOf, run)).toThrow(/permissions.events/);
+    widgetStats(id, { stat: "git.commits", workspaceId: "elsewhere", top: 500, by: "project" }, classOf, run);
+    expect(asked).toMatchObject({ stat: "git.commits", workspaceId: "w1", top: 50 });
+    expect(widgetStats({ ...id, events: ["agents"] }, { stat: "agents.time" }, classOf, run).stat.id).toBe("agents.time");
   });
 
   it("forgets a project everywhere", async () => {

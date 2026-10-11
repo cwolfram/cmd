@@ -55,6 +55,9 @@ function reached(t: string): DataClass[] {
   return prefix || !hit.length ? hit : [classOf(t)];
 }
 
+/** Whether a reader sees anything of a class (an aggregate of it, a stat, docs/49). */
+export const readsClass = (r: Reader, c: DataClass): boolean => access(r, c) !== "none";
+
 export class PolicyError extends Error {}
 
 const denied = (r: Reader, t: string, c: DataClass, why = "") =>

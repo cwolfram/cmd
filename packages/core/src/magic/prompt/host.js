@@ -109,7 +109,8 @@
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   };
-  const color = (i) => `var(--c${(i % 6) + 1})`;
+  // --chart-N in kits 2 and 3; kit 1 named them --cN (KIT1_RENAMES), so a widget on it keeps its colours.
+  const color = (i) => `var(--chart-${(i % 6) + 1}, var(--c${(i % 6) + 1}))`;
 
   function spark(el, values, o = {}) {
     const v = (values || []).filter((x) => typeof x === "number" && !isNaN(x));
