@@ -84,7 +84,7 @@ button.ui-stat { padding: 0; border: 0; background: none; color: inherit; font: 
 button.ui-stat:hover .ui-stat-label { color: var(--text); }
 button.ui-stat:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--input-glow); }
 .ui-stat-label { font-size: var(--text-sm); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui-stat-value { display: flex; align-items: baseline; gap: var(--space-0-5); font: 500 var(--text-lg) var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui-stat-value { display: flex; align-items: baseline; gap: var(--space-0-5); font: 500 var(--text-lg) var(--font-ui); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ui-stat-unit { font-size: var(--text-sm); color: var(--text-dim); }
 .ui-stat-delta { margin-left: var(--space-1); font: var(--text-xs) var(--font-ui); color: var(--text-dim); }
 .ui-stat-delta[data-tone="success"] { color: var(--success); }

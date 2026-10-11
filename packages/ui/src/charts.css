@@ -7,17 +7,16 @@
 
 /* The header: the summary, or the bucket under the cursor in its place. */
 .ui-chart-head { display: flex; align-items: baseline; gap: var(--space-2); min-height: calc(var(--text-md) * 1.4); font-size: var(--text-sm); color: var(--text-dim); white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
-.ui-chart-value { font: 500 var(--text-md) var(--font-mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.ui-chart-value { font: 500 var(--text-md) var(--font-ui); color: var(--text); font-variant-numeric: tabular-nums; }
 .ui-chart-when { color: var(--text-dim); }
 /* Legend entries and readout parts: the label in its series' colour (set on the item), the swatch
    in it too, centred on the letters (the label is trimmed to its cap height), values dim. */
-.ui-chart-part { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--text-xs) var(--font-mono); }
-.ui-chart-part i, .ui-legend-item i { flex: none; border-radius: var(--radius-xs); background: currentColor; }
-.ui-chart-part i { width: var(--space-1-5); height: var(--space-1-5); }
+.ui-chart-part { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--text-xs) var(--font-ui); }
+.ui-chart-part i, .ui-legend-item i { flex: none; width: var(--space-1-5); height: var(--space-1-5); border-radius: var(--radius-xs); background: currentColor; }
 .ui-chart-part > span, .ui-legend-item > span { text-box: trim-both cap alphabetic; }
 .ui-chart-part-value { color: var(--text-dim); }
 
-.ui-delta { font: var(--text-xs) var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ui-delta { font: var(--text-xs) var(--font-ui); color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ui-delta[data-tone="success"] { color: var(--success); }
 .ui-delta[data-tone="danger"] { color: var(--danger); }
 
@@ -28,7 +27,7 @@
 .ui-plot svg, .ui-sparkline svg, .ui-calendar svg { display: block; overflow: visible; }
 .ui-plot-grid { stroke: var(--chart-grid); stroke-width: 1; stroke-linecap: round; }
 .ui-plot-base { stroke: var(--chart-grid); stroke-width: 1; stroke-linecap: round; }
-.ui-plot-tick { font: var(--text-2xs) var(--font-mono); fill: var(--chart-axis); font-variant-numeric: tabular-nums; }
+.ui-plot-tick { font: var(--text-2xs) var(--font-ui); fill: var(--chart-axis); font-variant-numeric: tabular-nums; }
 .ui-plot-tick[data-on] { fill: var(--text); }
 .ui-plot-cursor { stroke: var(--chart-axis); stroke-width: 1; stroke-linecap: round; }
 .ui-plot-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -49,7 +48,6 @@
 
 .ui-legend { display: flex; flex-wrap: wrap; gap: var(--space-0-5) var(--space-3); font-size: var(--text-sm); color: var(--text-dim); }
 .ui-legend-item { display: inline-flex; align-items: center; gap: var(--space-1); }
-.ui-legend-item i { width: var(--space-2); height: var(--space-2); }
 
 /* Ranking: label, bar, value in three columns, rows as dense as a table's. */
 .ui-ranking { display: grid; grid-template-columns: minmax(0, max-content) minmax(var(--space-12), 1fr) max-content auto; column-gap: var(--space-2); font-size: var(--text-sm); }
@@ -60,15 +58,15 @@ button.ui-ranking-row:hover .ui-ranking-track i, button.ui-ranking-row:focus-vis
 .ui-ranking-label { min-width: 0; max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-ranking-track { display: flex; align-items: center; }
 .ui-ranking-track i { display: block; height: var(--space-1-5); border-radius: var(--radius-chart); background: var(--chart-neutral); }
-.ui-ranking-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }
-.ui-ranking-note { font: var(--text-xs) var(--font-mono); color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
+.ui-ranking-value { font-family: var(--font-ui); font-variant-numeric: tabular-nums; text-align: right; }
+.ui-ranking-note { font: var(--text-xs) var(--font-ui); color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
 .ui-ranking-row:not(:has(.ui-ranking-note))::after { content: ""; }
 .ui-ranking-empty { font-size: var(--text-sm); color: var(--text-dim); }
 
 /* Meter: a bullet graph. */
 .ui-meter { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .ui-meter-head { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-dim); }
-.ui-meter-value { font-family: var(--font-mono); color: var(--text); font-variant-numeric: tabular-nums; }
+.ui-meter-value { font-family: var(--font-ui); color: var(--text); font-variant-numeric: tabular-nums; }
 .ui-meter-of { color: var(--text-dim); }
 .ui-meter-track { position: relative; height: var(--space-2); border-radius: var(--radius-chart); background: var(--chart-grid); overflow: hidden; }
 .ui-meter-track i { position: absolute; top: 0; bottom: 0; left: 0; }
@@ -81,7 +79,7 @@ button.ui-ranking-row:hover .ui-ranking-track i, button.ui-ranking-row:focus-vis
 .ui-proportion { display: flex; flex-direction: column; gap: var(--space-1-5); min-width: 0; }
 .ui-proportion-bar { display: flex; gap: 1px; height: var(--space-2); border-radius: var(--radius-chart); overflow: hidden; }
 .ui-proportion-bar i { flex-basis: 0; min-width: 2px; }
-.ui-proportion-value { margin-left: var(--space-1); font: var(--text-xs) var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-dim); }
+.ui-proportion-value { margin-left: var(--space-1); font: var(--text-xs) var(--font-ui); font-variant-numeric: tabular-nums; color: var(--text-dim); }
 
 /* Heat cells (Calendar, PunchCard): five levels of one hue. */
 .ui-calendar { overflow-x: auto; overflow-y: hidden; }

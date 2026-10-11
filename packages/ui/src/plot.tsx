@@ -98,7 +98,7 @@ export function axisTicks(max: number, kind: "number" | "duration" = "number"): 
   return s.ticks(2);
 }
 
-/** Mono 10px digits are ~6px wide: how wide the axis column is for these labels. */
+/** 10px digits (tabular) are ~6px wide: how wide the axis column is for these labels. */
 const axisWidth = (labels: string[]) => Math.ceil(Math.max(1, ...labels.map((l) => l.length)) * 6.1) + 8;
 
 export interface PlotProps {
