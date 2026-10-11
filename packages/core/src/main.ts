@@ -107,6 +107,8 @@ try {
   terminals = await nodePtyFactory();
 }
 
+/** The state dir was deleted under the core (onHomeGone): shutdown takes away what made it again. */
+let homeGone = false;
 const core = new Core({
   socketPath,
   dbPath: path.join(home, "cmd.sqlite"),
@@ -120,6 +122,16 @@ const core = new Core({
   // PTY host only if something went wrong anyway (a core from before the lock):
   // it has the terminals now, step aside.
   onReplaced: () => process.kill(process.pid, "SIGTERM"),
+  // The state dir was deleted under it (a worktree removed with its core running): this
+  // instance is gone. Its terminals with it (they ran in a checkout that's gone too), then
+  // the core, rather than putting the folder back for nobody.
+  onHomeGone: () =>
+    void (async () => {
+      homeGone = true;
+      const backend = core.panes.backend as Partial<{ shutdownHost(): Promise<void> }>;
+      await backend.shutdownHost?.().catch(() => {});
+      process.kill(process.pid, "SIGTERM");
+    })(),
   inspector: procinfo.available ? (pid) => procinfo.query(pid) : null,
   sampler: procinfo.available ? (pids) => procinfo.trees(pids) : null,
   procSampler: procinfo.available ? (pids) => procinfo.procs(pids) : null,
@@ -154,6 +166,15 @@ const shutdown = async () => {
   await core.close();
   fs.rmSync(pidFile, { force: true }); // ours: we hold the lock
   lock.release();
+  // The state dir was deleted under us: what we wrote since made the folder again (a model
+  // list, sockets). Take it away too, unless another core has claimed it meanwhile.
+  if (homeGone && fs.existsSync(home)) {
+    let owner = 0;
+    try {
+      owner = Number(fs.readFileSync(path.join(home, "core.pid"), "utf8"));
+    } catch {}
+    if (!owner || owner === process.pid) fs.rmSync(home, { recursive: true, force: true });
+  }
   process.exit(0);
 };
 process.on("SIGINT", shutdown);

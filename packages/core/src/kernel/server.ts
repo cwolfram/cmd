@@ -35,6 +35,8 @@ export interface ServerOptions {
   socketPath: string;
   /** How often to check that the socket file is still there (default 2 s). */
   socketCheckMs?: number;
+  /** The socket's folder was deleted (a removed worktree's .cmd-dev), gone or made again since by something writing into it: this instance is over. Not put back. */
+  onHomeGone?: () => void;
   build?: string;
   /** Runs a method for a caller (Core.handlers). */
   dispatch: (method: Method, params: unknown, call: Call) => Promise<unknown>;
@@ -54,6 +56,8 @@ export class CoreServer {
   /** Inode of the socket file this core created: on close, it removes that file only, not another's. */
   #sockIno: number | null = null;
   #sockCheck: ReturnType<typeof setInterval> | null = null;
+  /** The socket folder's inode when first bound: a different one later means it was deleted (and made again by a write). */
+  #homeIno: number | null = null;
   #sockError: string | null = null;
   #widgetsBound = false;
   #rebinding = false;
@@ -140,6 +144,7 @@ export class CoreServer {
     const isFile = sock === this.#o.socketPath;
     if (isFile) {
       fs.mkdirSync(path.dirname(sock), { recursive: true });
+      this.#homeIno ??= fs.statSync(path.dirname(sock)).ino;
       await removeStaleSocket(sock);
     }
     // A file socket is bound under a temporary name, then renamed into place:
@@ -192,6 +197,20 @@ export class CoreServer {
     try {
       ino = fs.statSync(this.#o.socketPath).ino;
     } catch {}
+    // The file alone went (a cleanup of stale sockets): put it back. Its folder went with
+    // it: the state dir was deleted, and rebinding would make it again (mkdir) for a core
+    // nobody can reach any more, the folder coming back after every removed worktree. A
+    // write since (a model list, a log) may have made the folder again: a new inode.
+    let dirIno: number | null = null;
+    try {
+      dirIno = fs.statSync(path.dirname(this.#o.socketPath)).ino;
+    } catch {}
+    if (this.#homeIno !== null && dirIno !== this.#homeIno && ino !== this.#sockIno) {
+      if (this.#sockCheck) clearInterval(this.#sockCheck);
+      log.warn(`the state dir ${path.dirname(this.#o.socketPath)} is gone: not putting the socket back`);
+      this.#o.onHomeGone?.();
+      return;
+    }
     if (ino === this.#sockIno) return;
     this.#rebinding = true;
     try {

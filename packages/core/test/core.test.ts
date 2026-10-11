@@ -225,4 +225,34 @@ describe("restart", () => {
     await a.close();
     expect(fs.existsSync(sock)).toBe(false);
   });
+
+  it("doesn't make its state dir again when it's deleted (a removed worktree), and says so", async () => {
+    const home = path.join(dir, "home-gone");
+    const sock = path.join(home, "core.sock");
+    let gone = 0;
+    const a = new Core({ socketPath: sock, dbPath: null, terminals: fakeFactory().factory, pollMs: 0, socketCheckMs: 50, onHomeGone: () => gone++ });
+    await a.listen();
+    fs.rmSync(home, { recursive: true, force: true });
+    await until("onHomeGone", () => gone === 1);
+    // Several checks later: still gone, and told once.
+    await new Promise((r) => setTimeout(r, 200));
+    expect(fs.existsSync(home)).toBe(false);
+    expect(gone).toBe(1);
+    await a.close();
+    expect(fs.existsSync(home)).toBe(false);
+  });
+
+  it("knows its state dir is gone when a write made the folder again before it looked", async () => {
+    const home = path.join(dir, "home-remade");
+    const sock = path.join(home, "core.sock");
+    let gone = 0;
+    const a = new Core({ socketPath: sock, dbPath: null, terminals: fakeFactory().factory, pollMs: 0, socketCheckMs: 50, onHomeGone: () => gone++ });
+    await a.listen();
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.mkdirSync(home); // a model list written right after: the same path, another folder
+    fs.writeFileSync(path.join(home, "ai-models.json"), "{}");
+    await until("onHomeGone", () => gone === 1);
+    expect(fs.existsSync(sock)).toBe(false);
+    await a.close();
+  });
 });

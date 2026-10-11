@@ -49,10 +49,11 @@ git worktree list                       # what is in flight
 - Merging, pushing and releasing happen only when the user asks, from the main checkout: `git merge --ff-only <topic>`, `pnpm release` there on `master`.
 - A merge isn't done until its worktree is gone. Right after merging, in the main checkout:
   ```sh
-  CMD_HOME=~/src/cmd-<topic>/.cmd-dev pnpm core:stop --terminals   # its core and PTY host
+  CMD_HOME=~/src/cmd-<topic>/.cmd-dev pnpm core:stop --terminals   # its cores and PTY hosts, the instances inside .cmd-dev too
   git worktree remove ~/src/cmd-<topic>                            # deletes the dir, node_modules and .cmd-dev too
   git branch -d <topic>
   ```
+  A core whose state dir is deleted (a worktree removed with it running) stops by itself and stops its PTY host, rather than making the folder again for its socket.
   `git worktree remove` refuses if the worktree has uncommitted or untracked changes: that's work the merge didn't include, so look before reaching for `--force`. `git worktree prune` clears entries whose dir was deleted by hand.
 
 ## Architecture

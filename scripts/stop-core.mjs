@@ -3,15 +3,16 @@
 // the core too (packages/core/src/terminals/host.ts): stopping a core keeps them,
 // --terminals stops its host as well. The installed app's core is only stopped
 // when asked for, so this is safe to run in its terminals.
-//   node scripts/stop-core.mjs                        the core of $CMD_HOME, else the dev instance's (a worktree's own)
-//   node scripts/stop-core.mjs --terminals            … and its PTY host (its terminals close)
+//   node scripts/stop-core.mjs                        the core of $CMD_HOME, else the dev instance's (a worktree's own),
+//                                                     and those of the instances inside it (a worktree's .cmd-dev/e2e-*, workbench…)
+//   node scripts/stop-core.mjs --terminals            … and their PTY hosts (their terminals close)
 //   node scripts/stop-core.mjs --release              the installed app's core
 //   node scripts/stop-core.mjs --all                  every dev and test core and PTY host on this machine
 //   node scripts/stop-core.mjs --all --include-release  … and the installed app's
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { cmdHome, enterInstance } from "../packages/protocol/src/node.ts";
+import { cmdHome, connect, enterInstance } from "../packages/protocol/src/node.ts";
 
 const alive = (pid) => {
   try {
@@ -22,10 +23,20 @@ const alive = (pid) => {
   }
 };
 
+/** Pids that were alive but not ours to signal (EPERM). */
+export const refused = [];
+
 /** SIGTERM (the core shuts down cleanly), then SIGKILL after `graceMs`. */
 export async function stopPid(pid, graceMs = 3000) {
   if (!alive(pid)) return false;
-  process.kill(pid, "SIGTERM");
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch (err) {
+    // Alive, but not ours to signal (a sandboxed agent's shell, another user): say so, don't crash.
+    if (err.code !== "EPERM") throw err;
+    refused.push(pid);
+    return false;
+  }
   for (let t = 0; t < graceMs && alive(pid); t += 100) await new Promise((r) => setTimeout(r, 100));
   if (alive(pid)) process.kill(pid, "SIGKILL");
   return true;
@@ -62,12 +73,58 @@ function looksLikeCore(pid) {
   }
 }
 
-/** Stops the core whose state dir is `home` (with `terminals`, its PTY host too); true if one was running. */
-export async function stopCore(home = cmdHome(), { terminals = false } = {}) {
-  const pid = corePid(home);
+/** Instance homes inside `home`, two levels down (a worktree's .cmd-dev holds e2e-*, workbench, test homes): any folder with a core's pid file or socket. */
+export function nestedHomes(home) {
+  const out = [];
+  const walk = (dir, depth) => {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {}
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name === "node_modules") continue;
+      const p = path.join(dir, e.name);
+      if (["core.pid", "ptyhost.pid", "core.sock"].some((f) => fs.existsSync(path.join(p, f)))) out.push(p);
+      if (depth < 2) walk(p, depth + 1);
+    }
+  };
+  walk(home, 1);
+  return out;
+}
+
+/** A core's pid and its PTY host's, asked over its socket: for a home whose pid files were deleted (a worktree removed while its core ran). */
+export async function askPids(home) {
+  try {
+    const c = await Promise.race([connect(path.join(home, "core.sock")), new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 1000))]);
+    try {
+      const hello = await c.client.call("core.hello", {});
+      const info = await c.client.call("core.info", {}).catch(() => null);
+      return { core: hello.pid, host: info?.ptyHost?.pid ?? null };
+    } finally {
+      c.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
+async function stopOne(home, terminals) {
+  let pid = corePid(home);
+  let host = terminals ? corePid(home, "ptyhost") : null;
+  if (!pid || (terminals && !host)) {
+    const asked = await askPids(home);
+    pid ??= asked?.core ?? null;
+    if (terminals) host ??= asked?.host ?? null;
+  }
   const stopped = pid && looksLikeCore(pid) ? await stopPid(pid) : false;
-  const host = terminals ? corePid(home, "ptyhost") : null;
   return (host && looksLikeCore(host) ? await stopPid(host) : false) || stopped;
+}
+
+/** Stops the core whose state dir is `home` and those of the instances inside it (with `terminals`, their PTY hosts too); true if one was running. */
+export async function stopCore(home = cmdHome(), { terminals = false } = {}) {
+  let stopped = false;
+  for (const h of [home, ...nestedHomes(home)]) stopped = (await stopOne(h, terminals)) || stopped;
+  return stopped;
 }
 
 /** Pids of running cmd cores and PTY hosts: dev (any checkout), tests, and with `release` the installed app's. */
@@ -95,6 +152,10 @@ if (path.resolve(process.argv[1] ?? "") === import.meta.filename) {
     const home = cmdHome();
     const terminals = args.includes("--terminals");
     const what = terminals ? "the core and terminals" : "the core (its terminals keep running; --terminals stops them)";
-    console.log((await stopCore(home, { terminals })) ? `stopped ${what} of ${home}` : `no core running for ${home}`);
+    const stopped = await stopCore(home, { terminals });
+    if (refused.length) {
+      console.error(`couldn't stop pid ${refused.join(", ")} of ${home}: not allowed from here (a sandbox?), run this outside it`);
+      process.exitCode = 1;
+    } else console.log(stopped ? `stopped ${what} of ${home}` : `no core running for ${home}`);
   }
 }

@@ -56,7 +56,7 @@ import { sliceHandlers } from "./slices.ts";
 import { IN_CORE, type Call, type Handlers } from "./handlers.ts";
 import { createScheduler, type Scheduler } from "./scheduler.ts";
 import { createSecrets, type DevKeys, type SecretsService } from "./secrets.ts";
-import { CoreServer, widgetsSocketPath } from "./server.ts";
+import { CoreServer, widgetsSocketPath, type ServerOptions } from "./server.ts";
 import { createSettings, type SettingsService } from "./settings.ts";
 import { Store } from "./store.ts";
 import { createUsage, type UsageStats } from "./usage.ts";
@@ -68,7 +68,8 @@ export const VERSION = "0.0.1";
 
 const log = logger("core");
 
-export interface CoreOptions {
+/** socketCheckMs, onHomeGone: the server's (server.ts). */
+export interface CoreOptions extends Pick<ServerOptions, "socketCheckMs" | "onHomeGone"> {
   socketPath: string;
   /** SQLite file, or null for in-memory (tests). */
   dbPath: string | null;
@@ -82,8 +83,6 @@ export interface CoreOptions {
   terminals: TermBackend | PtyFactory;
   /** A new backend when the PTY host died (its terminals are then resurrected); none: they are lost. */
   reconnectTerminals?: () => Promise<TermBackend>;
-  /** How often to check that the socket file is still there (default 2 s). */
-  socketCheckMs?: number;
   /** Another core took the PTY host over (this one was cut off from its clients, see main.ts): stop. */
   onReplaced?: () => void;
   pollMs?: number;
@@ -194,7 +193,7 @@ export class Core {
     const ctx = this.#ctx;
     const state = opts.stateDir ?? null;
     // First: everything below may tell clients something.
-    this.server = new CoreServer(ctx, { socketPath: opts.socketPath, socketCheckMs: opts.socketCheckMs, build: opts.build, dispatch: (m, p, call) => this.call(m, p as never, call), policy: () => this.#policy() });
+    this.server = new CoreServer(ctx, { socketPath: opts.socketPath, socketCheckMs: opts.socketCheckMs, onHomeGone: opts.onHomeGone, build: opts.build, dispatch: (m, p, call) => this.call(m, p as never, call), policy: () => this.#policy() });
     this.scheduler = createScheduler(ctx, { watchdog: !!state });
     this.store = new Store(opts.dbPath ?? ":memory:");
     this.settings = createSettings(ctx, opts.settingsPath ?? null);
