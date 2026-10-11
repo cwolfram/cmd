@@ -6,7 +6,7 @@ import { summaryText, isSummary, type Agent, type AgentTurn } from "@cmd/protoco
 import { parseClaude, parseCodex, type ConversationEntry } from "../src/search/parser.ts";
 import { cut, prune, redact, shrinkBlocks } from "../src/summaries/prune.ts";
 import { renderSummary, SUMMARY_SCHEMA, type SummaryFacts, type SummaryText } from "../src/summaries/render.ts";
-import { SummaryService, type SummaryAi } from "../src/summaries/service.ts";
+import { SummaryService, type SummaryHashes, type SummaryAi } from "../src/summaries/service.ts";
 
 const jl = (...xs: unknown[]) => xs.map((x) => JSON.stringify(x)).join("\n");
 
@@ -234,6 +234,7 @@ describe("SummaryService", () => {
     const turns = [{ sessionId: "sess-1234-abcd", startedAt: 1, endedAt: 2, files: [{ path: "/src/cmd/README.md", change: "M", via: ["git"] }] }] as unknown as AgentTurn[];
     const shown: string[] = [];
     const notes: string[] = [];
+    const records = new Map<string, SummaryHashes>();
     const svc = new SummaryService({
       ai: { modelName: () => "Claude Haiku 4.5", ...ai },
       agent: (id) => (id === "a1" ? agent : null),
@@ -244,8 +245,10 @@ describe("SummaryService", () => {
       notify: (_id, title, body) => notes.push(`${title}: ${body}`),
       commits: async () => [{ hash: "abc1234", subject: "README" }],
       branch: async () => "main",
+      written: (f, _a, _s, h) => void records.set(f, h),
+      previous: (f) => records.get(f) ?? null,
     });
-    return { svc, shown, notes };
+    return { svc, shown, notes, records };
   }
 
   it("writes the facts first, streams the answer into the file, then notifies", async () => {
@@ -304,6 +307,30 @@ describe("SummaryService", () => {
     await new Promise((r) => setTimeout(r, 10));
     release();
     await c.done;
+  });
+
+  it("asked again with nothing new, shows the same file without asking the model", async () => {
+    let calls = 0;
+    const { svc, records } = setup({ object: async <T,>() => (calls++, { value: answer as T, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, model: "m" }) });
+    const a = await svc.start("a1");
+    await a.done;
+    expect(records.get(a.path)).toMatchObject({ written: expect.any(String), input: expect.any(String) });
+    const b = await svc.start("a1");
+    expect(b.path).toBe(a.path);
+    expect(await b.done).toBe(fs.readFileSync(a.path, "utf8"));
+    expect(calls).toBe(1);
+  });
+
+  it("keeps a summary the person edited and writes the new one beside it", async () => {
+    const { svc } = setup({ object: async <T,>() => ({ value: answer as T, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, model: "m" }) });
+    const a = await svc.start("a1");
+    await a.done;
+    fs.appendFileSync(a.path, "\nMy own notes.\n");
+    const edited = fs.readFileSync(a.path, "utf8");
+    const b = await svc.start("a1");
+    await b.done;
+    expect(path.basename(b.path)).toBe("cmd-2026-10-05-sess-123-2.md");
+    expect(fs.readFileSync(a.path, "utf8")).toBe(edited);
   });
 
   it("a failed call says why in the file", async () => {

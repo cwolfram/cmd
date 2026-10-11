@@ -16,6 +16,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { logger } from "@cmd/protocol/node";
 import type { Agent, AgentId, AgentTurn, WorkspaceId, WindowId } from "@cmd/protocol";
 import type { CompleteResult, ObjectRequest } from "../ai/backends.ts";
@@ -56,12 +57,32 @@ export interface SummaryServiceOptions {
   /** Shows `file` in a Markdown window in `workspaceId` (an open one if there is); its id. */
   show: (file: string, workspaceId: WorkspaceId) => WindowId;
   notify: (windowId: WindowId, title: string, body: string) => void;
-  /** A summary file was written for an agent's session: recorded, so a forget of the session or project finds the file. */
-  written?: (file: string, a: Agent, session: string | null) => void;
+  /**
+   * A summary file was written for an agent's session, from `hashes.input` (the model's
+   * input) as `hashes.written` (the file cmd last wrote, null while it's being written):
+   * recorded, so a forget finds the file and asking again knows whether the person edited it.
+   */
+  written?: (file: string, a: Agent, session: string | null, hashes: SummaryHashes) => void;
+  /** What written() recorded for a file, or null. */
+  previous?: (file: string) => SummaryHashes | null;
   /** Tests: git's commits since a time, newest first (default: `git log`). */
   commits?: (cwd: string, since: number) => Promise<Commit[]>;
   branch?: (cwd: string) => Promise<string | null>;
 }
+
+export interface SummaryHashes {
+  input: string;
+  written: string | null;
+}
+
+const sha = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 24);
+const readFile = (f: string) => {
+  try {
+    return fs.readFileSync(f, "utf8");
+  } catch {
+    return null;
+  }
+};
 
 export interface SummaryStart {
   path: string;
@@ -254,17 +275,6 @@ export class SummaryService {
       commits: commits.map((c) => ({ hash: c.hash, subject: c.subject })),
     };
 
-    const day = new Date(startedAt ?? Date.now()).toISOString().slice(0, 10);
-    const file = path.join(this.dir, `${slug(facts.project)}-${day}-${(session ?? a.id).slice(0, 8)}.md`);
-    fs.mkdirSync(this.dir, { recursive: true });
-    const write = (md: string) => {
-      try {
-        fs.writeFileSync(file, md);
-      } catch (e) {
-        log.warn(`could not write the summary: ${(e as Error).message}`, { file });
-      }
-    };
-
     let pruned = prune(entries.map((e) => ({ ...e, text: redact(e.text) })), SUMMARY_BUDGET);
     // The input through the context builder: facts and the prompt outline kept, the session fitted by the pruner into what's left.
     const parts = promptParts(facts, entries);
@@ -278,8 +288,37 @@ export class SummaryService {
         { name: "outline", text: parts.outline, weight: 0.1 },
       ],
     });
+    // The file: the session's, unless the person edited it (or it's from before cmd recorded what it wrote): then the next free -2, -3….
+    const input = sha(ctx.text);
+    const day = new Date(startedAt ?? Date.now()).toISOString().slice(0, 10);
+    const base = path.join(this.dir, `${slug(facts.project)}-${day}-${(session ?? a.id).slice(0, 8)}`);
+    let file = `${base}.md`;
+    for (let n = 2; ; n++) {
+      const on = readFile(file);
+      if (on === null || this.#o.previous?.(file)?.written === sha(on)) break;
+      file = `${base}-${n}.md`;
+    }
+    // Untouched, and the session has nothing new: show it again, no model call.
+    const existing = readFile(file);
+    const prev = this.#o.previous?.(file);
+    if (existing !== null && prev?.input === input && prev.written === sha(existing)) {
+      const windowId = o.open === false ? null : this.#o.show(file, a.workspaceId);
+      return { path: file, windowId, done: Promise.resolve(existing) };
+    }
+    fs.mkdirSync(this.dir, { recursive: true });
+    let wrote: string | null = null;
+    const write = (md: string) => {
+      try {
+        fs.writeFileSync(file, md);
+        wrote = md;
+      } catch (e) {
+        log.warn(`could not write the summary: ${(e as Error).message}`, { file });
+      }
+    };
+    const record = (done: boolean) => this.#o.written?.(file, a, session, { input, written: done && wrote !== null ? sha(wrote) : null });
+
     write(renderSummary(facts, {}, { pending: `Summarizing ${facts.prompts === 1 ? "1 prompt" : `${facts.prompts} prompts`} with ${model}…` }));
-    this.#o.written?.(file, a, session);
+    record(false);
     const windowId = o.open === false ? null : this.#o.show(file, a.workspaceId);
 
     const footer = (m: string) =>
@@ -312,6 +351,7 @@ export class SummaryService {
           if (timer) clearTimeout(timer);
           const md = renderSummary(facts, r.value, { footer: footer(model) });
           write(md);
+          record(true);
           log.info("summary written", { agent: agentId, file, sent: pruned.after, of: pruned.before, omitted: pruned.omitted, tokens: r.usage });
           if (windowId) this.#o.notify(windowId, "Summary ready", r.value.title || facts.project);
           return md;
@@ -319,6 +359,7 @@ export class SummaryService {
         (e: Error) => {
           if (timer) clearTimeout(timer);
           write(renderSummary(facts, partial, { error: `${e.message} Try again from the terminal's title bar menu.` }));
+          record(true); // cmd's own text: asking again may write over it
           if (windowId) this.#o.notify(windowId, "Summary failed", e.message);
           throw e;
         },
@@ -349,8 +390,12 @@ export function createSummaries(core: Pick<CoreContext, "ai" | "agents" | "data"
       return core.opened(core.windows.open("markdown", { path: file }, core.workspaces.mustOpen(workspaceId))).id;
     },
     notify: (id, title, body) => core.notifications.window(id, "summary", title, body),
-    written: (file, a, session) =>
-      core.data.record({ id: `summary:${file}`, at: Date.now(), type: "summary.written", source: "cmd", agentId: a.id, paneId: a.paneId, workspaceId: a.workspaceId, sessionId: session ? `${a.kind}:${session}` : null, projectId: projectIdOf(a.cwd), text: path.basename(file), data: { path: file } }),
+    written: (file, a, session, hashes) =>
+      core.data.record({ id: `summary:${file}`, at: Date.now(), type: "summary.written", source: "cmd", agentId: a.id, paneId: a.paneId, workspaceId: a.workspaceId, sessionId: session ? `${a.kind}:${session}` : null, projectId: projectIdOf(a.cwd), text: path.basename(file), data: { path: file, ...hashes } }),
+    previous: (file) => {
+      const d = core.data.store.get(`summary:${file}`)?.data as Partial<SummaryHashes> | undefined;
+      return d?.input ? { input: d.input, written: d.written ?? null } : null;
+    },
   });
   core.data.onForget(({ what }) => forgetSummaries(core.data, what, service.dir));
   return service;

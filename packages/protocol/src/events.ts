@@ -65,7 +65,7 @@ export interface EventPayloads {
   /** Something a person or an agent wrote down on purpose. */
   note: { by: "user" | "agent"; agentSession: string | null };
   /** A session summary written to a Markdown file (core/src/summaries): a forget of its session or project deletes the file. */
-  "summary.written": { path: string };
+  "summary.written": { path: string; input?: string; written?: string | null };
   /** Agent transcripts, one line each (docs/28 §2); shapes per agent in core/src/data/sources/transcripts.ts. */
   "transcript.message": Record<string, unknown>;
   "transcript.tool_use": Record<string, unknown>;
