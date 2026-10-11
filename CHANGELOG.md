@@ -2,6 +2,27 @@
 
 What changed in each cmd release, newest first. cmd shows the releases since your last update in What's New. Written at release time by the changelog skill (`.claude/skills/changelog/SKILL.md`).
 
+## 0.27.0 — 2026-10-11
+
+Operator, an assistant that works your workspace while you watch.
+
+### New
+
+- **Operator.** Ask Operator… (⌘J) starts agents, runs commands, reads pages, edits files and arranges windows while you watch. It asks before every step that changes something.
+- **Operator conversations.** Conversations get a name, and Past Conversations in Operator's toolbar brings one back.
+- **Always allow.** Approve one kind of Operator step for a workspace or a site once, and forget it again from Remembered Approvals.
+
+### Improved
+
+- A phone that loses its connection retries by itself instead of saying it's not paired anymore.
+- Settings cmd doesn't know show a quiet note with Remove instead of an error.
+- List rows move as one piece and keep gliding while a section folds.
+
+### Fixed
+
+- Agents in terminals keep being detected after a hiccup, instead of only after cmd restarts.
+- Layout changes made while cmd reconnects in the background are kept instead of undone.
+
 ## 0.26.0 — 2026-10-11
 
 Stats on how you and your agents work, notifications on your phone, and far less disk space used.
