@@ -7,6 +7,9 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { lineSplitter } from "@cmd/protocol";
+import { logger } from "@cmd/protocol/node";
+
+const log = logger("procinfo");
 
 export interface ForegroundInfo {
   /** Foreground process group leader of the terminal. */
@@ -136,15 +139,29 @@ export interface ProcUsage {
   cpu: number;
 }
 
-/** Long-lived helper process; one request/response line per query. */
+/** A helper that hasn't answered in this long is stuck: it is killed and started again on the next request. */
+const TIMEOUT_MS = 1000;
+/** Pids per `t`/`p` line, so a request stays well inside the line buffer of a helper built before it read lines of any length. */
+const PIDS_PER_LINE = 500;
+
+/**
+ * Long-lived helper process; one request/response line per query, answered in
+ * order. Every request has a deadline: a helper that misses one is killed, and
+ * what was waiting gets nothing, so a stuck helper costs one poll, not every
+ * one after it, and answers never shift to the wrong caller.
+ */
 export class ProcInfo {
   #child: ChildProcessWithoutNullStreams | null = null;
   /** Pending requests, answered in order; each parses its own response line. */
   #queue: ((line: string | null) => void)[] = [];
   #binary: string;
+  #timeoutMs: number;
+  /** Helpers killed for missing a deadline. */
+  stalls = 0;
 
-  constructor(binary = procinfoBinary()) {
+  constructor(binary = procinfoBinary(), o: { timeoutMs?: number } = {}) {
     this.#binary = binary;
+    this.#timeoutMs = o.timeoutMs ?? TIMEOUT_MS;
   }
 
   get available(): boolean {
@@ -153,59 +170,65 @@ export class ProcInfo {
 
   /** Foreground process of the terminal whose shell is `shellPid`. */
   query(shellPid: number): Promise<ForegroundInfo | null> {
-    const child = this.#ensure();
-    if (!child) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      this.#queue.push((line) => {
-        if (!line) return resolve(null);
-        try {
-          const r = JSON.parse(line) as { fg?: number; start?: number; path?: string; argv?: string[]; error?: string };
-          resolve(r.error || !r.fg ? null : { pid: r.fg, startedAt: Math.round((r.start ?? 0) * 1000), path: r.path ?? "", argv: r.argv ?? [] });
-        } catch {
-          resolve(null);
-        }
-      });
-      child.stdin.write(`${shellPid}\n`);
+    return this.#ask(`${shellPid}`, null, (line) => {
+      const r = JSON.parse(line) as { fg?: number; start?: number; path?: string; argv?: string[]; error?: string };
+      return r.error || !r.fg ? null : { pid: r.fg, startedAt: Math.round((r.start ?? 0) * 1000), path: r.path ?? "", argv: r.argv ?? [] };
     });
   }
 
-  /** Memory/CPU of each pid's process tree, from one scan of the process table. */
+  /** Memory/CPU of each pid's process tree, from one scan of the process table (per line of pids). */
   trees(pids: number[]): Promise<TreeUsage[]> {
-    const child = this.#ensure();
-    if (!child || pids.length === 0) return Promise.resolve([]);
-    return new Promise((resolve) => {
-      this.#queue.push((line) => {
-        try {
-          resolve(line ? (JSON.parse(line) as TreeUsage[]) : []);
-        } catch {
-          resolve([]);
-        }
-      });
-      child.stdin.write(`t ${pids.join(" ")}\n`);
-    });
+    return this.#each("t", pids, (line) => JSON.parse(line) as TreeUsage[]);
   }
 
   /** Memory/CPU of each pid on its own; pids that are gone are left out. */
   procs(pids: number[]): Promise<ProcUsage[]> {
-    const child = this.#ensure();
-    if (!child || pids.length === 0) return Promise.resolve([]);
-    return new Promise((resolve) => {
-      this.#queue.push((line) => {
-        try {
-          const r: unknown = line ? JSON.parse(line) : [];
-          // A helper built before `p` existed answers with an error object.
-          resolve(Array.isArray(r) ? (r as ProcUsage[]) : []);
-        } catch {
-          resolve([]);
-        }
-      });
-      child.stdin.write(`p ${pids.join(" ")}\n`);
+    return this.#each("p", pids, (line) => {
+      const r: unknown = JSON.parse(line);
+      // A helper built before `p` existed answers with an error object.
+      return Array.isArray(r) ? (r as ProcUsage[]) : [];
     });
   }
 
   close(): void {
-    this.#child?.kill();
+    if (this.#child) this.#drop(this.#child);
+  }
+
+  async #each<T>(cmd: string, pids: number[], parse: (line: string) => T[]): Promise<T[]> {
+    const lines: Promise<T[]>[] = [];
+    for (let i = 0; i < pids.length; i += PIDS_PER_LINE) lines.push(this.#ask(`${cmd} ${pids.slice(i, i + PIDS_PER_LINE).join(" ")}`, [], parse));
+    return (await Promise.all(lines)).flat();
+  }
+
+  /** One request line; `fallback` when the helper is missing, stuck, gone, or answers what can't be parsed. */
+  #ask<T>(request: string, fallback: T, parse: (line: string) => T): Promise<T> {
+    const child = this.#ensure();
+    if (!child) return Promise.resolve(fallback);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        this.stalls++;
+        log.warn(`procinfo helper didn't answer in ${this.#timeoutMs} ms; starting it again`, { request: request.slice(0, 80), stalls: this.stalls });
+        this.#drop(child);
+      }, this.#timeoutMs);
+      timer.unref();
+      this.#queue.push((line) => {
+        clearTimeout(timer);
+        try {
+          resolve(line ? parse(line) : fallback);
+        } catch {
+          resolve(fallback);
+        }
+      });
+      child.stdin.write(`${request}\n`);
+    });
+  }
+
+  /** Forget a helper (stuck, exited) and answer everything it owed with nothing. */
+  #drop(child: ChildProcessWithoutNullStreams): void {
+    if (this.#child !== child) return;
     this.#child = null;
+    child.kill();
+    for (const r of this.#queue.splice(0)) r(null);
   }
 
   #ensure(): ChildProcessWithoutNullStreams | null {
@@ -216,15 +239,13 @@ export class ProcInfo {
     child.stdout.on(
       "data",
       lineSplitter((line) => {
-        this.#queue.shift()?.(line);
+        if (this.#child === child) this.#queue.shift()?.(line);
       }),
     );
-    const fail = () => {
-      this.#child = null;
-      for (const r of this.#queue.splice(0)) r(null);
-    };
+    const fail = () => this.#drop(child);
     child.on("exit", fail);
     child.on("error", fail);
+    child.stdin.on("error", fail); // EPIPE from a helper that died between requests
     child.unref();
     (child.stdin as unknown as { unref?: () => void }).unref?.();
     (child.stdout as unknown as { unref?: () => void }).unref?.();

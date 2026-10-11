@@ -55,10 +55,12 @@ static void report(pid_t shell, char *buf, int argmax) {
     return;
   }
   pid_t fg = sh.kp_eproc.e_tpgid > 0 ? sh.kp_eproc.e_tpgid : shell;
-  struct kinfo_proc fi;
+  struct kinfo_proc fi = {0};
   double start = 0;
   if (kinfo(fg, &fi) == 0) {
     start = fi.kp_proc.p_un.__p_starttime.tv_sec + fi.kp_proc.p_un.__p_starttime.tv_usec / 1e6;
+  } else {
+    fi = sh; // the foreground process exited between the two lookups: name the shell's
   }
 
   size_t size = (size_t)argmax;
@@ -200,8 +202,9 @@ int main(void) {
   int mib[2] = {CTL_KERN, KERN_ARGMAX};
   if (sysctl(mib, 2, &argmax, &sz, NULL, 0) != 0 || argmax <= 0) argmax = 1 << 20;
   char *buf = malloc((size_t)argmax);
-  char line[8192];
-  while (fgets(line, sizeof line, stdin)) {
+  char *line = NULL;
+  size_t cap = 0;
+  while (getline(&line, &cap, stdin) > 0) { // any length: a `t` line of many pids is one request
     if (line[0] == 't') {
       report_trees(line + 1);
       fflush(stdout);
@@ -217,6 +220,7 @@ int main(void) {
     else printf("{\"pid\":0,\"error\":\"bad pid\"}\n");
     fflush(stdout);
   }
+  free(line);
   free(buf);
   return 0;
 }
