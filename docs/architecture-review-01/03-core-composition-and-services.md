@@ -266,7 +266,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 ### AR1-03-09 · Test `Store` and `TimerAlarms` directly
 
-- **Status:** in progress (data-cleanups)
+- **Status:** done (data-cleanups branch)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/store.ts`, `packages/core/src/timers.ts`, `packages/core/test/`
@@ -279,9 +279,11 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 **Success criteria.**
 
-- [ ] `packages/core/test/store.test.ts` exists with the four cases above and passes
-- [ ] `packages/core/test/timers.test.ts` exists with the four cases above and passes under fake timers in under a second
-- [ ] `pnpm vitest run packages/core/test/core.test.ts` still passes in under 10 s
+- [x] `packages/core/test/store.test.ts` exists with the four cases above and passes
+- [x] `packages/core/test/timers.test.ts` exists with the four cases above and passes under fake timers in under a second
+- [x] `pnpm vitest run packages/core/test/core.test.ts` still passes in under 10 s
+
+**Progress (2026-10-11).** `store.test.ts`: `claim()` after a copy and after, the Spaces rename on an older file, `deleteUiStateOf` by suffix, a rolled-back transaction. `timers.test.ts` (begun with AR1-16-06): rings after a sleep, re-arms past `setTimeout`'s limit, "Ended at" when late, nothing for a removed window, no timers left; under a second with fake timers.
 
 ### AR1-03-10 · Sample resources and tick widgets only for connections that show something
 

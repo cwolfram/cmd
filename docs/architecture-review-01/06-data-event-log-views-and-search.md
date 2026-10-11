@@ -241,7 +241,7 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 
 ### AR1-06-10 · Mint event ids in one place and refuse cross-type upserts
 
-- **Status:** in progress (data-cleanups)
+- **Status:** done (data-cleanups branch)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/data/store.ts:182-201`, `packages/core/src/data/views/activity.ts:103`, `packages/core/src/core.ts:379,519,638,656`, `apps/desktop/src/renderer/src/App.tsx:555`
@@ -253,13 +253,15 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 **Proposal.** Add `eventId(type, key?)` in `data/ids.ts`. It returns `${type}:${key}` when the source has a stable key (the hook spool file name, a notification id) and `${type}:${randomUUID()}` otherwise. Add `WHERE events.type = excluded.type` to the upsert, and log and re-mint on mismatch. Use the spool file's name for hooks, so replays dedupe (see doc 05 for the spool).
 
 **Success criteria.**
-- [ ] `grep -rn "Date.now()}\`" packages/core/src/data packages/core/src/core.ts` returns no id construction.
-- [ ] A test records two events of different types with the same id and finds both, with their own payloads.
-- [ ] A test feeding the same hook file twice through `ActivityView.insert` yields one row.
+- [x] `grep -rn "Date.now()}\`" packages/core/src/data packages/core/src/core.ts` returns no id construction.
+- [x] A test records two events of different types with the same id and finds both, with their own payloads.
+- [x] A test feeding the same hook file twice through `ActivityView.insert` yields one row.
+
+**Progress (2026-10-11).** `eventId(type, key?)` (data/ids.ts): `<type>:<key>` from a stable key, else a random UUID. The sites that built ids from `Date.now()` use it (window, workspace, notification-clear, look, remote audit, the data layer's own ops, agent notes; the renderer's `user.command` gets `user.command:<uuid>` instead of sharing `command:` with command runs). A hook event read from the spool is keyed by its file's name and mtime (`RawEvent.key`), so a file read twice is one row; one sent over the socket gets a random key. `DataStore.record` refuses to update a row of another type: it logs and records `<type>:<id>` instead. Tests in `data-service.test.ts`.
 
 ### AR1-06-11 · Delete the dead whole-file Claude/Codex parsers and the broken perf script
 
-- **Status:** in progress (data-cleanups)
+- **Status:** wontfix (the parsers are used: summaries read a transcript file through them when cmd has no copy; the broken perf script is deleted)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/search/parser.ts:10-15,173-305`, `packages/core/src/search/builtin.ts:45,81`, `scripts/perf/index-mem.ts:7`
@@ -272,12 +274,14 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 
 **Success criteria.**
 - [ ] `grep -rn "parseClaude\|parseCodex\|PARSER_VERSION" packages` returns nothing.
-- [ ] `node --no-warnings scripts/perf/index-mem.ts --help` (or the file's absence) gives no import error.
+- [x] `node --no-warnings scripts/perf/index-mem.ts --help` (or the file's absence) gives no import error.
 - [ ] `pnpm vitest run packages/core/test/search.test.ts packages/core/test/summaries.test.ts` passes.
+
+**Progress (2026-10-11).** `parseClaude` and `parseCodex` aren't dead: `summaries/service.ts` reads an agent's transcript file through them when the log has no copy of the session (`conversation()`), and `search/builtin.ts` names them as the sources' `parse`. Removing them means moving that fallback onto the line readers first; left as it is. `scripts/perf/index-mem.ts`, which imported the deleted `search/index.ts`, is deleted.
 
 ### AR1-06-12 · Flag imported events as redacted when the worker redacted them
 
-- **Status:** in progress (data-cleanups)
+- **Status:** done (data-cleanups branch)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `packages/core/src/data/service.ts:174-190`, `packages/core/src/data/sources/ingest-worker.ts:81`
@@ -289,8 +293,10 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 **Proposal.** Have the worker return, per event, whether `redactEvent` changed it (compare as `record` does, off the core thread) and carry it as a field on the posted event; `recordBatch` ORs `DATA_FLAGS.redacted` from it. When `recordBatch` redacts itself (`o.redacted` false), compare there as `record` does.
 
 **Success criteria.**
-- [ ] A test records a transcript chunk through `TranscriptIngest` containing a secret and finds the stored event's flags include `redacted`; one without a secret doesn't.
-- [ ] `recordBatch` without `o.redacted` sets the flag the same way `record` does (test).
+- [x] A test records a transcript chunk through `TranscriptIngest` containing a secret and finds the stored event's flags include `redacted`; one without a secret doesn't.
+- [x] `recordBatch` without `o.redacted` sets the flag the same way `record` does (test).
+
+**Progress (2026-10-11).** `wasRedacted(e, redacted)` (lib/redact.ts). The ingest worker sets `DATA_FLAGS.redacted` on each event redaction changed; `recordBatch` keeps that flag from a caller that redacted, and works it out itself otherwise, as `record` does. Test in `data-service.test.ts` through `recordBatch` both ways (not through `TranscriptIngest`).
 
 ## Course corrections
 
