@@ -907,12 +907,11 @@ await scenario("osc8", async () => {
   }
 });
 
-// A window that stops reading while its terminal prints a lot (a busy or paused page,
+// A window that stops reading while its terminal prints a lot (a busy page,
 // AR1-02-01): the core holds a bounded amount for it, then tells it to resync, and the
 // terminal shows what the core's copy shows, not a frozen or garbled screen.
 await scenario("resync", async () => {
   let term = null;
-  let cdp = null;
   let core = null;
   try {
     await win.evaluate(() => {
@@ -926,18 +925,18 @@ await scenario("resync", async () => {
     // Asked from here while the window is stopped.
     core = await connect(path.join(home, "core.sock"));
     const coreScreen = () => core.client.call("pane.read", { paneId: term.id, lines: 8 }).then((r) => r.text);
-    cdp = await win.context().newCDPSession(win);
-    await cdp.send("Debugger.enable");
-    const paused = new Promise((r) => cdp.once("Debugger.paused", r));
-    await win.evaluate(([id, data]) => window.cmd.call("pane.write", { paneId: id, data }), [term.id, "yes 'cmd keeps up' | head -c 20000000; echo resync-$((6*7))\r"]);
-    await cdp.send("Debugger.pause");
-    await paused;
-    step("the window is paused while the terminal prints");
+    // The window stops reading: its thread busy for 4 s while the terminal prints (a debugger pause
+    // doesn't do it: Electron keeps reading the window's socket meanwhile). Started from here, the window can't ask.
+    const busy = win.evaluate(() => {
+      for (const end = Date.now() + 4000; Date.now() < end; );
+    });
+    await core.client.call("pane.write", { paneId: term.id, data: "yes 'cmd keeps up' | head -c 20000000; echo resync-$((6*7))\r" });
+    step("the window is busy while the terminal prints");
+    await busy;
     for (const t0 = Date.now(); !(await coreScreen()).includes("resync-42"); ) {
       if (Date.now() - t0 > 60_000) throw new Error("the output never ended");
-      await new Promise((r) => setTimeout(r, 50)); // a poll: the window can't be asked
+      await new Promise((r) => setTimeout(r, 50)); // a poll of the core, not a wait before a read
     }
-    await cdp.send("Debugger.resume");
     const lastRows = (t) => t.split("\n").map((l) => l.trimEnd()).filter(Boolean).slice(-4).join("\n");
     const want = lastRows(await coreScreen());
     const got = await until(() => win.evaluate((id) => window.__cmdTermScreen(id), term.id).then(lastRows), (t) => t === want, 20_000);
@@ -945,8 +944,6 @@ await scenario("resync", async () => {
     check(resyncs > 0, `a window that stopped reading during 20 MB of output is told to resync (${resyncs}×)`);
     check(got === want, `and then shows what the core shows (${JSON.stringify(got)} vs ${JSON.stringify(want)})`);
   } finally {
-    await cdp?.send("Debugger.resume").catch(() => {});
-    await cdp?.detach().catch(() => {});
     core?.close();
     if (term) await win.evaluate((id) => window.cmd.call("window.close", { id }), term.id);
   }
