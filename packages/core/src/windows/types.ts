@@ -50,6 +50,11 @@ export interface WindowType<S extends Record<string, unknown> = Record<string, u
   create(input: Record<string, unknown>): { state: S; title: string };
   /** Apply a state patch from the UI (navigation, …); return the new state and maybe a title. */
   update?(state: S, patch: Record<string, unknown>): { state: S; title?: string };
+  /**
+   * What a paired device may see of a window's state (remote/policy.ts): none unless a
+   * type says, so a new type's state (a browser's history, a file's path) never leaks by default.
+   */
+  remoteState?(state: S): Record<string, unknown>;
 }
 
 export class WindowTypes {

@@ -7,7 +7,7 @@ import os from "node:os";
 import type { RemoteScope, Result } from "@cmd/protocol";
 import type { CoreContext } from "../kernel/context.ts";
 import { IN_CORE, slice } from "../kernel/handlers.ts";
-import { remoteEventVisible } from "./policy.ts";
+import { remoteEvent } from "./policy.ts";
 import { remoteTheme } from "./service.ts";
 
 export const remoteHandlers = (core: CoreContext) =>
@@ -39,7 +39,7 @@ export const remoteHandlers = (core: CoreContext) =>
       if (conn) {
         if (conn.deviceId) result.device = { id: conn.deviceId, scope: conn.access as RemoteScope };
         const state = core.server.state(conn);
-        core.server.subscribe(conn, (e) => remoteEventVisible(e, state.follows, state.watches));
+        core.server.subscribe(conn, (e) => remoteEvent(e, core.server.policy(), state.follows, state.watches));
         core.magic.resume();
       }
       return result;

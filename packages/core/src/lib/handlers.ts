@@ -6,6 +6,7 @@ import { IN_CORE, slice } from "../kernel/handlers.ts";
 import { listDir, readText, resolvePaths, writeText } from "../windows/manager.ts";
 import { createPath, duplicatePath, renamePath, transferPaths } from "./fileops.ts";
 import { gitDiff, gitStatus } from "./git.ts";
+import { MAX_WATCHES, RemoteDenied } from "../remote/policy.ts";
 
 export const fileHandlers = (core: CoreContext) =>
   slice({
@@ -18,6 +19,7 @@ export const fileHandlers = (core: CoreContext) =>
     "fs.create": (p) => createPath(p.dir, p.kind),
     "fs.transfer": (p) => transferPaths(p.paths, p.dir, p.op),
     "fs.watch": (p, { conn } = IN_CORE) => {
+      if (conn && conn.access !== "local" && core.server.state(conn).watches.length >= MAX_WATCHES) throw new RemoteDenied(`watching ${MAX_WATCHES} paths already`);
       const watching = core.watches.watch(p.path);
       if (conn && watching) core.server.state(conn).watches.push(p.path);
       return { watching };

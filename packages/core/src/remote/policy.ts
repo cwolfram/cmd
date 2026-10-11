@@ -10,13 +10,14 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { CoreEvent, Method, Params, RemoteScope } from "@cmd/protocol";
+import type { Agent, AppWindow, CoreEvent, Method, Pane, Params, RemoteScope, Result, Workspace } from "@cmd/protocol";
 import { refusedStatement } from "../sqlite/statements.ts";
 import { expandPath, inCmdInstance, isDeniedPath, remotePrivatePaths } from "../lib/paths-deny.ts";
 import type { AgentTracker } from "../agents/tracker.ts";
 import type { PaneManager } from "../terminals/panes.ts";
 import type { WorkspaceManager } from "../workspaces/manager.ts";
 import type { WindowManager } from "../windows/index.ts";
+import type { WindowTypes } from "../windows/types.ts";
 
 /** view: any paired device; control: control-scope devices; never: only the Mac. */
 export type Access = "view" | "control" | "never";
@@ -183,6 +184,8 @@ export interface PolicyContext {
   agents: AgentTracker;
   workspaces: WorkspaceManager;
   windows: WindowManager;
+  /** For what each window type lets a device see of its state (remoteState); none without. */
+  windowTypes?: Pick<WindowTypes, "get">;
   home?: string;
   /** Private paths only the core knows (agent homes and transcript folders it found), on top of remotePrivatePaths(). */
   private?: () => readonly string[];
@@ -190,6 +193,11 @@ export interface PolicyContext {
 
 /** Writes and messages from a phone. */
 export const MAX_WRITE = 64 * 1024;
+/** Paths one remote session may watch at a time (fs.watch). */
+export const MAX_WATCHES = 32;
+
+/** Reachable methods whose params are empty: nothing to check. Every other reachable method has an ARGS entry (remote-policy.test.ts). */
+export const NO_ARGS: ReadonlySet<Method> = new Set<Method>(["core.hello", "pane.list", "agent.list", "window.types", "window.list", "workspace.list", "remote.bootstrap"]);
 
 type Check<M extends Method> = (p: Params<M>, ctx: PolicyContext) => void;
 const ARGS: { [M in Method]?: Check<M> } = {
@@ -256,6 +264,15 @@ const ARGS: { [M in Method]?: Check<M> } = {
   },
   "magic.cancel": (p, ctx) => magicWidget(ctx, p.id),
   "magic.refresh": (p, ctx) => magicWidget(ctx, p.id),
+  "jam.change": (p) => {
+    text(p.code);
+    text(p.request);
+    if (p.sounds !== undefined && (!Array.isArray(p.sounds) || p.sounds.length > 500)) throw new RemoteDenied("too many sounds");
+    for (const s of p.sounds ?? []) if (typeof s !== "string" || s.length > 200) throw new RemoteDenied("bad sound");
+    if (p.history !== undefined && (!Array.isArray(p.history) || p.history.length > 20)) throw new RemoteDenied("too much history");
+    for (const h of p.history ?? []) [h.code, h.request, h.summary].forEach(text);
+    if (p.failed !== undefined) [p.failed.code, p.failed.error].forEach(text);
+  },
   "fs.list": (p, ctx) => allowedPath(ctx, p.path),
   "fs.read": (p, ctx) => allowedPath(ctx, p.path),
   "fs.watch": (p, ctx) => allowedPath(ctx, p.path),
@@ -377,6 +394,65 @@ function realpath(p: string): string {
   }
 }
 
+// ── what a device is told ────────────────────────────
+
+/**
+ * What a paired device sees of the Mac, by the rule its calls are held to: what's
+ * in an open workspace (Home's terminals included; its files aren't, allowedPath).
+ * Agents without the person's prompts (lastPrompt, the spawn prompt: words meant for
+ * a model; a device names agents by their names), windows with only the state their
+ * type lets out (WindowType.remoteState; none by default). remote.bootstrap, the
+ * *.list methods and every event go through it (kernel/server.ts).
+ */
+const inOpen = (ctx: PolicyContext, workspaceId: string) => {
+  const s = ctx.workspaces.get(workspaceId);
+  return !!s && s.closedAt === null;
+};
+export const remoteAgent = (a: Agent): Agent => ({ ...a, lastPrompt: null, spawn: { source: a.spawn.source } });
+export const remoteWindow = (w: AppWindow, ctx: PolicyContext): AppWindow => ({ ...w, state: (ctx.windowTypes?.get(w.kind)?.remoteState?.(w.state as never) ?? {}) as AppWindow["state"] });
+
+/** A method's result as a device gets it. */
+export function remoteResult(method: string, r: unknown, ctx: PolicyContext): unknown {
+  const panes = (l: Pane[]) => l.filter((p) => inOpen(ctx, p.workspaceId));
+  const agents = (l: Agent[]) => l.filter((a) => inOpen(ctx, a.workspaceId)).map(remoteAgent);
+  const windows = (l: AppWindow[]) => l.filter((w) => inOpen(ctx, w.workspaceId)).map((w) => remoteWindow(w, ctx));
+  const workspaces = (l: Workspace[]) => l.filter((s) => s.closedAt === null);
+  switch (method) {
+    case "pane.list":
+      return panes(r as Pane[]);
+    case "agent.list":
+      return agents(r as Agent[]);
+    case "window.list":
+      return windows(r as AppWindow[]);
+    case "workspace.list":
+      return workspaces(r as Workspace[]);
+    case "remote.bootstrap": {
+      const b = r as Result<"remote.bootstrap">;
+      return { ...b, panes: panes(b.panes), agents: agents(b.agents), windows: windows(b.windows), workspaces: workspaces(b.workspaces) };
+    }
+    default:
+      return r;
+  }
+}
+
+/** An event as a device gets it, or null when it isn't told (remoteEventVisible, then what's outside open workspaces). */
+export function remoteEvent(e: CoreEvent, ctx: PolicyContext, follows: ReadonlySet<string>, watches: readonly string[]): CoreEvent | null {
+  if (!remoteEventVisible(e, follows, watches)) return null;
+  switch (e.type) {
+    case "pane.updated":
+      return inOpen(ctx, e.pane.workspaceId) ? e : null;
+    case "agent.updated":
+      return inOpen(ctx, e.agent.workspaceId) ? { ...e, agent: remoteAgent(e.agent) } : null;
+    case "window.updated":
+      return inOpen(ctx, e.window.workspaceId) ? { ...e, window: remoteWindow(e.window, ctx) } : null;
+    case "workspace.updated":
+      // Closed: gone, as far as a device knows (its terminals' removals follow).
+      return e.workspace.closedAt === null ? e : { type: "workspace.removed", id: e.workspace.id };
+    default:
+      return e;
+  }
+}
+
 // ── events ────────────────────────────────────────────
 
 /**
@@ -397,7 +473,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "pane.removed":
     case "agent.updated":
     case "agent.removed":
-    case "window.updated": // TODO: strip the state of types the web client doesn't show (browser history)
+    case "window.updated": // its state stripped (remoteEvent)
     case "window.removed":
     case "workspace.updated":
     case "workspace.removed":

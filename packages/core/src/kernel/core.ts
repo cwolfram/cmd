@@ -365,7 +365,7 @@ export class Core {
   /** What remote/policy.ts checks arguments against: agent homes and transcript folders are private. */
   #policy() {
     const priv = () => [...this.homes.all().map((h) => h.dir), ...this.search.roots().map((r) => r.dir)];
-    return { panes: this.panes, agents: this.agents, workspaces: this.workspaces, windows: this.windows, home: this.#opts.home, private: priv };
+    return { panes: this.panes, agents: this.agents, workspaces: this.workspaces, windows: this.windows, windowTypes: this.windowTypes, home: this.#opts.home, private: priv };
   }
 
   /**

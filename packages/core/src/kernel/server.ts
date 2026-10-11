@@ -10,7 +10,7 @@ import type { CoreEvent, DataQuery, Method } from "@cmd/protocol";
 import { lineSplitter, MAX_LINE, RpcError } from "@cmd/protocol";
 import { ipcPath, logger, recordCrash } from "@cmd/protocol/node";
 import { widgetRead, type WidgetIdentity } from "../data/widgets.ts";
-import { checkRemoteCall, RemoteDenied, type PolicyContext } from "../remote/policy.ts";
+import { checkRemoteCall, RemoteDenied, remoteResult, type PolicyContext } from "../remote/policy.ts";
 import type { Connection, Served } from "./connection.ts";
 import { ConnectionWriter } from "./writer.ts";
 import type { CoreContext } from "./context.ts";
@@ -64,8 +64,8 @@ export class CoreServer {
   #rebinding = false;
   #closed = false;
   #conns = new Map<Connection, ConnState>();
-  /** Subscribed connections and which events each wants. */
-  #subscribers = new Map<Connection, (e: CoreEvent) => boolean>();
+  /** Subscribed connections and which events each wants: false to skip one, or the event as this connection gets it (a remote one's, remote/policy.ts). */
+  #subscribers = new Map<Connection, (e: CoreEvent) => boolean | CoreEvent | null>();
   /** Connections on the widgets socket, and which widget each said it is (null until widget.hello). */
   #widgetConns = new Map<Connection, WidgetIdentity | null>();
   #onClosed: ((conn: Connection) => void)[] = [];
@@ -97,8 +97,13 @@ export class CoreServer {
   }
 
   /** From now on `conn` gets the events `wants` lets through. */
-  subscribe(conn: Connection, wants: (e: CoreEvent) => boolean): void {
+  subscribe(conn: Connection, wants: (e: CoreEvent) => boolean | CoreEvent | null): void {
     this.#subscribers.set(conn, wants);
+  }
+
+  /** What remote calls and views are checked against (remote/policy.ts). */
+  policy(): PolicyContext {
+    return this.#o.policy();
   }
 
   /** What a feature keeps per connection goes when the connection does. */
@@ -110,9 +115,11 @@ export class CoreServer {
     if (this.#subscribers.size === 0) return;
     const line = JSON.stringify({ jsonrpc: "2.0", method: "event", params: event }) + "\n";
     for (const [c, wants] of this.#subscribers) {
-      if (!wants(event)) continue;
-      if (c.event) c.event(event, line);
-      else c.send(line);
+      const got = wants(event);
+      if (!got) continue;
+      const [e, l] = got === true || got === event ? [event, line] : [got, JSON.stringify({ jsonrpc: "2.0", method: "event", params: got }) + "\n"];
+      if (c.event) c.event(e, l);
+      else c.send(l);
     }
   }
 
@@ -304,6 +311,8 @@ export class CoreServer {
       } finally {
         done();
       }
+      // A paired device gets what it may see of the answer (remote/policy.ts).
+      if (conn.access !== "local") result = remoteResult(req.method, result, this.#o.policy());
       done = this.#core.scheduler.mark(name);
       try {
         reply({ result: result ?? null });
