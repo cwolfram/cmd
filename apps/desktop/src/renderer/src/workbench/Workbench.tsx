@@ -6,8 +6,8 @@
 // script can drive it (scripts/workbench.mjs). A story's old id, its file name in lower
 // case (?story=feedback), still works.
 
-import { useEffect, useState, type ComponentType } from "react";
-import { Callout, ErrorBoundary, LinkButton, Select, Spacer, Split, Toolbar } from "@cmd/ui";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { Callout, ErrorBoundary, IconButton, LinkButton, Segmented, Select, Spacer, Split, Toolbar } from "@cmd/ui";
 import { allThemes, themeFor } from "@cmd/ui/themes";
 import type { SettingsSnapshot } from "@cmd/protocol";
 import { cmd } from "../lib/bridge.ts";
@@ -16,13 +16,23 @@ import { applyLookSettings } from "../lib/look.ts";
 import { catalog, loaders, type Catalog, type StoryInfo } from "./catalog/index.ts";
 import { ComponentPage, Head } from "./ComponentPage.tsx";
 import { Sidebar, type Selection } from "./Sidebar.tsx";
-import { Layered, StoryPage, variantNames, type StoryModule } from "./StoryPage.tsx";
+import { Themes } from "./Themes.tsx";
+import { Layered, Sized } from "./Layered.tsx";
+import { AuditOverlay } from "./AuditOverlay.tsx";
+import { audit } from "./audit.ts";
+import { StoryPage, variantNames, type StoryModule } from "./StoryPage.tsx";
 
 const FOLLOW = "settings";
 
 // scripts/workbench.mjs reads it: whether a target is a component or a story, and `ls`.
 (globalThis as { workbenchCatalog?: Catalog }).workbenchCatalog = catalog;
-const PARAMS = ["component", "story", "variant", "theme", "mount"] as const;
+// `pnpm workbench audit` measures with the same code the overlay draws.
+(globalThis as { workbenchAudit?: () => ReturnType<typeof audit> }).workbenchAudit = () => audit(stageRoot() ?? document);
+const PARAMS = ["component", "story", "variant", "theme", "mount", "mode", "width", "backdrop", "audit"] as const;
+/** The widths windows get (window-design skill), or the variant's own. */
+const WIDTHS = ["natural", "220", "320", "480", "640"];
+/** The stage's root, for the audit. */
+const stageRoot = () => document.querySelector(".ui-split-main");
 type Params = Partial<Record<(typeof PARAMS)[number], string>>;
 
 const read = (): Params => Object.fromEntries(PARAMS.map((k) => [k, new URLSearchParams(location.search).get(k) ?? undefined]).filter(([, v]) => v !== undefined));
@@ -100,6 +110,21 @@ export function Workbench() {
   const variant = params.variant && names.includes(params.variant) ? params.variant : undefined;
   const View = variant ? (mod![variant] as ComponentType) : null;
 
+  const themes = params.mode === "themes";
+  const width = params.width && params.width !== "natural" ? Number(params.width) : undefined;
+  const auditing = params.audit === "1";
+  /** One variant on stage, or in every theme. */
+  const stage = (render: () => ReactNode) =>
+    themes ? (
+      <div className="wb-page">
+        <Themes width={width} render={render} />
+      </div>
+    ) : (
+      <Layered className="wb-stage">
+        <Sized width={width}>{render()}</Sized>
+      </Layered>
+    );
+
   const selection: Selection = component ? { kind: "component", id: component.id } : story ? { kind: "story", id: story.id, ...(variant ? { variant } : {}) } : null;
   const select = (s: Selection) =>
     go(s?.kind === "component" ? { component: s.id, story: undefined, variant: undefined } : { component: undefined, story: s?.id, variant: s?.kind === "story" ? s.variant : undefined });
@@ -115,7 +140,7 @@ export function Workbench() {
   }, [ready, names.join(), params.mount, params.story, params.component]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="wb">
+    <div className="wb" data-backdrop={params.backdrop === "window" ? "window" : undefined}>
       <Toolbar edge="bottom" className="wb-bar" label="UI Workbench">
         <span className="wb-crumbs">
           {variant && story ? (
@@ -129,21 +154,25 @@ export function Workbench() {
           )}
         </span>
         <Spacer />
+        {(component || variant) && <Segmented size="sm" label="Themes" value={themes ? "themes" : "one"} options={["one", "themes"]} labels={{ one: "One theme", themes: "Every theme" }} onChange={(v) => go({ mode: v === "themes" ? "themes" : undefined })} />}
+        <Select size="sm" label="Width" value={params.width ?? "natural"} options={WIDTHS} labels={{ natural: "Natural width", ...Object.fromEntries(WIDTHS.slice(1).map((w) => [w, `${w} px`])) }} onChange={(v) => go({ width: v === "natural" ? undefined : v })} />
+        <Segmented size="sm" label="Backdrop" value={params.backdrop === "window" ? "window" : "well"} options={["well", "window"]} labels={{ well: "Well", window: "Window" }} onChange={(v) => go({ backdrop: v === "window" ? "window" : undefined })} />
+        <IconButton icon="ruler" label="Audit: where content sits against its window's edges" pressed={auditing} onClick={() => go({ audit: auditing ? undefined : "1" })} />
         <Select size="sm" label="Theme" value={theme} options={[{ value: FOLLOW, label: "Theme from Settings" }, ...allThemes().map((t) => ({ value: t.id, label: t.title }))]} onChange={(v) => go({ theme: v })} />
       </Toolbar>
       <div className="wb-body">
         <Split pane={<Sidebar catalog={catalog} selection={selection} onSelect={select} />} width={{ min: 180, ideal: 240, max: 400 }}>
           {component ? (
-            <ComponentPage key={`${component.id}/${params.mount ?? ""}`} component={component} stories={catalog.stories} onOpen={(id, v) => select({ kind: "story", id, ...(v ? { variant: v } : {}) })} />
+            <ComponentPage key={`${component.id}/${params.mount ?? ""}`} component={component} themes={themes} stories={catalog.stories} onOpen={(id, v) => select({ kind: "story", id, ...(v ? { variant: v } : {}) })} />
           ) : View ? (
             /* key: a new variant (or mount) starts with fresh state. */
-            <Layered className="wb-stage">
+            stage(() => (
               <ErrorBoundary key={`${story!.id}/${variant}/${params.mount ?? ""}`} title="This story stopped working" reloadLabel="Reload">
                 <View />
               </ErrorBoundary>
-            </Layered>
+            ))
           ) : story && mod ? (
-            <StoryPage key={`${story.id}/${params.mount ?? ""}`} story={story} mod={mod} onFocus={(v) => select({ kind: "story", id: story.id, variant: v })} />
+            <StoryPage key={`${story.id}/${params.mount ?? ""}`} story={story} mod={mod} width={width} onFocus={(v) => select({ kind: "story", id: story.id, variant: v })} />
           ) : story && error ? (
             <article className="wb-page">
               <Head title={story.title} file={story.file} doc={story.doc} />
@@ -156,6 +185,7 @@ export function Workbench() {
           ) : null}
         </Split>
       </div>
+      {auditing && <AuditOverlay root={stageRoot} />}
     </div>
   );
 }

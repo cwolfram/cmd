@@ -12,7 +12,7 @@
 //   pnpm workbench matrix <story> [--themes a,b,c]   every variant × themes, into .cmd-dev/shots/wb
 //   pnpm workbench eval '<js>'                    run JS in the window (await works), print the result
 //   pnpm workbench audit [story] [variant] [--theme id]   (or audit --all: every story, its Sizes too) where each window's content sits against its
-//                                                 edges (window-design skill); exits 1 on a problem
+//                                                 edges (window-design skill, audit.ts); exits 1 on a problem
 //   pnpm workbench stop                           quit it, its core and PTY host
 import { spawn } from "node:child_process";
 import fs from "node:fs";
@@ -194,126 +194,13 @@ async function shoot(page, cdp, file, whole) {
   fs.writeFileSync(file, Buffer.from(data, "base64"));
 }
 
-/**
- * Measured in the page, per window (.ui-window) of the story: how far its content sits from
- * the edges, to the nearest visible text (its glyph box, not the element), icon or drawing.
- * The body: top, left, right; the toolbar and footer: left, right. Problems: a body whose
- * left and right differ; a padded body or a list whose content isn't on its view's --inset
- * (16px, a Page's 32) at the left and the top; a footer not at --bar-inset (window-design
- * skill, Rules; docs/46). Tables, trees, documents, media, splits and empty states have insets
- * of their own and are only reported. Toolbars are reported only: their items sit tighter.
- */
-function AUDIT() {
-  const inset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--inset")) || 16;
-  const barInset = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar-inset")) || 12;
-  const visible = (r) => r.width >= 1 && r.height >= 1;
-  /** The boxes of what shows inside el: text runs, icons, images, drawings. */
-  const ink = (el) => {
-    const boxes = [];
-    // What shows is clipped by every box that scrolls or clips its content (a code block that scrolls sideways).
-    const cut = (b, c) => ({ top: Math.max(b.top, c.top), left: Math.max(b.left, c.left), right: Math.min(b.right, c.right), bottom: Math.min(b.bottom, c.bottom), get width() { return this.right - this.left; }, get height() { return this.bottom - this.top; } });
-    const walk = (n, clip) => {
-      if (n.nodeType === 3) {
-        if (!n.textContent.trim()) return;
-        const r = document.createRange();
-        r.selectNodeContents(n);
-        for (const b of r.getClientRects()) {
-          const c = clip ? cut(b, clip) : b;
-          if (visible(c)) boxes.push(c);
-        }
-        return;
-      }
-      if (n.nodeType !== 1) return;
-      const cs = getComputedStyle(n);
-      if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return;
-      // Drawn things: SVG, images, fields, icons (masks, as SF Symbols are drawn), and small filled or outlined shapes (a status dot's parts, a spinner).
-      const filled = !n.children.length && !n.textContent.trim() && (cs.maskImage !== "none" || cs.webkitMaskImage !== "none" || cs.backgroundImage !== "none" || ((cs.backgroundColor !== "rgba(0, 0, 0, 0)" || parseFloat(cs.borderTopWidth) > 0) && n.getBoundingClientRect().width < 40));
-      if (filled || n instanceof SVGSVGElement || n.tagName === "IMG" || n.tagName === "CANVAS" || n.tagName === "INPUT") {
-        const b = clip ? cut(n.getBoundingClientRect(), clip) : n.getBoundingClientRect();
-        if (visible(b)) boxes.push(b);
-        return;
-      }
-      const clips = n !== el && (cs.overflowX !== "visible" || cs.overflowY !== "visible");
-      const inner = clips ? (clip ? cut(n.getBoundingClientRect(), clip) : n.getBoundingClientRect()) : clip;
-      for (const c of n.childNodes) walk(c, inner);
-    };
-    walk(el, null);
-    return boxes;
-  };
-  const span = (el, frame, boxesOf = ink) => {
-    const f = frame.getBoundingClientRect();
-    // What shows: clipped to the part (content scrolled out of view doesn't count).
-    const boxes = boxesOf(el)
-      .map((b) => ({ top: Math.max(b.top, f.top), left: Math.max(b.left, f.left), right: Math.min(b.right, f.right), bottom: Math.min(b.bottom, f.bottom) }))
-      .filter((b) => b.right - b.left >= 1 && b.bottom - b.top >= 1);
-    if (!boxes.length) return null;
-    const r = (n) => Math.round(n);
-    return {
-      top: r(Math.min(...boxes.map((b) => b.top)) - f.top),
-      left: r(Math.min(...boxes.map((b) => b.left)) - f.left),
-      right: r(f.right - Math.max(...boxes.map((b) => b.right))),
-    };
-  };
-  const out = [];
-  for (const win of document.querySelectorAll(".ui-window")) {
-    const name = win.querySelector(".ui-window-bar-name")?.textContent?.trim() || "window";
-    const w = Math.round(win.getBoundingClientRect().width);
-    for (const view of win.querySelectorAll(".ui-view")) {
-      const parts = [
-        ["toolbar", view.querySelector(":scope > .ui-tb")],
-        ["body", view.querySelector(":scope > .ui-view-body")],
-        ["footer", view.querySelector(":scope > .ui-view-footer")],
-      ];
-      for (const [part, el] of parts) {
-        if (!el) continue;
-        // Bars are measured to their items' boxes (a field's edge, not its placeholder); bodies to their ink.
-        // An item with a visible fill or edge (a field, a pressed button) shows its box; a borderless one, its icon or label.
-        const shows = (c) => {
-          const cs = getComputedStyle(c);
-          return cs.backgroundColor !== "rgba(0, 0, 0, 0)" || cs.boxShadow !== "none" || parseFloat(cs.borderLeftWidth) > 0;
-        };
-        const items = (bar) => [...bar.querySelectorAll(":scope > :not(.ui-tb-spacer):not(.ui-tb-group), :scope > .ui-tb-group > *")].flatMap((c) => (shows(c) || [...c.querySelectorAll("*")].some((d) => d.matches("input") && shows(c.firstElementChild ?? c)) ? [c.getBoundingClientRect()] : ink(c))).filter(visible);
-        const m = part === "toolbar" ? span(el, el, items) : span(el, el);
-        if (!m) continue;
-        const problems = [];
-        if (part === "body" && Math.abs(m.left - m.right) > 1 && el.querySelector(".ui-grid, .ui-list, .ui-measure, .ui-doc, .ui-page, .ui-media, .ui-split") === null) problems.push(`left ${m.left} ≠ right ${m.right}`);
-        // On the inset: a padded body or a list, unless it holds something with its own (a table, tree, document, media, split, state).
-        const own = el.querySelector(".ui-grid, .ui-tree, .ui-measure, .ui-doc, .ui-media, .ui-split, .ui-viewstate, .ui-diff, .ui-tiles") !== null;
-        const viewInset = parseFloat(getComputedStyle(el).getPropertyValue("--inset")) || inset; // the body's own (a Page's)
-        if (part === "body" && !own && (el.hasAttribute("data-inset") || el.querySelector(":scope > .ui-list"))) {
-          // An icon's box sits a pixel or two outside its glyph; text trims to the cap.
-          if (Math.abs(m.left - viewInset) > 2) problems.push(`left ${m.left}, not --inset (${viewInset})`);
-          if (Math.abs(m.top - viewInset) > 3) problems.push(`top ${m.top}, not --inset (${viewInset})`);
-        }
-        // Toolbars are reported, not checked: their items sit tighter than the content (6–8px), an open decision (window-design skill).
-        if (part === "footer" && Math.abs(m.left - barInset) > 1) problems.push(`left ${m.left}, not --bar-inset (${barInset})`);
-        if (part === "footer" && el.querySelector(".ui-status-line-end") && Math.abs(m.right - barInset) > 1) problems.push(`right ${m.right}, not --bar-inset (${barInset})`);
-        out.push({ window: `${name} (${w}px)`, part, ...m, problems });
-      }
-    }
-  }
-  return { inset, barInset, rows: out };
-}
-
-/** Every story file's name (what the Workbench calls it) and whether it has a Sizes variant. */
-function allStories() {
-  const out = [];
-  const walk = (dir) => {
-    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-      const p = path.join(dir, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".story.tsx")) out.push({ story: e.name.replace(/\.story\.tsx$/, "").toLowerCase(), sizes: /export const Sizes\b/.test(fs.readFileSync(p, "utf8")) });
-    }
-  };
-  walk(path.join(root, "apps/desktop/src/renderer/src"));
-  return out.sort((a, b) => a.story.localeCompare(b.story));
-}
-
+// The audit's measurements live in the page (renderer/src/workbench/audit.ts), which the
+// UI Workbench's audit overlay draws too: one copy.
 async function audit(story, variant) {
   if (story === "--all" || flag("all")) return auditAll();
   const { browser, page } = await connect();
   if (story) console.log(await show(page, { story, variant, theme: flag("theme") }));
-  const { inset, barInset, rows } = await page.evaluate(`(${AUDIT.toString()})()`);
+  const { inset, barInset, rows } = await page.evaluate(() => globalThis.workbenchAudit());
   await browser.close();
   if (!rows.length) {
     console.log("No View in this story: nothing to measure.");
@@ -330,11 +217,12 @@ async function audit(story, variant) {
   } else console.log("No problems.");
 }
 
-/** `audit --all`: every story's default variant, and its Sizes; only what has a problem is printed. */
+/** `audit --all`: every story's default variant, and its Sizes (from the catalog); only what has a problem is printed. */
 async function auditAll() {
   const { browser, page } = await connect();
+  const stories = await page.evaluate(() => globalThis.workbenchCatalog.stories.map((s) => ({ story: s.id, sizes: s.variants.some((v) => v.name === "Sizes") })));
   let bad = 0;
-  for (const { story, sizes } of allStories()) {
+  for (const { story, sizes } of stories) {
     for (const variant of sizes ? [undefined, "Sizes"] : [undefined]) {
       try {
         await show(page, { story, variant, theme: flag("theme") });
@@ -342,7 +230,7 @@ async function auditAll() {
         console.log(`${story}${variant ? "/" + variant : ""}: didn't render`);
         continue;
       }
-      const { rows } = await page.evaluate(`(${AUDIT.toString()})()`);
+      const { rows } = await page.evaluate(() => globalThis.workbenchAudit());
       for (const r of rows.filter((r) => r.problems.length)) {
         bad++;
         console.log(`${story}${variant ? "/" + variant : ""}  ${r.window}  ${r.part}: ${r.problems.join("; ")}`);

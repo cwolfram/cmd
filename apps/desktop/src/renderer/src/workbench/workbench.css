@@ -55,3 +55,24 @@
 .wb-prop dd { margin: 0; color: var(--text-dim); font-size: var(--text-sm); }
 .wb-prop-name { font: 600 var(--text-sm) var(--font-mono); }
 .wb-prop-type, .wb-prop-default { font: var(--text-sm) var(--font-mono); color: var(--text-dim); }
+
+/* At a window's width (the toolbar's Width): what fills, fills that. */
+.wb-sized { flex: none; }
+.wb-sized > * { max-width: 100%; }
+
+/* Backdrop: the well (default) or the window's background, behind every live component. */
+.wb[data-backdrop="window"] .wb-cell, .wb[data-backdrop="window"] .wb-stage { background: var(--bg); }
+
+/* Every theme: one box each, named, wrapping. A .ui-theme subtree re-derives the tokens, so its text takes them too. */
+.wb-themes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-lg); }
+.wb-theme { display: flex; flex-direction: column; gap: var(--space-xs); margin: 0; max-width: 100%; }
+.wb-theme figcaption { font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
+.wb-themed { color: var(--text); font: var(--text-base) var(--font-ui); border-radius: var(--radius-md); }
+
+/* The audit overlay: content boxes dashed, gaps to the edges, a tag with the numbers; red where a rule is broken. */
+.wb-audit { position: fixed; inset: 0; z-index: 200; pointer-events: none; }
+.wb-audit > div { --wb-audit: var(--accent); }
+.wb-audit > div[data-bad] { --wb-audit: var(--danger); }
+.wb-audit-ink { position: fixed; outline: 1px dashed var(--wb-audit); }
+.wb-audit-gap { position: fixed; height: 0; border-top: 1px solid var(--wb-audit); }
+.wb-audit-tag { position: fixed; transform: translateY(-100%); padding: 0 var(--space-2xs); font: var(--text-2xs) var(--font-mono); white-space: nowrap; color: var(--on-accent); background: var(--wb-audit); border-radius: var(--radius-xs); }

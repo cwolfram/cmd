@@ -8,10 +8,11 @@ import * as Kit from "@cmd/ui";
 import { Callout, FormRow, FormSection, List, ListRow, NumberField, Prose, SectionHeading, Segmented, Select, Switch, TextField } from "@cmd/ui";
 import type { ComponentInfo, PropInfo, StoryInfo } from "./catalog/index.ts";
 import { argsFor, controlledBy, matrixOf, valuesOf, type Args } from "./args.ts";
+import { Themes } from "./Themes.tsx";
 
 const KIT = Kit as unknown as Record<string, ComponentType<Args> | undefined>;
 
-export function ComponentPage({ component: c, stories, onOpen }: { component: ComponentInfo; stories: StoryInfo[]; onOpen: (story: string, variant?: string) => void }) {
+export function ComponentPage({ component: c, stories, themes, onOpen }: { component: ComponentInfo; stories: StoryInfo[]; themes?: boolean; onOpen: (story: string, variant?: string) => void }) {
   const C = c.kit ? KIT[c.name] : undefined;
   const { args, missing } = useMemo(() => argsFor(c), [c]);
   const mine = stories.filter((s) => s.components.includes(c.id));
@@ -20,9 +21,7 @@ export function ComponentPage({ component: c, stories, onOpen }: { component: Co
       <Head title={c.name} file={c.file} doc={c.doc} />
       {C && !missing.length ? (
         <>
-          <Section title="Variants">
-            <MatrixView c={c} C={C} args={args} />
-          </Section>
+          <Section title="Variants">{themes ? <Themes render={() => <MatrixView c={c} C={C} args={args} />} /> : <MatrixView c={c} C={C} args={args} />}</Section>
           <Section title="Playground">
             <Playground key={c.id} c={c} C={C} initial={args} />
           </Section>
