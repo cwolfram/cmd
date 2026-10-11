@@ -4,13 +4,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import type { Agent, AgentState, GitPlace, Pane, Workspace } from "@cmd/protocol";
-import { APPLIES_LABEL, RpcError, type RpcCode, placeAgainst, currentKey, currentSecretKey, ENV, isSecretKey, SECRETS, type SecretDef, type SecretKey, SETTINGS_SCHEMA, isSettingKey, parseSettingValue, type SettingDef, type SettingKey } from "@cmd/protocol";
+import { APPLIES_LABEL, placeAgainst, currentKey, currentSecretKey, ENV, isSecretKey, SECRETS, type SecretDef, type SecretKey, SETTINGS_SCHEMA, isSettingKey, parseSettingValue, type SettingDef, type SettingKey } from "@cmd/protocol";
 import { connect, defaultSocketPath, type Connection } from "@cmd/protocol/node";
 import { AGENTS_HELP, agentsCommand, pickAgent } from "./agents.ts";
 import { JOURNAL_HELP, journalCommand } from "./journal.ts";
 import { DATA_HELP, dataCommand } from "./data.ts";
 import { REMOTE_HELP, remoteCommand } from "./remote.ts";
 import { skewMessage } from "./skew.ts";
+import { exitCode } from "./exit.ts";
+import { hook } from "./hook.ts";
 
 const HELP = `cmd — terminal + agent workbench
 
@@ -144,7 +146,7 @@ async function main(): Promise<number> {
     console.log(HELP);
     return 0;
   }
-  if (cmd === "hook") return hook(pos[0] ?? "claude");
+  if (cmd === "hook") return hook(pos[0] ?? "claude", pos[1]);
   // Magic and widgets build with the core's code: loaded for them only, so every other `cmd` (a hook's included) starts small.
   if (cmd === "magic") return (await import("./magic.ts")).magicCommand(argv.slice(1));
   if (cmd === "widget") return (await import("./widget.ts")).widgetCommand(argv.slice(1));
@@ -448,35 +450,6 @@ async function run({ client, closed }: Connection): Promise<number> {
   }
 }
 
-/** Hook entry point. Must never block or fail the agent: always exit 0, fast. */
-async function hook(kind: string): Promise<number> {
-  const paneId = process.env[ENV.paneId];
-  const chunks: Buffer[] = [];
-  for await (const c of process.stdin) chunks.push(c as Buffer);
-  if (!paneId) return 0;
-  let payload: Record<string, unknown>;
-  try {
-    payload = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
-  } catch {
-    return 0;
-  }
-  const event = String(payload.hook_event_name ?? pos[1] ?? "");
-  if (!event) return 0;
-  const timer = setTimeout(() => process.exit(0), 2000);
-  try {
-    const conn = await connect(undefined, { hello: false });
-    const { context } = await conn.client.call("hook.ingest", { paneId, agent: kind, event, payload });
-    conn.close();
-    // Claude, Codex and Gemini all read extra context from this shape.
-    if (context) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: event, additionalContext: context } }) + "\n");
-  } catch {
-    // core not running: ignore
-  }
-  clearTimeout(timer);
-  return 0;
-}
-
-
 async function resolveAgent(client: Connection["client"], ref: string): Promise<string> {
   const [agents, panes] = await Promise.all([client.call("agent.list", {}), client.call("pane.list", {})]);
   const a = pickAgent(agents, panes, ref);
@@ -609,14 +582,10 @@ function fail(msg: string): number {
   return 1;
 }
 
-/** Exit codes by what the core said (RPC_CODES), so scripts can tell "not there" from "turned off" without reading the message. */
-const EXIT: Partial<Record<RpcCode, number>> = { invalidParams: 2, notFound: 3, unavailable: 4, denied: 5, unknownMethod: 6 };
-
 main().then(
   (code) => process.exit(code),
   (err) => {
     console.error(`cmd: ${(err as Error).message}`);
-    const kind = err instanceof RpcError ? err.kind : null;
-    process.exit((kind && EXIT[kind]) ?? 1);
+    process.exit(exitCode(err));
   },
 );
