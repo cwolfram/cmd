@@ -155,12 +155,14 @@ export class ProcInfo {
   /** Pending requests, answered in order; each parses its own response line. */
   #queue: ((line: string | null) => void)[] = [];
   #binary: string;
+  #args: string[];
   #timeoutMs: number;
   /** Helpers killed for missing a deadline. */
   stalls = 0;
 
-  constructor(binary = procinfoBinary(), o: { timeoutMs?: number } = {}) {
+  constructor(binary = procinfoBinary(), o: { timeoutMs?: number; args?: string[] } = {}) {
     this.#binary = binary;
+    this.#args = o.args ?? [];
     this.#timeoutMs = o.timeoutMs ?? TIMEOUT_MS;
   }
 
@@ -234,7 +236,7 @@ export class ProcInfo {
   #ensure(): ChildProcessWithoutNullStreams | null {
     if (this.#child) return this.#child;
     if (!this.available) return null;
-    const child = spawn(this.#binary, [], { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(this.#binary, this.#args, { stdio: ["pipe", "pipe", "pipe"] });
     child.stdout.setEncoding("utf8");
     child.stdout.on(
       "data",

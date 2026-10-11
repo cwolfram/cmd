@@ -8,31 +8,29 @@ import { ProcInfo } from "../src/agents/procinfo.ts";
 import { PaneManager } from "../src/terminals/panes.ts";
 import { needs } from "../../../test/system.ts";
 import { fakeFactory } from "./fake-pty.ts";
-import { rmTemp } from "./tmp.ts";
 
-const dirs: string[] = [];
 const open: ProcInfo[] = [];
 afterEach(() => {
   open.splice(0).forEach((p) => p.close());
-  dirs.splice(0).forEach(rmTemp);
 });
 
-/** A fake helper: a shell script that reads requests and runs `body` for each. */
-function helper(body: string): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "cmd-procinfo-"));
-  dirs.push(dir);
-  const file = path.join(dir, "procinfo");
-  fs.writeFileSync(file, `#!/bin/sh\nwhile IFS= read -r line; do\n${body}\ndone\n`, { mode: 0o755 });
-  return file;
+/**
+ * A fake helper: `sh -c` with a loop that reads requests and runs `body` for each. Not a
+ * script file: macOS checks a newly written executable on its first run, one at a time
+ * across the machine (~90 ms each), so under a parallel test run a fresh file's first
+ * answer could queue past the deadline.
+ */
+function helper(body: string, o: { timeoutMs?: number } = {}): ProcInfo {
+  const p = new ProcInfo("/bin/sh", { ...o, args: ["-c", `while IFS= read -r line; do\n${body}\ndone\n`] });
+  open.push(p);
+  return p;
 }
 
 describe("procinfo helper", () => {
   it("gives up on a helper that doesn't answer, and the next poll runs on a new one", async () => {
     const marker = path.join(os.tmpdir(), `cmd-procinfo-${process.pid}-${Date.now()}`);
     // The first helper hangs; the one started after it answers.
-    const bin = helper(`if [ -e "${marker}" ]; then echo '{"fg":4242,"start":1,"path":"/usr/bin/vim","argv":["vim"]}'; else touch "${marker}"; sleep 30; fi`);
-    const p = new ProcInfo(bin, { timeoutMs: 300 });
-    open.push(p);
+    const p = helper(`if [ -e "${marker}" ]; then echo '{"fg":4242,"start":1,"path":"/usr/bin/vim","argv":["vim"]}'; else touch "${marker}"; sleep 30; fi`, { timeoutMs: 300 });
     const f = fakeFactory();
     const panes = new PaneManager(f.factory, { socketPath: "/tmp/t.sock", pollMs: 0, inspector: (pid) => p.query(pid) });
     panes.create();
@@ -49,9 +47,7 @@ describe("procinfo helper", () => {
 
   it("splits a long request into lines and keeps every answer with its caller", async () => {
     // Answers each line with how many words it had: a request cut in two would answer twice.
-    const bin = helper(`set -- $line; if [ "$1" = t ]; then shift; echo "[{\\"pid\\":$#,\\"mem\\":0,\\"cpu\\":0,\\"procs\\":1,\\"top\\":[]}]"; else echo "{\\"fg\\":$1,\\"argv\\":[]}"; fi`);
-    const p = new ProcInfo(bin);
-    open.push(p);
+    const p = helper(`set -- $line; if [ "$1" = t ]; then shift; echo "[{\\"pid\\":$#,\\"mem\\":0,\\"cpu\\":0,\\"procs\\":1,\\"top\\":[]}]"; else echo "{\\"fg\\":$1,\\"argv\\":[]}"; fi`);
     const pids = Array.from({ length: 3000 }, (_, i) => 100000 + i);
     const [trees, q] = await Promise.all([p.trees(pids), p.query(77)]);
     expect(trees.reduce((n, t) => n + t.pid, 0)).toBe(3000);
