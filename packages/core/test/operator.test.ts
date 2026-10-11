@@ -8,7 +8,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { CoreEvent, OperatorEvent, OperatorItem, Workspace } from "@cmd/protocol";
+import type { Agent, AgentState, CoreEvent, OperatorEvent, OperatorItem, Workspace } from "@cmd/protocol";
 import type { AgentResult, AgentRun } from "../src/ai/backends.ts";
 import { Core } from "../src/kernel/core.ts";
 import { OPERATOR_ACCESS, isQuiet } from "../src/operator/access.ts";
@@ -90,6 +90,7 @@ describe("the service", () => {
   let turns: Step[];
   let runs: AgentRun[];
   let op: OperatorService;
+  let agentFns: ((a: Agent) => void)[];
 
   beforeEach(async () => {
     dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "cmd-operator-")));
@@ -103,6 +104,7 @@ describe("the service", () => {
     focus = [];
     turns = [];
     runs = [];
+    agentFns = [];
     const broadcast = (e: CoreEvent) => {
       if (e.type === "operator.changed") events.push(e);
     };
@@ -121,6 +123,7 @@ describe("the service", () => {
       },
       selfIn: () => null,
       broadcast,
+      onAgent: (fn) => void agentFns.push(fn),
       record: (e) => core.data.record(e),
       db: null,
     });
@@ -370,6 +373,55 @@ describe("the service", () => {
     expect(tools.map((t) => [t.text, (t.data as { state: string }).state])).toEqual([["doing open", "done"], ["doing type", "denied"]]);
     expect(tools[1]).toMatchObject({ data: { allowed: false, reason: "use the files window", ask: expect.stringMatching(/^Type in the terminal/), exact: "ls  ⏎" } });
     expect(tools[1]!.windowId).toBeTruthy();
+  });
+
+  const agent = (state: AgentState, paneId: string): Agent => ({ id: "a1", paneId, workspaceId: ws.id, kind: "claude", name: "Bug hunt", cwd: dir, parentId: null, rootId: "a1", depth: 0, spawn: { source: "host-api" }, native: {}, state, stateSince: Date.now(), detail: null, lastMessage: "Found it: a duplicate in the CLI's catch-up.", lastPrompt: null, seenAt: null, createdAt: Date.now() }) as Agent;
+
+  it("is told when an agent it started is done: a turn of its own when idle, with the next tool result when busy", async () => {
+    const pane = core.panes.create({ cwd: dir, workspaceId: ws.id });
+    op.watch(ws.id, "a1");
+    for (const fn of agentFns) fn(agent("working", pane.id));
+    expect(runs).toHaveLength(0);
+    turns.push(() => {});
+    for (const fn of agentFns) fn(agent("done", pane.id));
+    await idle();
+    expect(runs).toHaveLength(1);
+    const told = String(runs[0]!.messages.at(-1)!.content);
+    expect(told).toContain("(No message from the person: news came in.");
+    expect(told).toMatch(/<news>\n- w\d+: claude "Bug hunt": done for .* Found it/);
+    expect(op.get(ws.id).items.map((i) => (i.kind === "event" ? i.text : i.kind))).toEqual(["Claude “Bug hunt” is done."]);
+    // Busy: it rides along with the next tool result.
+    let out = "";
+    let release!: () => void;
+    turns.push(async (r) => {
+      await new Promise<void>((res) => (release = res));
+      out = (await exec(r, "look", {})).output;
+    });
+    op.send(ws.id, "anything new?");
+    await vi.waitFor(() => expect(release).toBeDefined());
+    for (const fn of agentFns) fn(agent("needs_input", pane.id));
+    release();
+    await idle();
+    expect(out).toMatch(/<news>\n- w\d+: claude "Bug hunt": needs_input/);
+    expect(runs).toHaveLength(2);
+  });
+
+  it("an open browser goes to another URL instead of a new window; events can look at every workspace", async () => {
+    const outs: string[] = [];
+    core.data.record({ id: "elsewhere", at: Date.now() - 1000, type: "command", source: "osc", workspaceId: "other", text: "make", data: { command: "make", cwd: "/x", exitCode: 0 } as never });
+    turns.push(async (r) => {
+      const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "url", target: "https://example.com" })).output)![1]!;
+      outs.push((await exec(r, "open", { kind: "url", target: "https://wikipedia.org", ref })).output);
+      outs.push((await exec(r, "events", {})).output);
+      outs.push((await exec(r, "events", { everywhere: true })).output);
+    });
+    op.send(ws.id, "go to wikipedia");
+    await idle();
+    expect(outs[0]).toMatch(/goes to https:\/\/wikipedia.org/);
+    expect(core.windows.others().filter((w) => w.kind === "browser").map((w) => w.state.url)).toEqual(["https://wikipedia.org"]);
+    expect(outs[1]).not.toContain("command");
+    expect(outs[2]).toContain("in every workspace");
+    expect(outs[2]).toContain("command 1");
   });
 
   it("keeps refs for the whole conversation and starts over on reset", async () => {

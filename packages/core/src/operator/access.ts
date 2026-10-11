@@ -74,7 +74,7 @@ export const OPERATOR_ACCESS: { [M in Method]: OperatorAccess } = {
   "ai.connect": "never",
   "ai.models": "never",
   "window.open": "act",
-  "window.update": "never",
+  "window.update": "act", // open with a ref: a browser to another URL, a file browser to another folder
   "window.types": "read",
   "window.close": "act",
   "window.select": "act",

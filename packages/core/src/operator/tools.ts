@@ -19,6 +19,8 @@ export interface Bench {
   refs: Refs;
   /** The Operator's own window: never closed or typed into. */
   self: WindowId | null;
+  /** Tell the Operator when this agent is done, fails or needs input (it started it). */
+  watch?(agentId: string): void;
   signal: AbortSignal;
 }
 
@@ -185,7 +187,7 @@ const agentTool: OperatorTool = {
     name: "agent",
     explores: false,
     description:
-      "Start a coding agent with a task, or stop one. Agents make the larger changes: anything beyond a small, clear edit (edit), or that needs code run and checked. `start` opens a terminal with the agent (claude by default) working on `prompt` in the workspace's folder; write the prompt as a complete brief (what, where, how to check it's done). `stop` asks the person first. Use wait to know when an agent is done or needs input, read to see what it said.",
+      "Start a coding agent with a task, or stop one. Agents make the larger changes: anything beyond a small, clear edit (edit), or that needs code run and checked. `start` opens a terminal with the agent (claude by default) working on `prompt` in the workspace's folder; write the prompt as a complete brief (what, where, how to check it's done). `stop` asks the person first. You are told by yourself when an agent you started is done, fails or needs input (a <news> note), so you needn't wait for it: say what you started and end your turn. Read it to see what it said.",
     schema: schema({ do: { type: "string", enum: ["start", "stop"] }, prompt: { type: "string" }, kind: { type: "string", enum: ["claude", "codex"] }, folder: { type: "string", description: "Where it works, relative to the workspace's folder (default: the workspace's folder)." }, ref }, ["do"]),
   },
   target: (i, b) => (i.do === "stop" && i.ref ? b.refs.id(i.ref) : null),
@@ -207,6 +209,7 @@ const agentTool: OperatorTool = {
     if (!prompt) throw new Error("start needs a prompt");
     const cwd = str(i.folder) ? readablePath(b, str(i.folder)!) : b.workspace().root;
     const a = await b.call("agent.spawn", { kind: str(i.kind) ?? "claude", prompt, workspaceId: b.workspace().id, cwd, parentId: null });
+    b.watch?.(a.id);
     if (!a.paneId) return `Started ${a.kind}.`;
     // Not "started" until it is past starting: it may stop at a question first (trusting the folder, a login).
     const r = await b.call("agent.wait", { agentIds: [a.id], until: ["working", "needs_input", "idle", "done", "failed", "exited"], timeoutMs: START_WAIT_MS }).catch(() => null);
@@ -223,7 +226,7 @@ const waitTool: OperatorTool = {
     name: "wait",
     explores: false,
     description:
-      "Wait until agents are done or need input, or until a terminal is back at its prompt (its command ended) or prints some text. Give the refs of the windows to wait for. Returns what each ended as; read them for details. Times out after `seconds` (default 120, at most 600); waiting again is fine.",
+      "Wait, for a short while, until a terminal is back at its prompt (its command ended) or prints some text, or until agents are done or need input. Agents you started report back by themselves (<news>): don't wait long for them. Give the refs of the windows to wait for. Returns what each ended as; read them for details. Times out after `seconds` (default 120, at most 600); waiting again is fine.",
     schema: schema({ refs: { type: "array", items: ref }, until: { type: "string", enum: ["done", "prompt", "text"], description: "done: agents finished or need you; prompt: a terminal's command ended; text: a terminal printed `text`." }, text: { type: "string" }, all: { type: "boolean", description: "Agents: wait for all of them (default: the first)." }, seconds: { type: "number" } }, ["refs", "until"]),
   },
   async run(i, b) {
@@ -414,12 +417,27 @@ const openTool: OperatorTool = {
     name: "open",
     explores: false,
     description:
-      "Open a window in the workspace: a terminal (in a folder of the workspace), a file or folder (in the window type that shows it), or a URL in a browser. Returns its ref. To run a command, open nothing: use run or type.",
-    schema: schema({ kind: { type: "string", enum: ["terminal", "path", "url"] }, target: { type: "string", description: "The path (relative to the workspace's folder) or URL; for a terminal, the folder to start in." } }, ["kind"]),
+      "Open a window in the workspace: a terminal (in a folder of the workspace), a file or folder (in the window type that shows it), or a URL in a browser. Returns its ref. With `ref`, the window already open shows it instead: a browser goes to the URL, a file browser to the folder (prefer this to opening another window). To run a command, open nothing: use run or type.",
+    schema: schema({ kind: { type: "string", enum: ["terminal", "path", "url"] }, target: { type: "string", description: "The path (relative to the workspace's folder) or URL; for a terminal, the folder to start in." }, ref: { ...ref, description: "A browser or file browser to show it in, instead of a new window." } }, ["kind"]),
   },
+  target: (i, b) => (i.ref ? b.refs.id(i.ref) : null),
   async run(i, b) {
     const ws = b.workspace();
     const target = str(i.target);
+    if (i.ref) {
+      const w = await windowOf(b, i.ref);
+      if (w.kind === "browser" && i.kind === "url") {
+        if (!target || !/^https?:\/\//.test(target)) throw new Error("a URL starts with http:// or https://");
+        await b.call("window.update", { id: w.id, state: { url: target } });
+        return `${String(i.ref)} goes to ${target}.`;
+      }
+      if (w.kind === "files" && i.kind === "path") {
+        const dir = readablePath(b, target ?? ".");
+        await b.call("window.update", { id: w.id, state: { path: dir } });
+        return `${String(i.ref)} shows ${path.relative(ws.root, dir) || "the workspace's folder"}.`;
+      }
+      throw new Error(`${String(i.ref)} is ${windowName(w)}: only a browser takes a URL and a file browser a folder; open a new window instead`);
+    }
     let w: AppWindow | null;
     if (i.kind === "terminal") w = await b.call("window.open", { kind: "terminal", input: { cwd: target ? readablePath(b, target) : ws.root }, workspaceId: ws.id });
     else if (i.kind === "url") {
@@ -508,19 +526,21 @@ const eventsTool: OperatorTool = {
       text: { type: "string", description: "Words to find (full-text)." },
       hours: { type: "number", description: "How far back, in hours (default 8, at most 168)." },
       ref: { ...ref, description: "Only this window's events (a terminal's commands)." },
+      everywhere: { type: "boolean", description: "Every workspace, not only this one (the default in the Home workspace, where little happens). Use it for what the person did in general: yesterday, this week." },
       failed: { type: "boolean", description: "Commands that failed only." },
       limit: { type: "number", description: "Rows (default 20, at most 100)." },
     }),
   },
   async run(i, b) {
     const ws = b.workspace();
+    const where = (i.everywhere ?? ws.home) ? {} : { workspaceId: ws.id };
     const hours = num(i.hours, 8, 168);
     const at: [number, number] = [Date.now() - hours * 3600_000, Date.now() + 1];
     const types = Array.isArray(i.types) ? i.types.filter((t): t is string => typeof t === "string") : undefined;
     const paneId = i.ref ? b.refs.id(i.ref) : undefined;
     const text = str(i.text)?.trim() || undefined;
     if (!types?.length && !text && !i.failed) {
-      const all = await b.call("data.query", { query: { workspaceId: ws.id, at, by: "time", order: "desc", limit: 5000, ...(paneId ? { paneId } : {}) } });
+      const all = await b.call("data.query", { query: { ...where, at, by: "time", order: "desc", limit: 5000, ...(paneId ? { paneId } : {}) } });
       const counts = new Map<string, { n: number; latest: number; failed: number }>();
       let quiet = 0;
       for (const e of all) {
@@ -535,11 +555,11 @@ const eventsTool: OperatorTool = {
         counts.set(e.type, c);
       }
       const rows = [...counts].sort((x, y) => y[1].n - x[1].n).map(([t, c]) => `${t} ${c.n}${c.failed ? ` (${c.failed} failed)` : ""}, latest ${fmtTime(c.latest)}`);
-      return [`Events in the last ${hours} h${all.length >= 5000 ? " (the newest 5000)" : ""}:`, ...rows, quiet ? `+${quiet} focus, activity and other quiet events not shown` : ""].filter(Boolean).join("\n") + "\nAsk for rows with types, text or failed.";
+      return [`Events in the last ${hours} h${"workspaceId" in where ? "" : " in every workspace"}${all.length >= 5000 ? " (the newest 5000)" : ""}:`, ...rows, quiet ? `+${quiet} focus, activity and other quiet events not shown` : ""].filter(Boolean).join("\n") + "\nAsk for rows with types, text or failed.";
     }
     const asked = new Set(types ?? []);
     const limit = num(i.limit, 20, 100);
-    const rows = (await b.call("data.query", { query: { workspaceId: ws.id, at, by: "time", order: "desc", limit: 2000, ...(types?.length ? { types } : {}), ...(text ? { text } : {}), ...(paneId ? { paneId } : {}) } })).filter(
+    const rows = (await b.call("data.query", { query: { ...where, at, by: "time", order: "desc", limit: 2000, ...(types?.length ? { types } : {}), ...(text ? { text } : {}), ...(paneId ? { paneId } : {}) } })).filter(
       (e) => (asked.has(e.type) || !isQuiet(e.type)) && (!i.failed || (e.type === "command" && typeof (e.data as { exitCode?: unknown }).exitCode === "number" && (e.data as { exitCode: number }).exitCode !== 0)),
     );
     const shown = rows.slice(0, limit).map((e) => {

@@ -167,6 +167,8 @@ function Item({ item, workspaceId, streaming }: { item: OperatorItem; workspaceI
           <div dangerouslySetInnerHTML={{ __html: markdown(item.text) }} />
         </ChatMessage>
       );
+    case "event":
+      return <ChatStep icon="bell" title={item.text} state="done" />;
     case "error":
       return <ChatNote tone={item.text === "Stopped." ? undefined : "danger"}>{item.text}</ChatNote>;
     case "tool":

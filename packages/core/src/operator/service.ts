@@ -8,13 +8,13 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { Method, NewDataEvent, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { Agent, AgentId, AgentState, Method, NewDataEvent, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { AgentCall, AgentResult, AgentRun } from "../ai/backends.ts";
 import type { ToolOutput } from "../magic/tools.ts";
 import { AiNotConfigured } from "../ai/service.ts";
 import { OPERATOR_ACCESS } from "./access.ts";
-import { Refs, clip, look } from "./board.ts";
+import { Refs, agentLine, clip, look } from "./board.ts";
 import { RULES_VERSION, systemPrompt } from "./prompt.ts";
 import { OPERATOR_TOOLS, type Ask, type Bench, type OperatorTool } from "./tools.ts";
 
@@ -41,6 +41,8 @@ export interface OperatorDeps {
   /** The Operator's window in a workspace, if one is open. */
   selfIn(workspaceId: WorkspaceId): WindowId | null;
   broadcast(e: OperatorEvent): void;
+  /** Every change to an agent (AgentTracker's updated): the Operator hears about the ones it started. */
+  onAgent?(fn: (a: Agent) => void): void;
   /** A turn waits for the person, ended or failed while nobody looked (a notification). */
   notify?(workspaceId: WorkspaceId, title: string, body: string): void;
   /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
@@ -63,6 +65,10 @@ interface Conversation {
   busy: boolean;
   abort: AbortController | null;
   queue: { text: string; selected: WindowId | null }[];
+  /** Agents it started, and the state each was last reported in: it is told when one is done, fails or needs input. */
+  watching: Map<AgentId, AgentState>;
+  /** News not yet told: with the next tool result while a turn runs, else in a turn of its own. */
+  news: string[];
   approvals: Map<string, (a: { allow: boolean; reason?: string }) => void>;
   denials: number;
 }
@@ -73,6 +79,7 @@ interface Saved {
   refs: Record<string, WindowId>;
   system: string | null;
   rules?: string | null;
+  watching?: [AgentId, AgentState][];
   usage: OperatorUsage;
   model: string | null;
 }
@@ -86,7 +93,47 @@ export class OperatorService {
   constructor(d: OperatorDeps) {
     this.#d = d;
     d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_conversations (workspace_id TEXT PRIMARY KEY, json TEXT NOT NULL, at INTEGER NOT NULL)`);
+    d.onAgent?.((a) => this.#agentChanged(a));
   }
+
+  /** Be told when this agent is done, fails or needs input (one the Operator started). */
+  watch(workspaceId: WorkspaceId, agentId: AgentId, state: AgentState = "starting"): void {
+    const c = this.#conv(workspaceId);
+    c.watching.set(agentId, state);
+    this.#save(c);
+  }
+
+  /** States worth telling the Operator about an agent it started. */
+  static readonly NEWS: readonly AgentState[] = ["done", "needs_input", "failed", "exited"];
+
+  #agentChanged(a: Agent): void {
+    for (const c of this.#watchers()) {
+      const was = c.watching.get(a.id);
+      if (was === undefined || was === a.state) continue;
+      c.watching.set(a.id, a.state);
+      if (a.state === "exited") c.watching.delete(a.id);
+      if (!OperatorService.NEWS.includes(a.state)) continue;
+      const where = a.paneId ? c.refs.of(a.paneId) : "its terminal";
+      const text = `${where}: ${agentLine(a)}`;
+      this.#add(c, { kind: "event", id: randomUUID(), at: Date.now(), text: newsLine(a) });
+      c.news.push(text);
+      this.#save(c);
+      // Told with the next tool result while a turn runs; otherwise a turn of its own.
+      if (!c.busy) void this.#turn(c);
+    }
+  }
+
+  /** Conversations watching agents, the ones on disk included (an agent may finish before its workspace's Operator is opened again). */
+  #watchers(): Conversation[] {
+    if (!this.#loaded) {
+      this.#loaded = true;
+      const rows = (this.#d.db?.prepare("SELECT workspace_id FROM operator_conversations").all() ?? []) as { workspace_id: string }[];
+      for (const r of rows) this.#conv(r.workspace_id);
+    }
+    return [...this.#all.values()].filter((c) => c.watching.size);
+  }
+
+  #loaded = false;
 
   get(workspaceId: WorkspaceId): OperatorConversation {
     const c = this.#conv(workspaceId);
@@ -120,7 +167,7 @@ export class OperatorService {
   reset(workspaceId: WorkspaceId): void {
     this.stop(workspaceId);
     const c = this.#conv(workspaceId);
-    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, usage: zero(), model: null, latency: null, denials: 0 });
+    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, watching: new Map(), news: [], usage: zero(), model: null, latency: null, denials: 0 });
     this.#save(c);
     this.#d.broadcast({ type: "operator.changed", workspaceId, reset: true, items: [], usage: c.usage, model: null, latency: null });
   }
@@ -133,7 +180,8 @@ export class OperatorService {
 
   async #turn(c: Conversation): Promise<void> {
     const asked = c.queue.splice(0);
-    if (!asked.length) return;
+    const news = c.news.splice(0);
+    if (!asked.length && !news.length) return;
     const ws = this.#d.workspace(c.workspaceId);
     if (!ws) return;
     const abort = new AbortController();
@@ -144,7 +192,7 @@ export class OperatorService {
     c.denials = 0;
     this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, busy: true });
     const done: OperatorItem[] = [];
-    const request = asked.map((a) => a.text).join("\n\n");
+    const request = asked.length ? asked.map((a) => a.text).join("\n\n") : `(news) ${news.join("; ")}`;
     const turn = { id: `operator:${randomUUID()}`, at: t0, type: "operator.turn" as const, source: "cmd", workspaceId: c.workspaceId, text: request.split("\n")[0]!.slice(0, 200) };
     const firstItem = c.items.length;
     let error: string | null = null;
@@ -158,7 +206,8 @@ export class OperatorService {
       // The board as it is now goes with the request, so the first step needn't be a look.
       const board = await this.#safe(() => this.#look(bench));
       const selected = asked.map((a) => a.selected).filter(Boolean).pop();
-      const text = asked.map((a) => a.text).join("\n\n");
+      const told = news.length ? `${asked.length ? "\n\n" : "(No message from the person: news came in. Tell them in a line or two what it means and what you'll do; act on it if it's what they asked for.)\n\n"}<news>\n${news.map((n) => `- ${n}`).join("\n")}\n</news>` : "";
+      const text = asked.map((a) => a.text).join("\n\n") + told;
       const content = `${text}${selected ? `\n\n(The person has ${c.refs.of(selected)} selected: "this" means it.)` : ""}${board ? `\n\n<board>\n${board}\n</board>` : ""}`;
       c.messages.push({ role: "user", content });
       this.#trim(c);
@@ -222,7 +271,7 @@ export class OperatorService {
       this.#save(c);
       this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, busy: false, usage: c.usage, model: c.model, latency: c.latency });
     }
-    if (c.queue.length) void this.#turn(c);
+    if (c.queue.length || c.news.length) void this.#turn(c);
   }
 
   /** One tool call: its card, the person's approval when it needs one, the call, the result. */
@@ -242,7 +291,9 @@ export class OperatorService {
       const next = { ...item, ...(approval ? { ask: approval.ask.title, exact: approval.ask.exact } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
       this.#update(c, next);
       done.push(next);
-      const sent = clip(output, OUTPUT_MAX);
+      // News that came in while this ran goes back with it.
+      const news = c.news.splice(0);
+      const sent = clip(output, OUTPUT_MAX) + (news.length ? `\n\n<news>\n${news.map((n) => `- ${n}`).join("\n")}\n</news>` : "");
       this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask.title ?? null, exact: approval?.ask.exact ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, ms: next.ms }, content: sent });
       return { output: sent, isError };
     };
@@ -280,6 +331,7 @@ export class OperatorService {
       call: this.#gate(false, signal),
       refs: c.refs,
       self: this.#d.selfIn(c.workspaceId),
+      watch: (id) => this.watch(c.workspaceId, id),
       signal,
     };
   }
@@ -384,6 +436,8 @@ export class OperatorService {
       busy: false,
       abort: null,
       queue: [],
+      watching: new Map(saved?.watching ?? []),
+      news: [],
       approvals: new Map(),
       denials: 0,
     };
@@ -409,12 +463,19 @@ export class OperatorService {
         this.#d.db.prepare("DELETE FROM operator_conversations WHERE workspace_id = ?").run(c.workspaceId);
         return;
       }
-      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, usage: c.usage, model: c.model };
+      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, watching: [...c.watching], usage: c.usage, model: c.model };
       this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(saved), Date.now());
     } catch (e) {
       log.warn(`could not save the conversation: ${(e as Error).message}`);
     }
   }
+}
+
+/** News for the person: "Claude “Bug hunt” is done." */
+function newsLine(a: Agent): string {
+  const who = `${a.kind === "claude" ? "Claude" : a.kind === "codex" ? "Codex" : a.kind}${a.name ? ` “${a.name}”` : ""}`;
+  const what = a.state === "done" ? "is done" : a.state === "needs_input" ? "needs input" : a.state === "failed" ? "failed" : "ended";
+  return `${who} ${what}.`;
 }
 
 /** Local midnight of today's work day (it runs 04:00 to 04:00, as the journal's). */

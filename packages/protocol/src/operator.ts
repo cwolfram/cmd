@@ -37,7 +37,9 @@ export type OperatorItem =
       output?: string;
       ms?: number;
     }
-  | { kind: "error"; id: string; at: number; text: string };
+  | { kind: "error"; id: string; at: number; text: string }
+  /** News the Operator was told without being asked: an agent it started is done, failed or needs input. */
+  | { kind: "event"; id: string; at: number; text: string };
 
 export interface OperatorUsage {
   input: number;
