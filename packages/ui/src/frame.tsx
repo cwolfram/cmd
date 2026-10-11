@@ -188,7 +188,7 @@ export function Pane({ title, aside, wide, children }: { title?: ReactNode; asid
   );
 }
 
-/** A metric: its label, the value in mono with a dim unit, a change (text, or a Delta), and something under it (a sparkline). With `onSelect` it's a button (open its detail). */
+/** A metric, as wide as its cell (so a sparkline under it is too): its label, the value with a dim unit, a change (text, or a Delta), and something under it (a sparkline). With `onSelect` it's a button (open its detail). */
 export function Stat({ label, value, unit, delta, deltaTone, onSelect, children }: { label: ReactNode; value: ReactNode; unit?: ReactNode; delta?: ReactNode; deltaTone?: Tone; onSelect?: () => void; children?: ReactNode }) {
   const body = (
     <>

@@ -35,9 +35,11 @@ export function Chart({ kind = "area", series, labels, height = 140, format = St
   );
 }
 
-/** A small trend without axes, for a Stat or a table cell: missing values leave a gap; the last value gets a dot. Drawn like Line: 2 px, a monotone curve, round ends. */
-export function Sparkline({ values, series = 0, height = 20, area = true, color }: { values: readonly (number | null)[]; series?: number; height?: number; area?: boolean; /** A role's colour instead of the series': "current" (the accent) or "neutral". */ color?: "current" | "neutral" }) {
+/** A small trend without axes, for a Stat or a table cell, as wide as its container: missing values at either end (days still to come, before the data starts) are left out so the trend fills it, missing ones between leave a gap; the last value gets a dot. Drawn like Line: 2 px, a monotone curve, round ends. */
+export function Sparkline({ values: all, series = 0, height = 20, area = true, color }: { values: readonly (number | null)[]; series?: number; height?: number; area?: boolean; /** A role's colour instead of the series': "current" (the accent) or "neutral". */ color?: "current" | "neutral" }) {
   const [ref, size] = useSize<HTMLDivElement>();
+  const first = all.findIndex((v) => v !== null);
+  const values = first < 0 ? [] : all.slice(first, all.length - [...all].reverse().findIndex((v) => v !== null));
   const xs = values.filter((v): v is number => v !== null);
   // Tufte's sparkline: the shape of the data, its own min to max, no zero line.
   const max = xs.length ? Math.max(...xs) : 1;

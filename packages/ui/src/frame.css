@@ -79,7 +79,7 @@
 .ui-pane-title { flex: 1; min-width: 0; margin: 0; font: 600 var(--text-xs) var(--font-ui); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
 .ui-pane-aside { font-size: var(--text-sm); color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
-.ui-stat { min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
+.ui-stat { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
 button.ui-stat { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-xs); }
 button.ui-stat:hover .ui-stat-label { color: var(--text); }
 button.ui-stat:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--input-glow); }
