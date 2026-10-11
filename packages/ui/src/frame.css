@@ -185,12 +185,16 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-list[data-variant="nav"] { --list-inset: var(--inset); }
 /* Grouped: sections apart, headings in line with the rows' icons, no boxes: the window is
    the frame. In a View with `inset`, rows and headings reach out into it by their padding,
-   so their letters sit on the inset like a plain list's and they highlight as pills there. */
-.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--list-pad)); gap: var(--section-gap); padding: 0; margin-block: calc(-1 * var(--list-pad)); }
-.ui-list[data-variant="grouped"] .ui-list-section + .ui-list-section { margin-top: 0; }
-.ui-list[data-variant="grouped"] .ui-list-heading { height: 20px; margin-bottom: var(--heading-gap); padding: 0 var(--list-pad); }
+   so their letters sit on the inset like a plain list's and they highlight as pills there.
+   Headings are a plain list's (24px); collapsed sections stack as a plain list's do, and
+   --section-gap comes after a section that shows its rows (and around the main action, callouts). */
+.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--list-pad)); padding: 0; margin-block: calc(-1 * var(--list-pad)); }
+.ui-list[data-variant="grouped"] > * + * { margin-top: var(--section-gap); }
+.ui-list[data-variant="grouped"] > .ui-list-section:not(:has(> .ui-list-rows)) + .ui-list-section { margin-top: var(--space-1-5); }
+.ui-list[data-variant="grouped"] .ui-list-heading { padding: 0 var(--list-pad); }
 .ui-list[data-variant="grouped"] .ui-list-row { gap: var(--list-icon-gap); }
 .ui-list[data-variant="grouped"] .ui-list-rows { display: flex; flex-direction: column; gap: var(--list-gap); }
+.ui-list[data-variant="grouped"] .ui-list-heading + .ui-list-rows { margin-top: var(--heading-gap); }
 .ui-list[data-variant="grouped"] .ui-list-row + .ui-list-row { margin-top: 0; } /* the gap above spaces them */
 
 /* ── a document to read (Document): rendered Markdown, in the person's text font ── */
