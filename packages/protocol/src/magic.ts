@@ -216,10 +216,11 @@ export type MagicProgress =
  * made with ("kit"; absent: 1), so a change to the kit never changes a widget nobody
  * asked to change. Each version is the CSS its frame loads, from packages/core/src/
  * magic/prompt: 1 is Magic's kit before widgets shared the app's tokens, frozen;
- * 2 is the app's generated tokens and the current kit. New widgets get CURRENT_KIT.
+ * 2 is the app's tokens and kit with a 12px inset, frozen; 3 is the app's generated
+ * tokens and the current kit (16px content inset, 12px bars). New widgets get CURRENT_KIT.
  */
-export const KIT_FILES: Readonly<Record<number, readonly string[]>> = { 1: ["kits/1.css"], 2: ["tokens.css", "kit.css"] };
-export const CURRENT_KIT = 2;
+export const KIT_FILES: Readonly<Record<number, readonly string[]>> = { 1: ["kits/1.css"], 2: ["kits/2.css"], 3: ["tokens.css", "kit.css"] };
+export const CURRENT_KIT = 3;
 /** A known kit version, else 1 (what widgets had before kits were versioned). */
 export const kitVersion = (v: unknown): number => (typeof v === "number" && v in KIT_FILES ? v : 1);
 /** Kit 1's names and what the current kit calls them: what moving a widget up renames. */

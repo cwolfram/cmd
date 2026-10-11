@@ -20,12 +20,19 @@ describe("kits", () => {
   it("a manifest without kit is on kit 1; a known kit is kept; an unknown one is an error", () => {
     expect(manifest({})).toMatchObject({ ok: true, manifest: { kit: 1 } });
     expect(manifest({ kit: 2 })).toMatchObject({ ok: true, manifest: { kit: 2 } });
+    expect(manifest({ kit: 3 })).toMatchObject({ ok: true, manifest: { kit: 3 } });
     expect(manifest({ kit: 9 }).ok).toBe(false);
   });
 
   it("kit 1 is frozen: widgets made with it depend on how it looks", () => {
     const text = fs.readFileSync(new URL("../src/magic/prompt/kits/1.css", import.meta.url));
     expect(crypto.createHash("sha256").update(text).digest("hex")).toBe("ed8d21857c96c876949fcbdb7a4f9898e03730ad13387c438573c2095fc70b86");
+  });
+
+  it("kit 2 is frozen: the 12px inset its widgets were laid out on", () => {
+    const text = fs.readFileSync(new URL("../src/magic/prompt/kits/2.css", import.meta.url));
+    expect(crypto.createHash("sha256").update(text).digest("hex")).toBe("fe55e6fe945f8fb0e2926f2fd473788ca036862fbd3036e27ad568dc6bb1add3");
+    expect(text.toString()).toContain("--inset: var(--space-lg);");
   });
 
   it("each kit loads its own CSS: kit 1 its old names, the current kit the app's tokens", () => {
@@ -51,6 +58,8 @@ describe("kits", () => {
     expect(req(JSON.stringify({ title: "T" }))).toContain(`"kit": ${CURRENT_KIT}`);
     expect(req(JSON.stringify({ title: "T" }))).toContain("--line → --separator");
     expect(req(JSON.stringify({ title: "T", kit: CURRENT_KIT }))).not.toContain("kit 1");
+    expect(req(JSON.stringify({ title: "T", kit: 2 }))).toContain(`made with kit 2`);
+    expect(req(JSON.stringify({ title: "T", kit: 2 }))).not.toContain("--line → --separator");
   });
 
   it("the lint names kit 1's variables only in widgets on a later kit", () => {

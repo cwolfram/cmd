@@ -23,7 +23,7 @@ All in the widget folder; write them with `write_file` (or `edit_file` for small
 
 - **manifest.json**: what it is and what its data.ts may touch.
   ```json
-  {"cmd": 2, "kit": 2, "kind": "widget", "title": "Weather · Lisbon", "icon": "cloud.sun", "size": "m", "refresh": 900,
+  {"cmd": 2, "kit": 3, "kind": "widget", "title": "Weather · Lisbon", "icon": "cloud.sun", "size": "m", "refresh": 900,
    "permissions": {"net": ["api.open-meteo.com"], "run": [], "env": [], "read": []},
    "config": [{"key": "city", "title": "City", "type": "string", "default": "Lisbon"}],
    "media": []}
@@ -109,7 +109,7 @@ Media: a view may play audio or video (`<audio>`, `<video>`, a web radio) and sh
 The view goes into a page that already has the theme, the kit below and a `cmd` object.
 
 - The page has cmd's own design tokens, the ones its windows are built with. Colours only through them: `--text`, `--text-dim`, `--text-faint`, `--well` (the window's background), `--bg-elevated`, `--separator`, `--bg-hover`, `--accent`, `--success`, `--warning`, `--danger`, and `--chart-1` … `--chart-6` for series. Never write a literal colour. Light and dark themes then just work.
-- Fonts: `--font-ui` (text) and `--font-mono`. Sizes from the scales, not literal px: text `--text-sm`, `--text-md`, `--text-base`, `--text-lg`; space `--space-xs` (4px), `--space-sm` (6), `--space-md` (8), `--space-lg` (12), `--space-xl` (16), `--space-2xl` (24); the window inset `--inset`; radii `--radius` (controls) and `--radius-md` (cards). The kit's classes already use them.
+- Fonts: `--font-ui` (text) and `--font-mono`. Sizes from the scales, not literal px: text `--text-sm`, `--text-md`, `--text-base`, `--text-lg`; space `--space-xs` (4px), `--space-sm` (6), `--space-md` (8), `--space-lg` (12), `--space-xl` (16), `--space-2xl` (24); the window inset `--inset` (16px; bars `--bar-inset`, 12px); radii `--radius` (controls) and `--radius-md` (cards). The kit's classes already use them.
 - No gradients, shadows, blur or animations; at most a short transition.
 - Lay it out as in Layout: edge to edge, flexible at every size.
 - Render from data: `cmd.onData<Data>(d => …)` is called with the data now and after every refresh. Make it idempotent: set text and attributes on elements you created once, or rebuild a container's children. Build rows with `document.createElement` and `textContent` (or escape text you put into `innerHTML`): data is not HTML.

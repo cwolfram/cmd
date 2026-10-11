@@ -107,8 +107,9 @@ For text, measure ink, not boxes: a `Range` over a text node gives its line box;
 Widgets made with Magic share the tokens through **kit versions** (`KIT_FILES` in `packages/protocol/src/magic.ts`). A widget's `manifest.json` pins its kit (`"kit"`; absent: 1), so changing the kit never changes a widget nobody asked to change.
 
 - **Kit 1** (`packages/core/src/magic/prompt/kits/1.css`) is Magic's kit before the tokens, frozen: a test pins its hash. Never edit it.
-- **Kit 2** (current) is the generated `prompt/tokens.css` plus `prompt/kit.css`, the app's tokens and the rules above in `k-*` classes. Fixes to kit.css are fine while it is current; a change that would alter how existing kit-2 widgets lay out is a new version: copy the current CSS to `kits/2.css`, point `KIT_FILES[2]` at it, add the next version, bump `CURRENT_KIT`, write a rename table if names change (like `KIT1_RENAMES`), and pin kit 2's hash in `kits.test.ts`.
-- New widgets get the current kit (Magic's write tool fills it in and keeps a widget's kit on rewrites); a change to an older widget asks the model to move it up (`kitMove` in `magic/prompt.ts`), and the lint names old variables left behind.
+- **Kit 2** (`kits/2.css`): the app's tokens and kit with the 12px inset, frozen (hash pinned). Never edit it.
+- **Kit 3** (current) is the generated `prompt/tokens.css` plus `prompt/kit.css`, the app's tokens (16px content inset, 12px bars) and the rules above in `k-*` classes. Fixes to kit.css are fine while it is current; a change that would alter how existing kit-3 widgets lay out is a new version: concatenate the current tokens.css and kit.css into `kits/3.css`, point `KIT_FILES[3]` at it, add the next version, bump `CURRENT_KIT`, write a rename table if names change (like `KIT1_RENAMES`), and pin kit 3's hash in `kits.test.ts`.
+- New widgets get the current kit (Magic's write tool fills it in and keeps a widget's kit on rewrites); a change to a widget on an older kit asks the model to move it up (`kitMove` in `magic/prompt.ts`; from kit 1 that also renames variables), and the lint names old variables left behind.
 - The prompt (`prompt/prompt.md`, "How cmd looks", "Layout", "The kit") states these rules for the model in the kit's terms; when a rule here changes, change it there, and in the examples (`prompt/examples/`).
 - Check a kit change with `pnpm cmd widget preview <dir>` on copies of the examples (dark, light, small, wide), before and after.
 
@@ -119,4 +120,4 @@ Widgets made with Magic share the tokens through **kit versions** (`KIT_FILES` i
 - Don't place controls in the body, a spinner by hand, or a second toolbar.
 - Don't compensate for scrollbars (gutters, padding maths): they float.
 - Don't edit `tokens.css`, `tokens.gen.ts`, the Magic frame's `tokens.css` or `preview-themes.json`: they're generated.
-- Don't edit `kits/1.css`, or change kit 2 in a way that moves existing widgets: version it.
+- Don't edit `kits/1.css` or `kits/2.css`, or change kit 3 in a way that moves existing widgets: version it.

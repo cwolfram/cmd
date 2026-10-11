@@ -77,10 +77,11 @@ function kitOfFiles(files: Record<string, string>): number {
   }
 }
 
-/** A widget on kit 1 moves to the current kit when it is changed: what that takes. */
-function kitMove(): string {
+/** A widget on an older kit moves to the current kit when it is changed: what that takes (kit 1 also renames variables). */
+function kitMove(kit: number): string {
   const renames = Object.entries(KIT1_RENAMES).map(([o, n]) => `${o} → ${n}`).join(", ");
-  return `This widget was made with kit 1, an older version of the kit. Move it to the current kit as part of this change: set "kit": ${CURRENT_KIT} in manifest.json, rename the variables it uses (${renames}), and lay it out by the current rules.`;
+  const rename = kit === 1 ? `, rename the variables it uses (${renames})` : "";
+  return `This widget was made with kit ${kit}, an older version of the kit. Move it to the current kit as part of this change: set "kit": ${CURRENT_KIT} in manifest.json${rename}, and lay it out by the current rules.`;
 }
 
 /** The user message: the request plus where (machine, folder, the window's workspace) and when it was made. */
@@ -107,7 +108,8 @@ export function buildRequest(prompt: string, c: RequestContext): string {
   if (files.length) {
     lines.push("", "The widget's files now (change what the request asks for, keep the rest working):");
     for (const [f, text] of files) lines.push("", `--- ${f} ---`, text.trim());
-    if (kitOfFiles(c.files!) === 1) lines.push("", kitMove());
+    const kit = kitOfFiles(c.files!);
+    if (kit < CURRENT_KIT) lines.push("", kitMove(kit));
   } else if (c.widgetDir) lines.push("The widget has no files yet.");
   return lines.join("\n");
 }
