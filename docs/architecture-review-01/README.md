@@ -177,7 +177,7 @@ AR1-04-01 + AR1-04-03 in one `HOST_PROTOCOL` bump → AR1-02-02 (offsets on the 
 ### Wave 4: one connection, schemas, a smaller runtime
 
 - Theme 7: AR1-02-07 → AR1-02-06 → AR1-09-07 (sandboxed renderer), with AR1-04-02 (renderer terminals as a cache) and AR1-08-08.
-- Theme 4: AR1-06-03 + AR1-03-05 (migration runners), AR1-07-02, AR1-15-04, then AR1-06-02 (views on a log cursor).
+- Theme 4: AR1-06-03 + AR1-03-05 (migration runners), AR1-07-02, then AR1-06-02 (views on a log cursor).
 - Theme 5: one forget hook (AR1-06-07, AR1-16-02).
 - Build: AR1-14-04 → AR1-14-03 with AR1-01-02 (bundle the runtime: about 15 files instead of 3,063).
 
@@ -185,7 +185,7 @@ AR1-04-01 + AR1-04-03 in one `HOST_PROTOCOL` bump → AR1-02-02 (offsets on the 
 
 These are the remaining issues of size S (under ½ day), a good first pick for a free agent. Check its **Depends on** line first. Wave 0 above is the urgent subset.
 
-AR1-01-05, AR1-01-08, AR1-01-09, AR1-03-06, AR1-03-09, AR1-03-10, AR1-04-07, AR1-04-09, AR1-05-07, AR1-05-08, AR1-05-09, AR1-05-10, AR1-06-09, AR1-06-10, AR1-06-11, AR1-08-06, AR1-08-09, AR1-08-10, AR1-08-11, AR1-09-09, AR1-10-03, AR1-10-06, AR1-10-07, AR1-10-09, AR1-10-10, AR1-11-09, AR1-11-10, AR1-12-04, AR1-12-05, AR1-12-10, AR1-12-12, AR1-13-07, AR1-13-09, AR1-14-04, AR1-14-06, AR1-14-07, AR1-14-08, AR1-15-06, AR1-15-07, AR1-15-09, AR1-16-04, AR1-16-06, AR1-16-07, AR1-16-09, AR1-16-10, AR1-06-12, AR1-14-10, AR1-16-11.
+AR1-01-05, AR1-01-08, AR1-01-09, AR1-03-06, AR1-03-09, AR1-03-10, AR1-04-07, AR1-04-09, AR1-05-08, AR1-05-09, AR1-05-10, AR1-06-09, AR1-06-10, AR1-06-11, AR1-08-06, AR1-08-09, AR1-08-10, AR1-08-11, AR1-09-09, AR1-10-03, AR1-10-06, AR1-10-07, AR1-10-09, AR1-10-10, AR1-11-09, AR1-11-10, AR1-12-04, AR1-12-05, AR1-12-10, AR1-12-12, AR1-13-07, AR1-13-09, AR1-14-04, AR1-14-06, AR1-14-07, AR1-14-08, AR1-15-06, AR1-15-07, AR1-15-09, AR1-16-06, AR1-16-07, AR1-16-09, AR1-16-10, AR1-06-12, AR1-14-10, AR1-16-11.
 
 ## Process
 

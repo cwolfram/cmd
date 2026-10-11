@@ -103,7 +103,7 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 
 ### AR1-15-04 · Lock the shipped setting keys so a removal can't skip its migration
 
-- **Status:** in progress (ar1-small)
+- **Status:** done (960ef82b, ar1-small)
 - **Severity:** medium
 - **Effort:** S (< ½ day)
 - **Where:** `packages/protocol/src/settings.ts:442-462`, `packages/protocol/src/settings.ts:534-547`
@@ -115,10 +115,10 @@ Design docs: docs/07-ui-vision.md (palette prefixes), docs/39-workspace-actions.
 **Proposal.** Add `packages/protocol/settings-keys.lock` (one key per line, every key ever shipped) and a test that fails when a locked key is in neither the schema, `RENAMED_SETTINGS` nor `REMOVED_SETTINGS`, and when a schema key is missing from the lock (append it). Replace the rename map with an ordered `SETTINGS_MIGRATIONS: { from, to?, value?: (old) => unknown }[]` applied in `resolveSettings`, so a type change can carry the user's value over. A file `$version` is not needed while every migration is idempotent and keyed by name. Also show unknown keys in the Settings window as a quiet note with a "Remove from settings.json" button, not as a danger callout.
 
 **Success criteria.**
-- [ ] `settings-keys.lock` exists with 113+ keys, and a test fails if `canvas.cardZoom` is taken out of `REMOVED_SETTINGS`.
-- [ ] A test migrates a value through a `value` transform (e.g. a comma string to a list) and checks the resolved setting.
-- [ ] `resolveSettings({ "canvas.cardZoom": 0.5 }).errors` is empty.
-- [ ] An unknown key in settings.json shows in the Settings window with a working remove action (unit test on the snapshot plus the row).
+- [x] `settings-keys.lock` exists with 113+ keys, and a test fails if `canvas.cardZoom` is taken out of `REMOVED_SETTINGS`.
+- [x] A test migrates a value through a `value` transform (e.g. a comma string to a list) and checks the resolved setting.
+- [x] `resolveSettings({ "canvas.cardZoom": 0.5 }).errors` is empty.
+- [x] An unknown key in settings.json shows in the Settings window with a working remove action (unit test on the snapshot plus the row).
 
 ### AR1-15-05 · Add list and map setting types instead of comma-separated mini-languages
 

@@ -187,7 +187,7 @@ interface AgentAdapter {
 
 ### AR1-05-07 · Stop a reducer failure from repeating every two seconds
 
-- **Status:** in progress (ar1-small)
+- **Status:** done (93803605, ar1-small)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/agents/tracker.ts:278-286`, `tracker.ts:260-272`, `tracker.ts:291-303`
@@ -199,9 +199,9 @@ interface AgentAdapter {
 **Proposal.** On failure: record an `anomaly` note with the event id and error, mark the reducer past the event (`red.replayedTo = ev.id`; `saveTurn(red.turn ?? emptyTurn, ev.id)` so the restart path skips it too), keep the reducer, and continue with the next event. If the saved turn itself can't be decoded (the version case), start a fresh reducer at `index + 1` instead of giving up: `decodeTurn` already returns null for a bad doc.
 
 **Success criteria.**
-- [ ] A test injects an event that makes `apply` throw and asserts: one `anomaly` event, one log error, and the following event reduces normally.
-- [ ] After a restart with a turn doc of an unknown format, the agent still gets state from new events (test with a hand-written `turns` row).
-- [ ] `grep -n 'reducers.delete' tracker.ts` appears only in `#remove`/`forget`.
+- [x] A test injects an event that makes `apply` throw and asserts: one `anomaly` event, one log error, and the following event reduces normally.
+- [x] After a restart with a turn doc of an unknown format, the agent still gets state from new events (test with a hand-written `turns` row).
+- [x] `grep -n 'reducers.delete' tracker.ts` appears only in `#remove`/`forget`.
 
 ### AR1-05-08 · Fewer writes and scans per hook event
 

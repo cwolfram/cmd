@@ -123,7 +123,7 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 
 ### AR1-16-04 · Enforce the journal's format versions with golden fixtures
 
-- **Status:** in progress (ar1-small)
+- **Status:** done (e20925f4, ar1-small)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/journal/threads.ts:9-10`, `packages/protocol/src/journal.ts:27-30`, `packages/core/test/journal.test.ts`
@@ -135,9 +135,9 @@ If a single SQL statement stays over 100 ms, move the reflog read and the event 
 **Proposal.** Add a golden test per layer. Build threads and the digest from the existing fixture day and hash the output. The test stores `{ THREADS_FORMAT: n, hash }` and fails if the hash changes while the format didn't, with the message "bump THREADS_FORMAT (docs/24)". Do the same for `SYSTEM`/`SCHEMA` against `WRITER_FORMAT`, and the sources mapping against `SOURCES_FORMAT`. This is the same ratchet idea as `design-debt.json` and `pnpm tokens --check`. Bump `THREADS_FORMAT` to 2 for a4ed535 when it lands.
 
 **Success criteria.**
-- [ ] `journal.test.ts` has golden hashes for threads/digest, writer prompt+schema and sources mapping, each paired with its format constant.
-- [ ] Reverting a4ed535's `worktreeOf` change makes the test fail with a message naming the constant.
-- [ ] `THREADS_FORMAT` is 2, and docs/24 has a line for what changed.
+- [x] `journal.test.ts` has golden hashes for threads/digest, writer prompt+schema and sources mapping, each paired with its format constant.
+- [x] Reverting a4ed535's `worktreeOf` change makes the test fail with a message naming the constant.
+- [x] `THREADS_FORMAT` is 2, and docs/24 has a line for what changed.
 
 ### AR1-16-05 · Put every notification source behind one rule shape with a key and a cooldown
 
