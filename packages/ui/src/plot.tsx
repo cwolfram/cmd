@@ -39,7 +39,12 @@ export interface PlotScales {
   max: number;
   hover: number | null;
   current: number | null;
+  /** A line's stroke at this size, in px: 1.25 in a 320 px plot up to 2.5 at 1000 px and wider (lineWidth). */
+  stroke: number;
 }
+
+/** A line's stroke for a plot `w` px wide: thin in a small widget, heavier as the chart grows, so it reads the same at every size. */
+const lineWidth = (w: number): number => Math.round(100 * Math.min(2.5, Math.max(1.25, 1.25 + (1.25 * (w - 320)) / 680))) / 100;
 
 const PlotContext = createContext<PlotScales | null>(null);
 
@@ -164,6 +169,7 @@ export function Plot({ n, max, height = 120, format = String, ticks: tickKind = 
     max: top,
     hover,
     current,
+    stroke: lineWidth(iw),
   };
   const at = (e: MouseEvent<SVGSVGElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -261,9 +267,10 @@ export function Bars({ series, stack = true }: { series: readonly ChartSeries[];
   return <g className="ui-plot-bars">{out}</g>;
 }
 
-/** A line through the buckets' centres (gaps where a value is missing); `area` fills under it. */
-export function Line({ values, color = seriesColor(0), dashed = false, area = false, width = 1.5 }: { values: readonly (number | null)[]; color?: string; dashed?: boolean; area?: boolean; width?: number }) {
+/** A line through the buckets' centres (gaps where a value is missing); `area` fills under it. Its stroke, dashes and dots scale with the plot's width; `weight` scales them further (a comparison line under the main one: 0.66). */
+export function Line({ values, color = seriesColor(0), dashed = false, area = false, weight = 1 }: { values: readonly (number | null)[]; color?: string; dashed?: boolean; area?: boolean; weight?: number }) {
   const p = usePlot();
+  const width = p.stroke * weight;
   const defined = (v: number | null) => v !== null && Number.isFinite(v);
   const pts = values.map((v, i) => [i, v] as const);
   const line = d3line<readonly [number, number | null]>()
@@ -284,9 +291,9 @@ export function Line({ values, color = seriesColor(0), dashed = false, area = fa
   return (
     <g className="ui-plot-line" data-dashed={dashed || undefined}>
       {fill && <path className="ui-plot-area" d={fill} fill={color} />}
-      {line && <path d={line} stroke={color} strokeWidth={width} fill="none" strokeDasharray={dashed ? "3 3" : undefined} />}
-      {!dashed && last && p.hover === null && <circle className="ui-plot-dot" cx={p.cx(last[0])} cy={p.y(last[1]!)} r={2.5} fill={color} />}
-      {!dashed && p.hover !== null && hv !== null && hv !== undefined && <circle className="ui-plot-dot" cx={p.cx(p.hover)} cy={p.y(hv)} r={3} fill={color} />}
+      {line && <path d={line} stroke={color} strokeWidth={width} fill="none" strokeDasharray={dashed ? `${2 * width + 1} ${2 * width + 1}` : undefined} />}
+      {!dashed && last && p.hover === null && <circle className="ui-plot-dot" cx={p.cx(last[0])} cy={p.y(last[1]!)} r={width + 1} fill={color} />}
+      {!dashed && p.hover !== null && hv !== null && hv !== undefined && <circle className="ui-plot-dot" cx={p.cx(p.hover)} cy={p.y(hv)} r={width + 1.5} fill={color} />}
     </g>
   );
 }

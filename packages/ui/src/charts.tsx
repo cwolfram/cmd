@@ -116,7 +116,7 @@ export function TimeSeries(p: TimeChartProps & { area?: boolean }) {
     <div className="ui-chart" data-fill={p.height === "fill" || undefined}>
       <ChartHead summary={p.summary} readout={readout} />
       <Plot n={p.buckets.length} max={max} height={p.height ?? 120} format={(v) => fmt(v)} ticks={p.ticks} xLabel={(i) => p.xLabel(p.buckets[i]!, i)} current={p.current ?? null} label={p.label} describe={describe} onHover={setHover} onSelect={p.onSelect} cursor>
-        {p.previous && <Line values={p.previous} color="var(--chart-neutral)" dashed width={1} />}
+        {p.previous && <Line values={p.previous} color="var(--chart-neutral)" dashed weight={0.66} />}
         {p.series.map((s, i) => (
           <Line key={s.key} values={s.values} color={p.series.length === 1 ? "var(--chart-current)" : seriesColor(i)} area={(p.area ?? true) && p.series.length === 1} />
         ))}

@@ -113,6 +113,21 @@ export const Lines = () => {
   );
 };
 
+/** One line at the widths a chart gets, from a narrow widget to a wide window: its stroke, dashes and dots grow with the plot. */
+export const LineWidths = () => {
+  const hours = Array.from({ length: 48 }, (_, i) => today - (47 - i) * HOUR);
+  const mem = hours.map((_, i) => 400 + 120 * Math.sin(i / 6) + 40 * noise(i));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24, padding: 16 }}>
+      {[220, 480, 760, 1100].map((w) => (
+        <div key={w} style={{ width: w }}>
+          <TimeSeries buckets={hours} series={[{ key: "m", label: "Core memory", values: mem }]} previous={mem.map((v, i) => v * 0.9 + 30 * noise(i + 2))} format={(v) => `${Math.round(v)} MB`} xLabel={(t) => String(new Date(t).getHours()).padStart(2, "0")} label={`Core memory at ${w} px`} summary={`${w} px`} />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 /** A year of active time as a calendar, and when you work as a punch card (weekday × hour). */
 export const Heat = () => {
   const year = Array.from({ length: 365 }, (_, i) => (i < 40 ? null : noise(i) < 0.15 ? 0 : noise(i + 1) * 8 * HOUR));
