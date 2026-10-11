@@ -109,7 +109,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-05 · Pid files are trusted where the lock is the truth, and `stop-core` can kill a reused pid
 
-- **Status:** mostly done (lifecycle branch; pid files with a start time and ptyHostRoot are left)
+- **Status:** mostly done (53a17b2a; pid files with a start time and ptyHostRoot are left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `scripts/stop-core.mjs:56-63`, `apps/desktop/src/main/index.ts:369-376`, `apps/desktop/src/main/index.ts:414`, `apps/desktop/src/main/index.ts:217-224`, `packages/core/src/terminals/host-main.ts:19-25`
@@ -168,7 +168,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-08 · Harden the core's side of the host link
 
-- **Status:** done (lifecycle branch)
+- **Status:** done (73b6a658)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/terminals/remote.ts:106`, `packages/core/src/terminals/remote.ts:181-196`, `packages/core/src/terminals/remote.ts:334-344`
@@ -188,7 +188,7 @@ The questions asked of this review, answered briefly: the three-process split is
 
 ### AR1-01-09 · The footer's "outdated" disagrees with main's restart rule, and health is polled per window
 
-- **Status:** done (lifecycle branch)
+- **Status:** done (71dca0a5)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `apps/desktop/src/renderer/src/coreHealth.ts:21-23`, `apps/desktop/src/renderer/src/coreHealth.ts:51-63`, `apps/desktop/src/main/index.ts:171`
