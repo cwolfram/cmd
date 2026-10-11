@@ -71,7 +71,6 @@ A missing method fails the assignment to `Handlers`; a method registered twice i
 
 **Done (2026-10-10).** `core.ts` is the composition root, 462 lines (from 1,640), with `core.hello`, `core.info` and `events.subscribe` as its own handlers. Every folder that owns methods has a `handlers.ts` exporting a `slice({...})` (`slice` infers the methods from the keys and types each handler's params), listed in `kernel/slices.ts`; `settings`/`secrets`/`ui`/`usage` are `kernel/methods.ts`, `fs`/`git` are `lib/handlers.ts`. Core's private logic moved to its folders: `kernel/server.ts` (sockets, connections, events out), `data/subscriptions.ts`, `agents/setup.ts` (homes and hooks), `search/search.ts`, `windows/ops.ts` (open, reopen, move, close a workspace, focus), `widgets/library.ts`, `widgets/previews.ts`. Removing a handler fails tsc (checked with `sqlite.export`); `packages/core/test/handlers.test.ts` fails on a method in two slices; `core.ts`'s lines are an entry in `test/layout-debt.json`. Listeners that tell clients about terminals and agents (`watchPanes`, `watchAgents`, `WindowOps.watchTerminals`) still register after the services' own, as before, so clients hear a change once the core has taken it in.
 
-
 ### AR1-03-02 · Replace the lambda option bags with a typed `CoreContext`
 
 - **Status:** done (704764ff)
@@ -138,7 +137,6 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 **Done (2026-10-10)** with AR1-03-01: the constructor has 6 `=>` (from 84).
 
-
 ### AR1-03-03 · Give handlers the connection and delete `#afterCall`
 
 - **Status:** done (704764ff)
@@ -161,7 +159,6 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 - [x] `grep -c 'method: "event"' packages/core/src/core.ts` ≤ 1
 
 **Done (2026-10-10)** with AR1-03-01. A handler's second argument is its call (`{ conn }`, null inside the core), so `#afterCall` is gone: `data.subscribe`, `fs.watch`, `window.follow`, `magic.previewer`, `events.subscribe`, `remote.bootstrap`, `pane.write`, `agent.send` and `pane.fitOverride` do their per-connection work themselves. The subscriptions are `data/subscriptions.ts` (not `src/subscriptions.ts`: the core's root keeps only its entry points), tested on their own in `packages/core/test/subscriptions.test.ts`, with the watch released when its client closes.
-
 
 ### AR1-03-04 · Let services declare their own startup jobs
 
@@ -207,7 +204,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 ### AR1-03-06 · Give RPC errors codes and stop dropping malformed requests silently
 
-- **Status:** in progress (strict)
+- **Status:** mostly done (strict branch; most handlers still throw plain errors)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/core.ts:1313-1358`, `packages/core/src/core.ts:1179-1183`, `packages/protocol/src/rpc.ts`
@@ -221,9 +218,11 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 **Success criteria.**
 
 - [ ] `RpcError` exists in `@cmd/protocol` and `#receive` maps it; a non-`RpcError` thrown by a handler is logged as an error and filed with `recordCrash`
-- [ ] A test sends `not json\n`, `{"jsonrpc":"2.0","id":1,"method":"nope"}` and `{"jsonrpc":"2.0","method":"core.hello"}` (no id) and receives `-32700`, `-32601` and no reply respectively
-- [ ] `agent.kill` on an unknown id returns code `notFound`; `search.reindex` with transcripts off returns `unavailable`
+- [x] A test sends `not json\n`, `{"jsonrpc":"2.0","id":1,"method":"nope"}` and `{"jsonrpc":"2.0","method":"core.hello"}` (no id) and receives `-32700`, `-32601` and no reply respectively
+- [x] `agent.kill` on an unknown id returns code `notFound`; `search.reindex` with transcripts off returns `unavailable`
 - [ ] `packages/cli` prints errors by code in at least `agent`, `search` and `settings` commands, and no test matches an error by regex on its message where a code exists
+
+**Progress (2026-10-11).** `RPC_CODES` (protocol `version.ts`: JSON-RPC's parse, invalidRequest, unknownMethod, invalidParams; cmd's failed, denied, unavailable, notFound, conflict) and `RpcError.of(kind, message)` / `.kind`. `#receive` answers a line that isn't JSON with `-32700` (id null), one without a method with `-32600`, and runs a request without an id without answering it; a thrown `RpcError` keeps its code. The tracker's missing agent is `notFound`, `search.reindex` with transcripts off `unavailable`. The CLI exits by code (2 bad params, 3 not found, 4 turned off, 5 not allowed, 6 the core doesn't have it; listed in `cmd help`), for every command at once. Tests in `core.test.ts`; the one test that matched "no such agent" checks the code. Not done: converting the rest of the handlers' expected failures to coded errors, and with that, filing every non-`RpcError` as a crash (today a plain `Error` is an expected failure; the crash split still goes by `TypeError` and kin).
 
 ### AR1-03-07 · Mark the unmarked callbacks and move the last one-statement startup job off the thread
 

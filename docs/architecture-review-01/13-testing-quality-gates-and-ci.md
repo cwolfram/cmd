@@ -159,7 +159,7 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 
 ### AR1-13-07 · Turn on the strictness flags that are already nearly free
 
-- **Status:** in progress (strict)
+- **Status:** done (strict branch)
 - **Severity:** low
 - **Effort:** S (< ½ day)
 - **Where:** `tsconfig.base.json:1-16`, `packages/cli/src/data.ts:161`
@@ -171,9 +171,11 @@ CI is `.github/workflows/build.yml`: one macOS arm64 job runs `pnpm typecheck`, 
 **Proposal.** Add `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUnusedLocals`, `noUnusedParameters` to `tsconfig.base.json` and fix the 26 sites (an intended fallthrough gets `// falls through`). Leave `exactOptionalPropertyTypes` (321 errors) for later; it mostly matters at the protocol boundary, where validation (doc 02, AR1-02-04) is the better fix.
 
 **Success criteria.**
-- [ ] `tsconfig.base.json` sets the five flags
-- [ ] `pnpm typecheck` passes
-- [ ] No `// @ts-ignore` or `@ts-expect-error` added to get there (`grep -rn "@ts-" packages/*/src apps/*/src` still 0)
+- [x] `tsconfig.base.json` sets the five flags
+- [x] `pnpm typecheck` passes
+- [x] No `// @ts-ignore` or `@ts-expect-error` added to get there (`grep -rn "@ts-" packages/*/src apps/*/src` still 0)
+
+**Progress (2026-10-11).** The five flags are on in `tsconfig.base.json` (all four projects extend it). What they found, about 37 sites (more than the 26 measured, the code grew): unused imports, locals and parameters removed (a parameter of `docEvents` and of the scrollbars' `hide` dropped with their callers' arguments, an unused key handler and its submit in MagicView), `override` on the error boundaries' members, the one fallthrough (`cmd data subscribe` now returns), and the changelog check's `at` typed `void`. No `@ts-` comments added.
 
 ### AR1-13-08 · One eval runner with committed baselines for the four model features
 
