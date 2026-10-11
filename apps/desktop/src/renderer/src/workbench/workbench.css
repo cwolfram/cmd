@@ -13,11 +13,10 @@
 .wb-side-search { flex: none; padding: var(--space-sm) var(--inset); }
 .wb-side-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-lg); }
 
-/* One variant alone. Centred by its margins, not justify/align: wider or taller than the stage, it scrolls from its start instead of overflowing off the left and top. */
-.wb-stage { flex: 1; min-height: 0; overflow: auto; display: flex; padding: var(--space-2xl); }
-.wb-stage > * { margin: auto; flex: none; }
-/* A dialog's scrim covers the stage, not the toolbar: a tall sheet fits under it instead of sliding behind it. */
-.wb ~ .ui-scrim, body:has(.wb) > .ui-scrim { top: 44px; }
+/* One variant alone. Centred by its margins, not justify/align: wider or taller than the stage, it scrolls from its start instead of overflowing off the left and top.
+   It is its variant's dialog layer (Layered): a sheet's scrim covers the stage, not the sidebar or the toolbar. */
+.wb-stage { position: relative; flex: 1; min-height: 0; overflow: auto; display: flex; padding: var(--space-2xl); transform: translateZ(0); }
+.wb-stage > :not(.wb-layer) { margin: auto; flex: none; }
 
 /* A page: a component's or a story's. */
 .wb-page { display: flex; flex-direction: column; gap: var(--space-2xl); padding: var(--space-xl) var(--space-2xl) var(--space-3xl); }

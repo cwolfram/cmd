@@ -7,7 +7,7 @@
 // case (?story=feedback), still works.
 
 import { useEffect, useState, type ComponentType } from "react";
-import { Callout, ErrorBoundary, Select, Spacer, Split, Toolbar } from "@cmd/ui";
+import { Callout, ErrorBoundary, LinkButton, Select, Spacer, Split, Toolbar } from "@cmd/ui";
 import { allThemes, themeFor } from "@cmd/ui/themes";
 import type { SettingsSnapshot } from "@cmd/protocol";
 import { cmd } from "../lib/bridge.ts";
@@ -16,7 +16,7 @@ import { applyLookSettings } from "../lib/look.ts";
 import { catalog, loaders, type Catalog, type StoryInfo } from "./catalog/index.ts";
 import { ComponentPage, Head } from "./ComponentPage.tsx";
 import { Sidebar, type Selection } from "./Sidebar.tsx";
-import { StoryPage, variantNames, type StoryModule } from "./StoryPage.tsx";
+import { Layered, StoryPage, variantNames, type StoryModule } from "./StoryPage.tsx";
 
 const FOLLOW = "settings";
 
@@ -118,8 +118,15 @@ export function Workbench() {
     <div className="wb">
       <Toolbar edge="bottom" className="wb-bar" label="UI Workbench">
         <span className="wb-crumbs">
-          {component?.name ?? story?.title ?? "UI Workbench"}
-          {variant && <span className="wb-dim"> › {variant}</span>}
+          {variant && story ? (
+            <>
+              {/* Back to every variant. */}
+              <LinkButton onClick={() => select({ kind: "story", id: story.id })}>{story.title}</LinkButton>
+              <span className="wb-dim"> › {variant}</span>
+            </>
+          ) : (
+            (component?.name ?? story?.title ?? "UI Workbench")
+          )}
         </span>
         <Spacer />
         <Select size="sm" label="Theme" value={theme} options={[{ value: FOLLOW, label: "Theme from Settings" }, ...allThemes().map((t) => ({ value: t.id, label: t.title }))]} onChange={(v) => go({ theme: v })} />
@@ -130,11 +137,11 @@ export function Workbench() {
             <ComponentPage key={`${component.id}/${params.mount ?? ""}`} component={component} stories={catalog.stories} onOpen={(id, v) => select({ kind: "story", id, ...(v ? { variant: v } : {}) })} />
           ) : View ? (
             /* key: a new variant (or mount) starts with fresh state. */
-            <main className="wb-stage">
+            <Layered className="wb-stage">
               <ErrorBoundary key={`${story!.id}/${variant}/${params.mount ?? ""}`} title="This story stopped working" reloadLabel="Reload">
                 <View />
               </ErrorBoundary>
-            </main>
+            </Layered>
           ) : story && mod ? (
             <StoryPage key={`${story.id}/${params.mount ?? ""}`} story={story} mod={mod} onFocus={(v) => select({ kind: "story", id: story.id, variant: v })} />
           ) : story && error ? (

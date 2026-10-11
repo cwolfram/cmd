@@ -174,7 +174,7 @@ async function shoot(page, cdp, file, whole) {
       const main = document.querySelector(".ui-split-main")?.getBoundingClientRect();
       return main ? { x: main.left, y: main.top, width: main.width, height: main.height } : { x: 0, y: 0, width: innerWidth, height: innerHeight };
     }
-    const el = document.querySelector("body > .ui-scrim .ui-dialog, body > .ui-popover, body > .ui-menu, .ui-popover, .ui-menu") ?? stage.firstElementChild;
+    const el = stage.querySelector(".wb-layer .ui-dialog") ?? document.querySelector(".ui-popover, .ui-menu") ?? stage.firstElementChild;
     if (!el) return { x: 0, y: 0, width: innerWidth, height: innerHeight };
     const r = el.getBoundingClientRect();
     const m = 32;

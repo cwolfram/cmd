@@ -46,8 +46,15 @@ export function StoryPage({ story, mod, onFocus }: { story: StoryInfo; mod: Stor
 /** Space a sheet keeps above and below itself in a cell. */
 const SHEET_MARGIN = 96;
 
-/** A box for one variant, and the layer its dialogs go to. Rendered once the layer exists, so a dialog never moves. */
-export function Cell({ children }: { children: ReactNode }) {
+/** A box for one variant on the story page. */
+export const Cell = ({ children }: { children: ReactNode }) => <Layered className="wb-cell wb-variant">{children}</Layered>;
+
+/**
+ * A box that is the layer its dialogs go to (its CSS contains fixed positioning), so a sheet
+ * covers the box, never the sidebar or the toolbar; it grows to fit its sheets. The children
+ * render once the layer exists, so a dialog never moves.
+ */
+export function Layered({ className, children }: { className: string; children: ReactNode }) {
   const [layer, setLayer] = useState<HTMLDivElement | null>(null);
   const [min, setMin] = useState(0);
   useLayoutEffect(() => {
@@ -65,7 +72,7 @@ export function Cell({ children }: { children: ReactNode }) {
     return () => (ro.disconnect(), mo.disconnect());
   }, [layer]);
   return (
-    <div className="wb-cell wb-variant" style={min ? { minHeight: min } : undefined}>
+    <div className={className} style={min ? { minHeight: min } : undefined}>
       {layer && <DialogLayer.Provider value={layer}>{children}</DialogLayer.Provider>}
       <div ref={setLayer} className="wb-layer" />
     </div>
