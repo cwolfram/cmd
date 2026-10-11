@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { RpcClient, RpcError, type CoreEvent, type RemotePairRequest } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type DeviceSession, type KeyPair } from "@cmd/remote-crypto";
 import { startRelay, type Relay } from "../../../apps/relay/src/relay.ts";
@@ -21,14 +21,18 @@ const events: CoreEvent[] = [];
 /** What the core posted to push services, and what they answer. */
 const pushes: { url: string; body: Uint8Array; headers: Record<string, string> }[] = [];
 let pushStatus = 201;
-const pushFetch = (async (url: string, init: RequestInit) => {
-  pushes.push({ url, body: init.body as Uint8Array, headers: init.headers as Record<string, string> });
+/** The push services (the core posts with the global fetch); anything else goes out as usual. */
+const realFetch = globalThis.fetch;
+const pushFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+  if (typeof url !== "string" || !/^https:\/\/(web\.push\.apple\.com|fcm\.googleapis\.com)\//.test(url)) return realFetch(url, init);
+  pushes.push({ url, body: init!.body as Uint8Array, headers: init!.headers as Record<string, string> });
   return new Response(null, { status: pushStatus });
 }) as typeof fetch;
 
 beforeAll(async () => {
+  vi.stubGlobal("fetch", pushFetch);
   relay = await startRelay({ log: () => {} });
-  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home: dir, pushFetch });
+  core = new Core({ socketPath: path.join(dir, "core.sock"), dbPath: null, settingsPath: null, terminals: fakeFactory().factory, pollMs: 0, home: dir });
   core.serve({ access: "local", send: () => {}, event: (e) => events.push(e), close: () => {} }).receive(JSON.stringify({ id: 1, method: "events.subscribe", params: {} }));
   core.settings.set("remote.relay", relay.url);
   core.settings.set("remote.client", "https://client.test");
@@ -38,6 +42,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  vi.unstubAllGlobals();
   await core?.close();
   await relay?.close();
   rmTemp(dir);
@@ -246,7 +251,7 @@ describe("remote access", () => {
 
   it("knows when nobody's at the Mac, from the app's reports", async () => {
     // No app: away.
-    expect(core.remote.away()).toBe(true);
+    expect(core.remote.push.away()).toBe(true);
     const sent: string[] = [];
     const app = core.serve({ access: "local", send: (l) => void sent.push(l), close: () => {} });
     const presence = async (idleSeconds: number, locked: boolean) => {
@@ -255,20 +260,20 @@ describe("remote access", () => {
       await expect.poll(() => sent.length).toBe(n + 1);
     };
     await presence(0, false);
-    expect(core.remote.away()).toBe(false);
+    expect(core.remote.push.away()).toBe(false);
     await presence(0, true);
-    expect(core.remote.away()).toBe(true); // locked
+    expect(core.remote.push.away()).toBe(true); // locked
     await presence(4 * 60, false);
-    expect(core.remote.away()).toBe(false);
+    expect(core.remote.push.away()).toBe(false);
     // 5 min without input (remote.push.awayMinutes), counting typing in an earlier test here.
-    expect(core.remote.away(Date.now() + 5 * 60_000 + 1000)).toBe(true);
+    expect(core.remote.push.away(Date.now() + 5 * 60_000 + 1000)).toBe(true);
     // Typing in a terminal here is input too.
     const pane = await core.call("pane.create", {});
     app.receive(JSON.stringify({ id: 1, method: "pane.write", params: { paneId: pane.id, data: "l" } }));
-    await expect.poll(() => core.remote.away(Date.now() + 4 * 60_000)).toBe(false);
+    await expect.poll(() => core.remote.push.away(Date.now() + 4 * 60_000)).toBe(false);
     // The app quit: away.
     app.closed();
-    expect(core.remote.away()).toBe(true);
+    expect(core.remote.push.away()).toBe(true);
   });
 
   it("pushes as remote.push.when and remote.pushDetails say", async () => {
@@ -278,7 +283,7 @@ describe("remote access", () => {
     await client.call("push.subscribe", { endpoint: "https://web.push.apple.com/when", keys: { p256dh: browser.p256dh, auth: browser.auth } });
     const app = core.serve({ access: "local", send: () => {}, close: () => {} });
     app.receive(JSON.stringify({ id: 1, method: "ui.presence", params: { idleSeconds: 0, locked: false } }));
-    await expect.poll(() => core.remote.away()).toBe(false);
+    await expect.poll(() => core.remote.push.away()).toBe(false);
     const n = pushes.length;
     // At the Mac: "away" waits, "always" doesn't, "never" never does.
     await core.call("notify.send", { body: "you're here" });

@@ -41,7 +41,7 @@ export const remoteHandlers = (core: CoreContext) =>
       if (conn) {
         if (conn.deviceId) {
           result.device = { id: conn.deviceId, scope: conn.access as RemoteScope };
-          const push = core.remote.pushInfo(conn.deviceId);
+          const push = core.remote.push.info(conn.deviceId);
           if (push) result.push = push;
         }
         const state = core.server.state(conn);
@@ -51,11 +51,11 @@ export const remoteHandlers = (core: CoreContext) =>
       return result;
     },
     // A paired device's own: its subscription is kept on its record (docs/13, "Push notifications").
-    "push.subscribe": (p, { conn } = IN_CORE) => (core.remote.subscribe(device(conn), p), null),
-    "push.unsubscribe": (_, { conn } = IN_CORE) => (core.remote.unsubscribe(device(conn)), null),
+    "push.subscribe": (p, { conn } = IN_CORE) => (core.remote.push.subscribe(device(conn), p), null),
+    "push.unsubscribe": (_, { conn } = IN_CORE) => (core.remote.push.unsubscribe(device(conn)), null),
     "push.visible": (p, { conn } = IN_CORE) => (core.remote.visible(device(conn), p.visible === true), null),
     // The Mac's own app: whether someone's at this Mac, for remote.push.when "away".
-    "ui.presence": (p, { conn } = IN_CORE) => (core.remote.presence(conn, p), null),
+    "ui.presence": (p, { conn } = IN_CORE) => (core.remote.push.presence(conn, p), null),
   });
 
 /** The paired device's connection behind a call; nobody else has notifications to switch. */
