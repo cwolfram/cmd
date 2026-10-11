@@ -5,6 +5,8 @@
 import "./commands.ts";
 import { lazyView, registerWindowView } from "../registry.ts";
 import "./operator.ts";
+// The board's side of workspace.arrange (the Operator's arrange tool).
+import "../../shell/board/arrange.ts";
 
 registerWindowView({
   kind: "operator",

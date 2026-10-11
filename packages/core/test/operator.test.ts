@@ -87,6 +87,7 @@ describe("the service", () => {
   let ws: Workspace;
   let events: OperatorEvent[];
   let focus: string[];
+  let moves: unknown[];
   let turns: Step[];
   let runs: AgentRun[];
   let op: OperatorService;
@@ -102,6 +103,7 @@ describe("the service", () => {
     ws = (core.handlers["workspace.open"]({ path: dir }) as { workspace: Workspace }).workspace;
     events = [];
     focus = [];
+    moves = [];
     turns = [];
     runs = [];
     agentFns = [];
@@ -111,6 +113,12 @@ describe("the service", () => {
     core.serve({ access: "local", send: (line) => {
       const m = JSON.parse(line) as { method?: string; params?: CoreEvent };
       if (m.method === "event" && m.params?.type === "window.focus") focus.push(m.params.id);
+      // The app's side of workspace.arrange: it makes the move (here: notes it) and answers.
+      if (m.method === "event" && m.params?.type === "workspace.arrangeRequest") {
+        const q = m.params;
+        moves.push(q.move);
+        void core.call("workspace.arranged", { reqId: q.reqId, ...(q.move.op === "place" && !q.move.to && !q.move.before && !q.move.after ? { error: "nowhere to place it" } : {}) });
+      }
       // The app's side of browser.read, as a browser window answers.
       if (m.method === "event" && m.params?.type === "browser.request") {
         const q = m.params;
@@ -501,6 +509,31 @@ describe("the service", () => {
     expect(outs[0]).toContain("<window w");
     expect(outs[1]).toContain(": 1 match\n\n[1] <a href=\"https://thing.dev/docs\"> Docs");
     expect(outs[2]).toBe('nothing matches "nope"');
+  });
+
+  it("arranges the board through the app: dock, place, mode; moves a window to another workspace; leaves itself where it is", async () => {
+    const other = (core.handlers["workspace.open"]({ path: os.tmpdir() }) as { workspace: Workspace }).workspace;
+    core.windows.open("operator", {}, ws);
+    const outs: string[] = [];
+    turns.push(async (r) => {
+      const a = /(w\d+)/.exec((await exec(r, "open", { kind: "terminal" })).output)![1]!;
+      const b = /(w\d+)/.exec((await exec(r, "open", { kind: "url", target: "https://thing.dev" })).output)![1]!;
+      outs.push((await exec(r, "arrange", { do: "dock", ref: b, side: "right" })).output);
+      outs.push((await exec(r, "arrange", { do: "place", ref: a, to: "first" })).output);
+      outs.push((await exec(r, "arrange", { do: "mode", mode: "strip" })).output);
+      outs.push((await exec(r, "arrange", { do: "move", ref: a, to: other.name })).output);
+      const self = /(w\d+) operator/.exec((await exec(r, "look", {})).output)![1]!;
+      outs.push((await exec(r, "arrange", { do: "move", ref: self, to: other.name })).output);
+    });
+    op.send(ws.id, "tidy up");
+    await idle();
+    expect(outs[0]).toBe("Docked the browser “https://thing.dev” on the right.");
+    expect(outs[1]).toMatch(/^Placed the terminal “.*” first\.$/);
+    expect(outs[2]).toBe("The board shows as strip.");
+    expect(outs[3]).toMatch(new RegExp(`^Moved the terminal “.*” to the workspace “${other.name}”\\.$`));
+    expect(outs[4]).toMatch(/stays where the person put it/);
+    expect(moves).toMatchObject([{ op: "dock", side: "right" }, { op: "place", to: "first" }, { op: "mode", mode: "strip" }]);
+    expect(core.panes.list().find((p) => p.workspaceId === other.id)).toBeTruthy();
   });
 
   it("keeps refs for the whole conversation and starts over on reset", async () => {

@@ -5,89 +5,19 @@
 // needs the person's approval, exactly what it asks.
 
 import path from "node:path";
-import type { Agent, AppWindow, Method, Params, Result, WindowId, Workspace, WorkspaceAction } from "@cmd/protocol";
-import type { ToolSpec } from "../magic/tools.ts";
-import { isDeniedPath, remotePrivatePaths } from "../lib/paths-deny.ts";
-import { agentLine, clip, look, untrusted, type Refs } from "./board.ts";
+import type { Agent, AppWindow, WorkspaceAction } from "@cmd/protocol";
+import { agentLine, clip, look, untrusted } from "./board.ts";
 import { denied } from "./deny.ts";
 import { isQuiet } from "./access.ts";
+import { agentIn, board, fmtTime, num, readablePath, ref, schema, str, windowName, windowOf, type Bench, type Input, type OperatorTool } from "./tool-kit.ts";
+import { WINDOW_TOOLS } from "./window-tools.ts";
 
-/** What tools work with: the workspace, its methods (gated), the refs. */
-export interface Bench {
-  workspace: () => Workspace;
-  call<M extends Method>(method: M, params: Params<M>): Promise<Result<M>>;
-  refs: Refs;
-  /** The Operator's own window: never closed or typed into. */
-  self: WindowId | null;
-  /** What it started reports back as news: an agent when done, failed or needing input; a command when it ends, a server its address. */
-  started?: { agent(agentId: string): void; command(paneId: string, label: string): void };
-  signal: AbortSignal;
-}
-
-export interface OperatorTool {
-  spec: ToolSpec;
-  /** It changes something: marked on the board, never run beside another act. */
-  acts: boolean;
-  /** The window it is about, for the card and the board's mark. */
-  target?(input: Input, b: Bench): WindowId | null;
-  /** What to ask the person before running it, or null to run at once. Throws to refuse outright. */
-  confirm?(input: Input, b: Bench): Promise<Ask | null>;
-  run(input: Input, b: Bench): Promise<string>;
-}
-
-type Input = Record<string, unknown>;
-
-/** An approval: in words (`title`, naming windows as people do), and exactly what would happen (`exact`: the text, a diff). */
-export interface Ask {
-  title: string;
-  exact?: string;
-}
-
-const why = { type: "string", description: "One short line for the person watching, saying what this step does and why, in their words, e.g. \"Running the tests to see what fails\". Name windows by what they are, never by ref." };
-const ref = { type: "string", description: "A window's ref from look: w1, w2… (for tools only; never write refs to the person)." };
-const schema = (props: Record<string, unknown>, required: string[] = []) => ({ type: "object", properties: { why, ...props }, required: ["why", ...required], additionalProperties: false });
-
-const str = (v: unknown) => (typeof v === "string" ? v : undefined);
-const num = (v: unknown, d: number, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(v, 0), max) : d);
-
-/** The workspace's windows, panes and agents, read through the bench. */
-async function board(b: Bench) {
-  const [windows, panes, agents] = await Promise.all([b.call("window.list", {}), b.call("pane.list", {}), b.call("agent.list", {})]);
-  return { workspace: b.workspace(), windows, panes, agents, self: b.self };
-}
-
-async function windowOf(b: Bench, r: unknown): Promise<AppWindow> {
-  const id = b.refs.id(r);
-  const w = (await b.call("window.list", {})).find((x) => x.id === id);
-  if (!w) throw new Error(`${String(r)} is closed: look again`);
-  if (w.workspaceId !== b.workspace().id) throw new Error(`${String(r)} is in another workspace`);
-  return w;
-}
-
-const KIND_NAMES: Record<string, string> = { text: "editor", files: "file browser", markdown: "Markdown window", json: "JSON viewer", diff: "Live Diff", actions: "Workspace Actions" };
-
-/** A window as people say it: the terminal “tests”, the editor “README.md”. */
-export const windowName = (w: AppWindow) => `the ${KIND_NAMES[w.kind] ?? w.kind} “${w.title}”`;
-
-async function agentIn(b: Bench, w: AppWindow): Promise<Agent | null> {
-  if (w.kind !== "terminal") return null;
-  const pane = (await b.call("pane.list", {})).find((p) => p.id === w.id);
-  return pane?.agentId ? ((await b.call("agent.list", {})).find((a) => a.id === pane.agentId) ?? null) : null;
-}
-
-/** A path for reading: inside the workspace's folder, never a private one. */
-function readablePath(b: Bench, p: string): string {
-  const root = b.workspace().root;
-  const abs = path.resolve(root, p.replace(/^~(?=\/|$)/, process.env.HOME ?? "~"));
-  if (abs !== root && !abs.startsWith(root + path.sep)) throw new Error(`${p} is outside the workspace's folder (${root})`);
-  if (isDeniedPath(abs, remotePrivatePaths())) throw new Error(`${p} stays private`);
-  return abs;
-}
+export type { Ask, Bench, OperatorTool } from "./tool-kit.ts";
+export { windowName } from "./tool-kit.ts";
 
 /** How long starting an agent waits for it to get going (or stop at a question). */
 const START_WAIT_MS = 15_000;
 
-const fmtTime = (at: number) => new Date(at).toTimeString().slice(0, 5);
 
 async function actionByName(b: Bench, name: string): Promise<{ root: string; action: WorkspaceAction }> {
   const list = await b.call("actions.list", { workspaceId: b.workspace().id });
@@ -431,79 +361,6 @@ const editTool: OperatorTool = {
   },
 };
 
-const openTool: OperatorTool = {
-  acts: true,
-  spec: {
-    name: "open",
-    explores: false,
-    description:
-      "Open a window in the workspace: a terminal (in a folder of the workspace), a file or folder (in the window type that shows it), or a URL in a browser. Returns its ref. With `ref`, the window already open shows it instead: a browser goes to the URL, a file browser to the folder (prefer this to opening another window). To run a command, open nothing: use run or type.",
-    schema: schema({ kind: { type: "string", enum: ["terminal", "path", "url"] }, target: { type: "string", description: "The path (relative to the workspace's folder) or URL; for a terminal, the folder to start in." }, ref: { ...ref, description: "A browser or file browser to show it in, instead of a new window." } }, ["kind"]),
-  },
-  target: (i, b) => (i.ref ? b.refs.id(i.ref) : null),
-  async run(i, b) {
-    const ws = b.workspace();
-    const target = str(i.target);
-    if (i.ref) {
-      const w = await windowOf(b, i.ref);
-      if (w.kind === "browser" && i.kind === "url") {
-        if (!target || !/^https?:\/\//.test(target)) throw new Error("a URL starts with http:// or https://");
-        await b.call("window.update", { id: w.id, state: { url: target } });
-        return `${String(i.ref)} goes to ${target}.`;
-      }
-      if (w.kind === "files" && i.kind === "path") {
-        const dir = readablePath(b, target ?? ".");
-        await b.call("window.update", { id: w.id, state: { path: dir } });
-        return `${String(i.ref)} shows ${path.relative(ws.root, dir) || "the workspace's folder"}.`;
-      }
-      throw new Error(`${String(i.ref)} is ${windowName(w)}: only a browser takes a URL and a file browser a folder; open a new window instead`);
-    }
-    let w: AppWindow | null;
-    if (i.kind === "terminal") w = await b.call("window.open", { kind: "terminal", input: { cwd: target ? readablePath(b, target) : ws.root }, workspaceId: ws.id });
-    else if (i.kind === "url") {
-      if (!target || !/^https?:\/\//.test(target)) throw new Error("a URL starts with http:// or https://");
-      w = await b.call("window.open", { kind: "browser", input: { url: target }, workspaceId: ws.id });
-    } else w = await b.call("window.openTarget", { target: readablePath(b, target ?? "."), workspaceId: ws.id });
-    if (!w) return "No window type shows that; nothing opened.";
-    return `Opened ${w.kind} ${b.refs.of(w.id)} "${w.title}".`;
-  },
-};
-
-const closeTool: OperatorTool = {
-  acts: true,
-  spec: {
-    name: "close",
-    explores: false,
-    description: "Close windows by ref. A terminal's running command or agent ends with it, so close only what is done or what you opened; the person can reopen closed windows.",
-    schema: schema({ refs: { type: "array", items: ref } }, ["refs"]),
-  },
-  target: (i, b) => (Array.isArray(i.refs) && i.refs.length === 1 ? b.refs.id(i.refs[0]) : null),
-  async run(i, b) {
-    const wins = await Promise.all((Array.isArray(i.refs) ? i.refs : []).map((r) => windowOf(b, r)));
-    for (const w of wins) {
-      if (w.kind === "operator") throw new Error("you can't close an Operator window");
-      await b.call("window.close", { id: w.id });
-    }
-    return `Closed ${wins.map((w) => b.refs.of(w.id)).join(", ")}.`;
-  },
-};
-
-const focusTool: OperatorTool = {
-  acts: true,
-  spec: {
-    name: "focus",
-    explores: false,
-    description: "Select a window and bring it into view, to show the person something (a failing test's output, a finished agent).",
-    schema: schema({ ref }, ["ref"]),
-  },
-  target: (i, b) => b.refs.id(i.ref),
-  async run(i, b) {
-    const w = await windowOf(b, i.ref);
-    await b.call("window.select", { id: w.id });
-    return `Selected ${String(i.ref)}.`;
-  },
-};
-
 const searchTool: OperatorTool = {
   acts: false,
   spec: {
@@ -592,4 +449,4 @@ const eventsTool: OperatorTool = {
   },
 };
 
-export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, editTool, openTool, closeTool, focusTool, searchTool, eventsTool];
+export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, editTool, ...WINDOW_TOOLS, searchTool, eventsTool];
