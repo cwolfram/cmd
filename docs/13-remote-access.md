@@ -489,7 +489,7 @@ The policy has to be fail-closed, so it gets heavy tests: every method × scope,
 
 ### Push notifications
 
-> Plan (2026-10-10), being built on branch `push`. Built: delivery in the core (`remote/webpush.ts`, `push.subscribe`/`push.unsubscribe`/`push.visible`, the VAPID key in `remote.bootstrap`) and the client (`sw.js`, `push.ts`, the Notifications row, the ask on Now, toasts). Not yet: the when-setting and presence, the settings on the Mac. Approving from the notification (below) is left for later.
+> Plan (2026-10-10), being built on branch `push`. Built: delivery in the core (`remote/webpush.ts`, `push.subscribe`/`push.unsubscribe`/`push.visible`, the VAPID key in `remote.bootstrap`) and the client (`sw.js`, `push.ts`, the Notifications row, the ask on Now, toasts). Works on a real iPhone (Home Screen app over Tailscale, 2026-10-11): subscribing, pushes on the lock screen, a tap opening its terminal, toasts in front. Not yet: the when-setting and presence, the settings on the Mac. Approving from the notification (below) is left for later.
 
 **Behaviour:**
 - **When:** one global setting on the Mac, `remote.push.when`: Always · When I'm away (default) · Never. Away is the app closed, the screen locked, or no input on the Mac for `remote.push.awayMinutes` (default 5). Main reports these to the core with `ui.presence` (window focus, `powerMonitor` lock and idle time). Whatever the setting, a device whose client is open in front gets no push: it shows the `notification` event as an in-app banner instead.
