@@ -11,7 +11,7 @@ import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep
 import { showContextMenu } from "../../lib/context.ts";
 import { useAiStatus } from "../../ai/status.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
-import { getWorkspaceView, useStoreValue } from "../../lib/store.ts";
+import { getState, getWorkspaceView, useStoreValue } from "../../lib/store.ts";
 import { ago, fieldsOf, type SidebarRow } from "../../lib/model.ts";
 import { durationText, goTo } from "../../lib/widgets.ts";
 import { cmd } from "../../lib/bridge.ts";
@@ -54,10 +54,12 @@ function blocks(items: OperatorItem[]): Block[] {
 
 const markdown = (text: string) => DOMPurify.sanitize(marked.parse(text, { gfm: true, async: false }) as string);
 
-/** "this": the window selected before the Operator's own. */
+/** "this": the window selected before the Operator's own, if it is still open in the Operator's workspace. */
 function thisWindow(win: { id: WindowId; workspaceId: string }): WindowId | null {
+  const s = getState();
+  const here = (id: WindowId) => (s.windows.get(id)?.workspaceId ?? s.panes.get(id)?.workspaceId) === win.workspaceId;
   const history = getWorkspaceView<WindowId[]>(win.workspaceId, "selection.history", []);
-  return history.find((id) => id !== win.id) ?? null;
+  return history.find((id) => id !== win.id && here(id)) ?? null;
 }
 
 export function OperatorView({ win, focused }: WindowViewProps) {

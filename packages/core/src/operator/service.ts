@@ -281,7 +281,9 @@ export class OperatorService {
       if (!c.system || c.rules !== RULES_VERSION) (c.system = systemPrompt({ root: ws.root, brief: await this.#brief(bench) }).text), (c.rules = RULES_VERSION);
       // The board as it is now goes with the request, so the first step needn't be a look.
       const board = await this.#safe(() => this.#look(bench));
-      const selected = asked.map((a) => a.selected).filter(Boolean).pop();
+      // "this": only a window open in this workspace.
+      const open = new Set((await this.#safe(() => bench.call("window.list", {})))?.filter((w) => w.workspaceId === ws.id).map((w) => w.id));
+      const selected = asked.map((a) => a.selected).filter((id): id is WindowId => !!id && open.has(id)).pop();
       const told = news.length ? `${asked.length ? "\n\n" : "(No message from the person: news came in. Tell them in a line or two what it means and what you'll do; act on it if it's what they asked for.)\n\n"}<news>\n${news.map((n) => `- ${n}`).join("\n")}\n</news>` : "";
       const text = asked.map((a) => a.text).join("\n\n") + told;
       const content = `${text}${selected ? `\n\n(The person has ${c.refs.of(selected)} selected: "this" means it.)` : ""}${board ? `\n\n<board>\n${board}\n</board>` : ""}`;
