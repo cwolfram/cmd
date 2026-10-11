@@ -13,6 +13,7 @@ import type { SqliteQuery, SqliteResult, SqliteRowsQuery, SqliteSchema } from ".
 import type { ActionsEvent, ActionsMethods } from "./actions.ts";
 import type { StatsEvent, StatsMethods } from "./stats.ts";
 import type { OperatorEvent, OperatorMethods } from "./operator.ts";
+import type { PagesEvent, PagesMethods } from "./pages.ts";
 import type { RemoteMethods } from "./remote.ts";
 import type { CoreHello } from "./version.ts";
 
@@ -81,7 +82,7 @@ export interface Placement {
 }
 
 /** Every method: the core's own, plus each feature's (declared in its own file, merged here). */
-export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, StatsMethods, OperatorMethods {
+export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, StatsMethods, OperatorMethods, PagesMethods {
   /** What a client asks first: which protocol the core speaks and what it can do (CoreHello). */
   "core.hello": { params: {}; result: CoreHello };
   /** Diagnostics for the Settings window's Updates & About page. */
@@ -485,6 +486,7 @@ export type CoreEvent =
   | ActionsEvent
   | StatsEvent
   | OperatorEvent
+  | PagesEvent
   /** A watched file or folder changed on disk (see fs.watch). */
   | { type: "fs.changed"; path: string }
   /**

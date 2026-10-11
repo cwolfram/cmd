@@ -19,6 +19,7 @@ import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.
 import { useFind } from "../../lib/find.tsx";
 import { handleEmbedMessage } from "../../lib/embed.ts";
 import { deviceById, type Device } from "./devices.ts";
+import { readPage } from "./pageReader.ts";
 
 /** Room around an emulated device: sides and bottom, and the top (its caption). */
 const PAD = 16;
@@ -50,6 +51,22 @@ export function BrowserView({ win, focused }: { win: AppWindow; focused: boolean
   const live = initial !== null;
   const stage = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState({ w: 0, h: 0 });
+
+  // browser.read (the Operator's read tool): the page, read in the webview, answered to the core.
+  useEffect(
+    () =>
+      cmd.onEvent((e) => {
+        if (e.type !== "browser.request" || e.id !== win.id) return;
+        const wv = ref.current;
+        const answer = (p: { result?: Awaited<ReturnType<typeof readPage>>; error?: string }) => void cmd.call("browser.reply", { reqId: e.reqId, ...p }).catch(() => {});
+        if (!wv || !live) return answer({ error: "the window shows no page" });
+        readPage((script) => wv.executeJavaScript(script), e).then(
+          (result) => answer({ result }),
+          (err: Error) => answer({ error: err.message.replace(/^Error invoking remote method[^:]*: (Error: )?/, "") }),
+        );
+      }),
+    [win.id, live],
+  );
 
   useLayoutEffect(() => {
     const el = stage.current;

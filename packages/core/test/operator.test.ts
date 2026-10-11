@@ -111,6 +111,11 @@ describe("the service", () => {
     core.serve({ access: "local", send: (line) => {
       const m = JSON.parse(line) as { method?: string; params?: CoreEvent };
       if (m.method === "event" && m.params?.type === "window.focus") focus.push(m.params.id);
+      // The app's side of browser.read, as a browser window answers.
+      if (m.method === "event" && m.params?.type === "browser.request") {
+        const q = m.params;
+        void core.call("browser.reply", q.selector === "nope" ? { reqId: q.reqId, error: "nothing matches \"nope\"" } : { reqId: q.reqId, result: { url: "https://thing.dev/", title: "Thing", text: q.mode === "markdown" ? "# Thing\n\nIt does things." : "[1] <a href=\"https://thing.dev/docs\"> Docs", ...(q.mode === "markdown" ? {} : { matches: 1 }) } });
+      }
     }, close: () => {} }).receive(JSON.stringify({ id: 1, method: "events.subscribe", params: {} }));
     op = new OperatorService({
       workspace: (id) => core.workspaces.get(id) ?? null,
@@ -449,6 +454,22 @@ describe("the service", () => {
     expect(outs[1]).not.toContain("command");
     expect(outs[2]).toContain("in every workspace");
     expect(outs[2]).toContain("command 1");
+  });
+
+  it("reads a browser's page as Markdown, explores it with CSS, and says why when it can't", async () => {
+    const outs: string[] = [];
+    turns.push(async (r) => {
+      const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "url", target: "https://thing.dev" })).output)![1]!;
+      outs.push((await exec(r, "read", { ref })).output);
+      outs.push((await exec(r, "read", { ref, css: "a" })).output);
+      outs.push((await exec(r, "read", { ref, section: "nope" })).output);
+    });
+    op.send(ws.id, "what's on the page?");
+    await idle();
+    expect(outs[0]).toContain("Thing (https://thing.dev/)\n\n# Thing\n\nIt does things.");
+    expect(outs[0]).toContain("<window w");
+    expect(outs[1]).toContain(": 1 match\n\n[1] <a href=\"https://thing.dev/docs\"> Docs");
+    expect(outs[2]).toBe('nothing matches "nope"');
   });
 
   it("keeps refs for the whole conversation and starts over on reset", async () => {

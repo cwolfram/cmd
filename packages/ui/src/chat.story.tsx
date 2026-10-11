@@ -10,7 +10,9 @@ const frame = { width: 420 };
 export const Conversation = () => (
   <div style={frame}>
     <Stack gap={3}>
-      <ChatMessage from="person">Run the tests and start an agent on whatever fails.</ChatMessage>
+      <ChatMessage from="person" copy="Run the tests and start an agent on whatever fails.">
+        Run the tests and start an agent on whatever fails.
+      </ChatMessage>
       <Stack gap={0}>
         <ChatStep icon="eye" title="Looking at the board" state="done" quiet time="0.1s" />
         <ChatStep icon="play" title="Running the tests" state="done" target="pnpm test" onTarget={() => {}} time="14.2s">
@@ -19,7 +21,7 @@ export const Conversation = () => (
         <ChatStep icon="text.alignleft" title="Reading the failures" state="done" quiet target="pnpm test" onTarget={() => {}} time="0.2s" />
         <ChatStep icon="person.badge.plus" title="Starting Claude on the failing parser test" state="running" target="Claude · parser" onTarget={() => {}} />
       </Stack>
-      <ChatMessage from="agent">
+      <ChatMessage from="agent" copy="Two tests fail in `osc.test.ts`. Claude is on it in its own terminal; I'll tell you when it's done.">
         <p>
           Two tests fail in <code>osc.test.ts</code>. Claude is on it in its own terminal; I'll tell you when it's done.
         </p>

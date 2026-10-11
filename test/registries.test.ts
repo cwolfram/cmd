@@ -21,8 +21,8 @@ function files(dir: string, out: string[] = []): string[] {
 /** Methods by name: each `"x.y": { params` in protocol's sources (Methods and the features' own method maps). */
 const methods = files("packages/protocol/src").flatMap((f) => [...read(f).matchAll(/^\s+"([a-z][A-Za-z]*\.[A-Za-z.]+)":\s*\{\s*params/gm)].map((m) => m[1]!));
 
-/** Where calls come from: the clients, and the core calling itself (not where methods are declared, handled or listed for remote access). */
-const callers = [...files("packages/cli/src"), ...files("apps/desktop/src"), ...files("apps/web/src"), ...files("packages/core/src").filter((f) => !/\/handlers\.ts$|\/feature\.ts$|remote\/policy\.ts$|kernel\/core\.ts$/.test(f))];
+/** Where calls come from: the clients, and the core calling itself (not where methods are declared, handled or listed for remote or Operator access). */
+const callers = [...files("packages/cli/src"), ...files("apps/desktop/src"), ...files("apps/web/src"), ...files("packages/core/src").filter((f) => !/\/handlers\.ts$|\/feature\.ts$|remote\/policy\.ts$|operator\/access\.ts$|kernel\/core\.ts$/.test(f))];
 
 /** The window kinds the core registers (windows/builtin.ts, a feature's scopedWidget) and the views the renderer registers. */
 const coreKinds = new Set(files("packages/core/src").flatMap((f) => [...read(f).matchAll(/^\s+kind: "([a-z-]+)",$/gm), ...read(f).matchAll(/scopedWidget\("([a-z-]+)"/g)].filter(() => /windows\/builtin\.ts$|\/feature\.ts$/.test(f)).map((m) => m[1]!)));

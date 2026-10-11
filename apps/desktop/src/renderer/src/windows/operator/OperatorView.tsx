@@ -160,10 +160,14 @@ function Conversation({ conv, workspaceId }: { conv: OperatorConversation; works
 function Item({ item, workspaceId, streaming }: { item: OperatorItem; workspaceId: string; streaming: boolean }) {
   switch (item.kind) {
     case "user":
-      return <ChatMessage from="person">{item.text}</ChatMessage>;
+      return (
+        <ChatMessage from="person" copy={item.text}>
+          {item.text}
+        </ChatMessage>
+      );
     case "text":
       return (
-        <ChatMessage from="agent" streaming={streaming}>
+        <ChatMessage from="agent" streaming={streaming} copy={item.text}>
           <div dangerouslySetInnerHTML={{ __html: markdown(item.text) }} />
         </ChatMessage>
       );

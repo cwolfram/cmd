@@ -78,6 +78,8 @@ export const OPERATOR_ACCESS: { [M in Method]: OperatorAccess } = {
   "window.types": "read",
   "window.close": "act",
   "window.select": "act",
+  "browser.read": "read",
+  "browser.reply": "never",
   "window.closed": "never",
   "window.reopen": "act",
   "window.openTarget": "act",

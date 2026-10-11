@@ -10,7 +10,7 @@
 //   useStickToEnd a scroller that follows new content unless the person scrolled up
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import { Button, LinkButton } from "./button.tsx";
+import { Button, IconButton, LinkButton } from "./button.tsx";
 import { TextField } from "./fields.tsx";
 import { Inline, Stack, Text } from "./frame.tsx";
 import { ICON, iconNode } from "./icon.tsx";
@@ -19,11 +19,33 @@ import { Spinner } from "./status.tsx";
 
 const cls = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
 
-/** A message: the person's request, or what the agent says (`streaming`: a caret while it grows). Children may be rendered Markdown. */
-export function ChatMessage({ from, streaming, children }: { from: "person" | "agent"; streaming?: boolean; children: ReactNode }) {
+/**
+ * A message: the person's request, or what the agent says (`streaming`: a caret while it grows).
+ * Children may be rendered Markdown. Its text is selectable; `copy` is what Copy under it puts on
+ * the clipboard (the Markdown as written), shown on hover.
+ */
+export function ChatMessage({ from, streaming, copy, children }: { from: "person" | "agent"; streaming?: boolean; copy?: string; children: ReactNode }) {
   return (
-    <div className="ui-chat-msg" data-from={from} data-streaming={streaming || undefined}>
-      {children}
+    <div className="ui-chat-msg-row" data-from={from}>
+      <div className="ui-chat-msg" data-from={from} data-streaming={streaming || undefined}>
+        {children}
+      </div>
+      {copy && !streaming && <CopyButton text={copy} />}
+    </div>
+  );
+}
+
+/** Copy: puts `text` on the clipboard, and says so with a check for a moment. */
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => setDone(false), 1200);
+    return () => clearTimeout(t);
+  }, [done]);
+  return (
+    <div className="ui-chat-msg-actions">
+      <IconButton size="sm" icon={done ? "checkmark" : "doc.on.doc"} label={done ? "Copied" : "Copy"} onClick={() => void navigator.clipboard.writeText(text).then(() => setDone(true), () => {})} />
     </div>
   );
 }

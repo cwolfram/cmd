@@ -24,5 +24,6 @@ export * from "./summary.ts";
 export * from "./names.ts";
 export * from "./actions.ts";
 export * from "./operator.ts";
+export * from "./pages.ts";
 export * from "./stats.ts";
 export * from "./format.ts";
