@@ -599,8 +599,9 @@ cmd.onStatus(async (status) => {
   // An older core has no remote access: leave it null.
   void cmd.call("remote.status", {}).then((remote) => set({ remote, pairRequests: remote.requests ?? [] }), () => {});
   // The windows show now; each terminal opens once its content is written (hold).
-  // Answers come back in the order asked (one socket): the selected terminal first,
-  // then the rest of this window's workspace, then other workspaces.
+  // Asked in this order: the selected terminal first, then the rest of this window's
+  // workspace, then other workspaces. Answers may come back in any order, and output around
+  // them too: each terminal's gate joins its snapshot and output by seq.
   const selected = state.workspaces.get(state.workspaceId)?.view?.["selection.pane"];
   const rank = (p: Pane) => (p.id === selected ? 0 : p.workspaceId === state.workspaceId ? 1 : 2);
   await Promise.allSettled(

@@ -1,6 +1,8 @@
 // A client of the core: the Unix socket (the app, the CLI, hooks) or a remote
 // device's encrypted session (remote/session.ts). Core.serve() runs JSON-RPC over
 // either; what a connection may call and which events it gets follow its access.
+// Replies leave as handlers finish, not in the order asked, and events go out as they happen,
+// between them: a client that joins a reply with events does it by their counts (seq), not their order.
 
 import type { CoreEvent, RemoteScope } from "@cmd/protocol";
 
