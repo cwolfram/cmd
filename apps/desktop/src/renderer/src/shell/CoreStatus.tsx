@@ -23,6 +23,8 @@ interface Summary {
   led: Led;
   /** The footer's label; its usage follows when the core answers. */
   text: string;
+  /** Which state the label shows, when its text changes within one (a step's count): it updates in place, no swap. */
+  key?: string;
   /** A sentence for the details. */
   detail: string;
 }
@@ -33,14 +35,14 @@ function summarize(p: Props, h: CoreHealth, restarting: boolean, startup: Startu
     if (p.error) return { led: "needs", text: "Core error", detail: p.error };
     // Busy before it answers (the first launch of a version updating data, docs/50): say what it does.
     const step = runningStep(boot);
-    if (step) return { led: "working", text: `${stepLine(step)}…`, detail: "Getting your records ready." };
+    if (step) return { led: "working", text: `${stepLine(step)}…`, key: `boot:${step.id}`, detail: "Getting your records ready." };
     return { led: "working", text: "Connecting to core…", detail: "The core isn't reachable; reconnecting." };
   }
   // Connected, still starting up behind the socket: say what it does (the first launch of a version rebuilds its views).
   if (startup?.phase === "starting") {
     const t = startup.tasks[0];
     const doing = `${t?.label ?? "Starting"}${t?.total ? ` · ${Math.min(100, Math.floor(((t.done ?? 0) / t.total) * 100))}%` : ""}…`;
-    return { led: "working", text: doing, detail: `${doing} Terminals work meanwhile.` };
+    return { led: "working", text: doing, key: `startup:${t?.id ?? ""}`, detail: `${doing} Terminals work meanwhile.` };
   }
   if (h.unresponsive) return { led: "needs", text: "Core not responding", detail: "The core is connected but didn't answer in time." };
   if (h.outdated) return { led: "needs", text: "Core outdated · restart", detail: "Started from an older version than this app. Restart it to pick up the changes." };
@@ -75,7 +77,7 @@ export function CoreStatus(p: Props) {
         aria-description={[s.text, usage].filter(Boolean).join(", ")}
       >
         <StatusDot state={s.led === "ok" ? "success" : s.led} />
-        <Slot className="core-status-text" value={{ text: s.text }} />
+        <Slot className="core-status-text" value={{ text: s.text, key: s.key }} />
         <Slot className="core-status-usage" value={usage ? { text: usage, key: "usage" } : undefined} divider />
       </button>
     </div>

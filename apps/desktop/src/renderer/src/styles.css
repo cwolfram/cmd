@@ -243,6 +243,8 @@ kbd {
 .core-status-button { gap: 0; }
 .core-status-button .ui-dot { margin-right: var(--space-2); }
 .core-status-usage .slot-v { --gap: 15px; }
+/* A step's count ticks in place: digits of one width, so the label doesn't shift as it counts. */
+.core-status-text { font-variant-numeric: tabular-nums; }
 .core-status-usage { flex-shrink: 10; }
 
 
