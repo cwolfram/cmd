@@ -42,7 +42,7 @@ function Step({ step }: { step: BootStep }) {
   const share = step.total ? Math.min(1, (step.done ?? 0) / step.total) : null;
   return (
     <Inline justify="between">
-      <Inline gap={1.5}>
+      <Inline gap={2}>
         <ProgressRing value={share ?? undefined} state={step.ended ? "done" : undefined} label={step.label} />
         <Text>{step.label}</Text>
       </Inline>
@@ -54,7 +54,7 @@ function Step({ step }: { step: BootStep }) {
 export function BootSheet({ open = true, report }: { open?: boolean; report: BootReport }) {
   return (
     <Dialog open={open} onClose={() => {}} dismissable={false} position="center" width={420} window={{ icon: "arrow.triangle.2.circlepath", name: "Getting Ready", close: false }}>
-      <Stack gap={5}>
+      <Stack gap={8}>
         <Text balance>This version brings your recorded data up to date. It happens once.</Text>
         <Stack gap={3}>
           {report.steps.map((s, i) => (
