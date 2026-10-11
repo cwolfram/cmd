@@ -24,10 +24,8 @@
 @container (width >= 600px) { .ui-hide[data-above="regular"] { display: none; } }
 
 /* ── the view ── */
-/* The view is a size container too, so its toolbar's items can follow the window's width (Hide),
-   and a narrow window's parts take the narrow inset (docs/46, size classes). */
+/* The view is a size container too, so its toolbar's items can follow the window's width (Hide). */
 .ui-view { container-type: inline-size; flex: 1; min-height: 0; height: 100%; display: flex; flex-direction: column; background: var(--well); color: var(--text); font: var(--text-md) var(--font-ui); }
-@container (width < 360px) { .ui-view-body, .ui-title-band, .ui-tb, .ui-view-footer { --inset: var(--inset-narrow); } }
 /* Lists in a view: rows' hover pills 4px from the edges, their content at --inset (4 + the row's 8). */
 .ui-view-body { --list-inset: calc(var(--inset) - var(--list-pad)); flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; container-type: inline-size; }
 .ui-view-body[data-scroll] { overflow: auto; }
@@ -183,19 +181,18 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-list-rows { display: contents; }
 /* Nav: the pages beside a page; a selected row's pill lines up with the field above it. */
 .ui-list[data-variant="nav"] { --list-inset: var(--inset); }
-/* Grouped: sections apart, headings in line with the rows' icons, no boxes: the window is
-   the frame. In a View with `inset`, rows and headings reach out into it by their padding,
-   so their letters sit on the inset like a plain list's and they highlight as pills there.
-   Headings are a plain list's (24px); collapsed sections stack as a plain list's do, and
-   --section-gap comes after a section that shows its rows (and around the main action, callouts). */
-.ui-list[data-variant="grouped"] { --list-inset: calc(-1 * var(--list-pad)); padding: 0; margin-block: calc(-1 * var(--list-pad)); }
+/* Grouped: a plain list (the same rows, headings and insets, in a View without `inset`) whose
+   sections stand apart: --section-gap after a section that shows its rows and around the main
+   action and callouts; collapsed sections stack as a plain list's do. Nothing else differs, so
+   the two line up by construction. */
 .ui-list[data-variant="grouped"] > * + * { margin-top: var(--section-gap); }
 .ui-list[data-variant="grouped"] > .ui-list-section:not(:has(> .ui-list-rows)) + .ui-list-section { margin-top: var(--space-1-5); }
-.ui-list[data-variant="grouped"] .ui-list-heading { padding: 0 var(--list-pad); }
-.ui-list[data-variant="grouped"] .ui-list-row { gap: var(--list-icon-gap); }
-.ui-list[data-variant="grouped"] .ui-list-rows { display: flex; flex-direction: column; gap: var(--list-gap); }
-.ui-list[data-variant="grouped"] .ui-list-heading + .ui-list-rows { margin-top: var(--heading-gap); }
-.ui-list[data-variant="grouped"] .ui-list-row + .ui-list-row { margin-top: 0; } /* the gap above spaces them */
+.ui-list[data-variant="grouped"] .ui-list-heading + .ui-list-rows > :first-child { margin-top: var(--heading-gap); } /* rows are display: contents */
+/* A ListGroup's rows are display: contents: its first row takes the gap. */
+.ui-list[data-variant="grouped"] > * + .ui-list-rows > :first-child { margin-top: var(--section-gap); }
+/* What isn't rows in a list (a Callout) sits on the inset, the top too (the list's padding is the rows'). */
+.ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row) { margin-inline: var(--inset); }
+.ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row):first-child { margin-top: var(--list-pad); }
 
 /* ── a document to read (Document): rendered Markdown, in the person's text font ── */
 .ui-doc {

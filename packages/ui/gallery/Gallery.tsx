@@ -429,7 +429,7 @@ function WindowsPage() {
         <div className="g-row" style={{ alignItems: "flex-start" }}>
           {(["plain", "grouped", "nav"] as const).map((v) => (
             <Win key={v} name={v} w={300} h={250}>
-              <View inset={v === "grouped"}>
+              <View>
                 <List variant={v}>
                   <ListSection title="Test" count={2}>
                     <ListRow icon="checkmark.circle" title="test" detail="Vitest, all packages" end={<ListValue>38s</ListValue>} />

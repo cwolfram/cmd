@@ -337,8 +337,8 @@ export function Text({ tone, size, mono, strong, truncate, select, children }: {
 /**
  * Rows to act on or pick from (ListSection, ListRow, ListGroup). Plain: rows run edge to
  * edge in a View without an inset, their content at the window's inset, as in a sidebar.
- * Grouped: each section's rows in a box, in a View with `inset`, as in System Settings;
- * for lists of things to run or change rather than records.
+ * Grouped: a plain list whose sections stand apart, for lists of things to run or change
+ * rather than records; in a View without `inset` too, so it lines up with a plain one.
  * Nav: the pages beside a page (Settings' sidebar), highlights on the inset like the fields
  * above them, their content inside.
  */

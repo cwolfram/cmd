@@ -269,7 +269,7 @@ function AUDIT() {
         if (part === "body" && Math.abs(m.left - m.right) > 1 && el.querySelector(".ui-grid, .ui-list, .ui-measure, .ui-doc, .ui-page, .ui-media, .ui-split") === null) problems.push(`left ${m.left} ≠ right ${m.right}`);
         // On the inset: a padded body or a list, unless it holds something with its own (a table, tree, document, media, split, state).
         const own = el.querySelector(".ui-grid, .ui-tree, .ui-measure, .ui-doc, .ui-media, .ui-split, .ui-viewstate, .ui-diff, .ui-tiles") !== null;
-        const viewInset = parseFloat(getComputedStyle(el).getPropertyValue("--inset")) || inset; // the body's own: a Page's, or a narrow window's
+        const viewInset = parseFloat(getComputedStyle(el).getPropertyValue("--inset")) || inset; // the body's own (a Page's)
         if (part === "body" && !own && (el.hasAttribute("data-inset") || el.querySelector(":scope > .ui-list"))) {
           // An icon's box sits a pixel or two outside its glyph; text trims to the cap.
           if (Math.abs(m.left - viewInset) > 2) problems.push(`left ${m.left}, not --inset (${viewInset})`);

@@ -258,7 +258,6 @@ export function Actions(p: ActionsProps) {
 
   return (
     <View
-      inset
       state={state}
       toolbar={
         all.length > 12 && (

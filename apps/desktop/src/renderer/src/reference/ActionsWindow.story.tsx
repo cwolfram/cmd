@@ -73,7 +73,6 @@ function Actions({ size = "regular", query: q0 = "", state, describing, idle, va
   return (
     <RefWindow icon="play.rectangle" name="Workspace Actions · cmd" size={size}>
       <View
-        inset={variant === "grouped"}
         state={body}
         toolbar={
           <WindowToolbar label="Actions">

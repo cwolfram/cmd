@@ -398,11 +398,6 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "A page's inset (Page, settings beside their sidebar): twice the window's, for a page that is read more than scanned. Its View takes it as --inset."
   },
   {
-    "name": "--inset-narrow",
-    "value": "var(--space-3)",
-    "description": "The content inset in a narrow window (below 360px, the kit's narrow size class): a small tile keeps its width for content. The View's parts take it as --inset."
-  },
-  {
     "name": "--inset",
     "value": "var(--space-4)",
     "description": "A window's content inset, on every side, measured to the letters: a padded body, the first and last table column, list rows' content, footer text. One value for every window."
