@@ -7,6 +7,8 @@
 //                 its "why", the window it is about, its time; a click shows what it did
 //   ChatApproval  a step waiting for the person: what it wants to do in words and exactly,
 //                 Allow / Deny / Deny and Say Why
+//   ChatLog       the column they stand in
+//   ChatComposer  the prompt's place under the conversation, lined like a toolbar
 //   useStickToEnd a scroller that follows new content unless the person scrolled up
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
@@ -126,6 +128,16 @@ export function ChatApproval({ title, exact, onAnswer, busy }: { title: ReactNod
       </Stack>
     </Callout>
   );
+}
+
+/** The conversation's column: messages and steps, newest last, with room at its end for the last message's Copy. */
+export function ChatLog({ children }: { children: ReactNode }) {
+  return <div className="ui-chat-log">{children}</div>;
+}
+
+/** Under the conversation: the prompt and what goes with it, on the toolbar's colour with its line on top. */
+export function ChatComposer({ children }: { children: ReactNode }) {
+  return <div className="ui-chat-composer">{children}</div>;
 }
 
 /** A quiet line in the conversation: Stopped, an error, how long a turn took. */

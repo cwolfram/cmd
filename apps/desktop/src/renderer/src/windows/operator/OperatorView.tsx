@@ -1,13 +1,14 @@
 // The Operator widget (docs/51): the workspace's conversation with the Operator, newest last
 // and kept in sight while it streams, its steps as rows (looks folded together, acts with the
 // window they're about), a card for each approval it waits for, and the prompt under it. The
-// conversation lives in the core: closing this window doesn't stop a turn.
+// conversation lives in the core: closing this window doesn't stop a turn. `Operator` draws it
+// from props (the story shows it with stand-in conversations); `OperatorView` connects it.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { OperatorConversation, OperatorItem, WindowId } from "@cmd/protocol";
-import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, ToolbarButton, ToolbarSpacer, View, WindowToolbar, useStickToEnd } from "@cmd/ui";
+import { AiField, Button, Callout, ChatApproval, ChatComposer, ChatLog, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, ToolbarButton, ToolbarSpacer, View, WindowToolbar, useStickToEnd } from "@cmd/ui";
 import { showContextMenu } from "../../lib/context.ts";
 import { useAiStatus } from "../../ai/status.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
@@ -28,14 +29,13 @@ const ICONS: Record<string, string> = {
   agent: "person.badge.plus",
   wait: "hourglass",
   type: "keyboard",
+  edit: "pencil",
   open: "plus.rectangle",
   close: "xmark.rectangle",
   focus: "scope",
   search: "magnifyingglass",
   events: "clock.arrow.circlepath",
 };
-
-const EXAMPLES = ["Run the tests and start an agent on whatever fails", "What did my agents do today?", "Start the dev server and open it in a browser", "Close the terminals that are done"];
 
 /** What the conversation shows, in order: messages, single steps, runs of looks folded into one row. */
 type Block = { kind: "item"; item: OperatorItem } | { kind: "looks"; items: Tool[] };
@@ -54,6 +54,95 @@ function blocks(items: OperatorItem[]): Block[] {
 
 const markdown = (text: string) => DOMPurify.sanitize(marked.parse(text, { gfm: true, async: false }) as string);
 
+/** What a conversation's rows do and how they name windows: the app's, or a story's stand-ins. */
+export interface OperatorWorld {
+  /** A window's name as the board shows it; null once it's closed. */
+  useName(id: WindowId): string | null;
+  goTo(id: WindowId): void;
+  answer(itemId: string, allow: boolean, reason?: string): Promise<unknown>;
+}
+
+const World = createContext<OperatorWorld>({ useName: () => null, goTo: () => {}, answer: async () => {} });
+
+export interface OperatorProps {
+  /** null while it loads. */
+  conv: OperatorConversation | null;
+  needsAi: boolean;
+  focused: boolean;
+  world: OperatorWorld;
+  onSend(text: string): void;
+  onStop(): void;
+  onNew(): void;
+  onPast(): void;
+}
+
+export function Operator(p: OperatorProps) {
+  const [draft, setDraft] = useState("");
+  const [history, setHistory] = useState<string[]>([]);
+  const body = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+  // Selected (Ask Operator…, a click on its title): the cursor goes to the prompt.
+  useEffect(() => {
+    if (p.focused) field.current?.focus();
+  }, [p.focused]);
+  const { toEnd } = useStickToEnd(body, [p.conv?.items]);
+
+  const send = (text: string) => {
+    if (p.needsAi) return showSetup(["ai"]);
+    setDraft("");
+    setHistory((h) => [text, ...h.filter((x) => x !== text)].slice(0, 50));
+    toEnd();
+    p.onSend(text);
+  };
+
+  const empty = !!p.conv && !p.conv.items.length;
+  return (
+    <World.Provider value={p.world}>
+      <Stack gap={0} grow>
+        <View
+          inset
+          bodyRef={body}
+          toolbar={
+            <WindowToolbar label="Operator">
+              <ToolbarButton icon="square.and.pencil" label="New Conversation" disabled={!p.conv?.items.length} onClick={p.onNew} />
+              <ToolbarSpacer />
+              <ToolbarButton icon="clock.arrow.circlepath" label="Past Conversations" menu onClick={p.onPast} />
+            </WindowToolbar>
+          }
+          state={
+            !p.conv
+              ? { kind: "loading" }
+              : empty
+                ? { kind: "empty", icon: "brain", title: "Ask the Operator", text: "It runs this workspace while you watch: tests, agents, dev servers. It asks before it types anything." }
+                : null
+          }
+        >
+          {p.conv && <Conversation conv={p.conv} />}
+        </View>
+        <ChatComposer>
+          {p.needsAi && (
+            <Callout compact tone="accent" icon="sparkles" actions={<Button size="sm" onClick={() => showSetup(["ai"])}>Set Up AI…</Button>}>
+              The Operator needs an AI model. Connect Anthropic or OpenAI first.
+            </Callout>
+          )}
+          <AiField
+            ref={field}
+            value={draft}
+            onChange={setDraft}
+            onSubmit={send}
+            onStop={p.onStop}
+            state={p.conv?.busy ? "thinking" : "idle"}
+            history={history}
+            placeholder={p.conv?.busy ? "Working…" : "What should I do?"}
+            autoFocus={p.focused}
+            aria-label="Ask the Operator"
+          />
+        </ChatComposer>
+      </Stack>
+    </World.Provider>
+  );
+}
+
 /** "this": the window selected before the Operator's own, if it is still open in the Operator's workspace. */
 function thisWindow(win: { id: WindowId; workspaceId: string }): WindowId | null {
   const s = getState();
@@ -62,82 +151,33 @@ function thisWindow(win: { id: WindowId; workspaceId: string }): WindowId | null
   return history.find((id) => id !== win.id && here(id)) ?? null;
 }
 
+/** A window's name as the board's title bar says it. */
+function useBoardName(id: WindowId): string | null {
+  return useStoreValue((s) => {
+    const pane = s.panes.get(id) ?? null;
+    const win = s.windows.get(id) ?? null;
+    if (!pane && !win) return null;
+    const agent = pane?.agentId ? (s.agents.get(pane.agentId) ?? null) : null;
+    return fieldsOf({ key: id, pane, win, agent, children: [], urgent: agent } as SidebarRow, undefined, 0).name;
+  });
+}
+
 export function OperatorView({ win, focused }: WindowViewProps) {
   const ws = win.workspaceId;
   const conv = useOperator(ws);
   const ai = useAiStatus();
-  const [draft, setDraft] = useState("");
-  const [history, setHistory] = useState<string[]>([]);
-  const body = useRef<HTMLDivElement>(null);
-  const field = useRef<HTMLTextAreaElement>(null);
-  // Selected (Ask Operator…, a click on its title): the cursor goes to the prompt.
-  useEffect(() => {
-    if (focused) field.current?.focus();
-  }, [focused]);
-  const { toEnd } = useStickToEnd(body, [conv?.items]);
-  const needsAi = !!ai && !ai.ready;
-
-  const send = (text: string) => {
-    if (needsAi) return showSetup(["ai"]);
-    setDraft("");
-    setHistory((h) => [text, ...h.filter((x) => x !== text)].slice(0, 50));
-    toEnd();
-    void operatorCall.send(ws, text, thisWindow(win)).catch(() => {});
-  };
-
-  const empty = !!conv && !conv.items.length;
+  const world = useMemo<OperatorWorld>(() => ({ useName: useBoardName, goTo: (id) => goTo(id, ws), answer: (itemId, allow, reason) => operatorCall.answer(ws, itemId, allow, reason) }), [ws]);
   return (
-    <Stack gap={0} grow>
-      <View
-        inset
-        bodyRef={body}
-        toolbar={
-          <WindowToolbar label="Operator">
-            <ToolbarButton icon="square.and.pencil" label="New Conversation" disabled={!conv?.items.length} onClick={() => void operatorCall.reset(ws).catch(() => {})} />
-            <ToolbarSpacer />
-            <ToolbarButton icon="clock.arrow.circlepath" label="Past Conversations" menu onClick={() => void showPast(ws)} />
-          </WindowToolbar>
-        }
-        state={
-          !conv
-            ? { kind: "loading" }
-            : empty
-              ? { kind: "empty", icon: "brain", title: "Ask the Operator", text: "It runs this workspace while you watch: tests, agents, dev servers. It asks before it types anything." }
-              : null
-        }
-      >
-        {conv && <Conversation conv={conv} workspaceId={ws} />}
-      </View>
-      <Stack pad="inset" gap={2}>
-        {needsAi && (
-          <Callout compact tone="accent" icon="sparkles" actions={<Button size="sm" onClick={() => showSetup(["ai"])}>Set Up AI…</Button>}>
-            The Operator needs an AI model. Connect Anthropic or OpenAI first.
-          </Callout>
-        )}
-        {empty && !needsAi && (
-          <Stack gap={1}>
-            {EXAMPLES.map((x) => (
-              <Button key={x} size="sm" variant="ghost" onClick={() => send(x)}>
-                {x}
-              </Button>
-            ))}
-          </Stack>
-        )}
-        <AiField
-          ref={field}
-          value={draft}
-          onChange={setDraft}
-          onSubmit={send}
-          onStop={() => void operatorCall.stop(ws)}
-          state={conv?.busy ? "thinking" : "idle"}
-          history={history}
-          placeholder={conv?.busy ? "Working…" : "What should I do?"}
-          autoFocus={focused}
-          aria-label="Ask the Operator"
-        />
-        {conv && conv.usage.input > 0 && <Usage conv={conv} />}
-      </Stack>
-    </Stack>
+    <Operator
+      conv={conv}
+      needsAi={!!ai && !ai.ready}
+      focused={focused}
+      world={world}
+      onSend={(text) => void operatorCall.send(ws, text, thisWindow(win)).catch(() => {})}
+      onStop={() => void operatorCall.stop(ws)}
+      onNew={() => void operatorCall.reset(ws).catch(() => {})}
+      onPast={() => void showPast(ws)}
+    />
   );
 }
 
@@ -152,34 +192,36 @@ async function showPast(workspaceId: string): Promise<void> {
   );
 }
 
-function Usage({ conv }: { conv: OperatorConversation }) {
-  const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
-  const parts = [conv.model, `${tokens(conv.usage.input)} in, ${tokens(conv.usage.output)} out`];
-  if (conv.latency && !conv.busy) parts.push(`first step ${conv.latency.firstStepMs === null ? "—" : durationText(conv.latency.firstStepMs)}, all ${durationText(conv.latency.totalMs)}`);
-  return (
-    <Text size="xs" tone="dim">
-      {parts.filter(Boolean).join(" · ")}
-    </Text>
-  );
-}
+/** A run of steps (tool calls, news) stays together; messages stand apart from it. */
+const isStep = (b: Block) => b.kind === "looks" || b.item.kind === "tool" || b.item.kind === "event";
 
-function Conversation({ conv, workspaceId }: { conv: OperatorConversation; workspaceId: string }) {
+function Conversation({ conv }: { conv: OperatorConversation }) {
   const shown = useMemo(() => blocks(conv.items), [conv.items]);
   const lastText = [...conv.items].reverse().find((i) => i.kind === "text")?.id;
+  const draw = (b: Block, i: number) =>
+    b.kind === "looks" ? <Looks key={b.items[0]!.id} items={b.items} /> : <Item key={b.item.id} item={b.item} streaming={conv.busy && b.item.id === lastText && i === shown.length - 1} />;
+  const groups: { key: string; steps: boolean; at: number[] }[] = [];
+  shown.forEach((b, i) => {
+    const last = groups.at(-1);
+    if (isStep(b) && last?.steps) last.at.push(i);
+    else groups.push({ key: b.kind === "looks" ? b.items[0]!.id : b.item.id, steps: isStep(b), at: [i] });
+  });
   return (
-    <Stack gap={3}>
-      {shown.map((b, i) =>
-        b.kind === "looks" ? (
-          <Looks key={b.items[0]!.id} items={b.items} workspaceId={workspaceId} />
+    <ChatLog>
+      {groups.map((g) =>
+        g.steps ? (
+          <Stack key={g.key} gap={0}>
+            {g.at.map((i) => draw(shown[i]!, i))}
+          </Stack>
         ) : (
-          <Item key={b.item.id} item={b.item} workspaceId={workspaceId} streaming={conv.busy && b.item.id === lastText && i === shown.length - 1} />
+          draw(shown[g.at[0]!]!, g.at[0]!)
         ),
       )}
-    </Stack>
+    </ChatLog>
   );
 }
 
-function Item({ item, workspaceId, streaming }: { item: OperatorItem; workspaceId: string; streaming: boolean }) {
+function Item({ item, streaming }: { item: OperatorItem; streaming: boolean }) {
   switch (item.kind) {
     case "user":
       return (
@@ -198,11 +240,12 @@ function Item({ item, workspaceId, streaming }: { item: OperatorItem; workspaceI
     case "error":
       return <ChatNote tone={item.text === "Stopped." ? undefined : "danger"}>{item.text}</ChatNote>;
     case "tool":
-      return item.state === "waiting" && item.ask ? <Approval item={item} workspaceId={workspaceId} /> : <Step item={item} workspaceId={workspaceId} />;
+      return item.state === "waiting" && item.ask ? <Approval item={item} /> : <Step item={item} />;
   }
 }
 
-function Step({ item, workspaceId, quiet }: { item: Tool; workspaceId: string; quiet?: boolean }) {
+function Step({ item, quiet }: { item: Tool; quiet?: boolean }) {
+  const world = useContext(World);
   const input = Object.keys(item.input).length ? JSON.stringify(item.input, null, 2) : null;
   return (
     <ChatStep
@@ -211,7 +254,7 @@ function Step({ item, workspaceId, quiet }: { item: Tool; workspaceId: string; q
       state={item.state}
       quiet={quiet}
       target={item.target ? <WindowName id={item.target} /> : undefined}
-      onTarget={item.target ? () => goTo(item.target!, workspaceId) : undefined}
+      onTarget={item.target ? () => world.goTo(item.target!) : undefined}
       time={item.ms !== undefined ? durationText(item.ms) : undefined}
     >
       {(input || item.output || item.ask) && (
@@ -226,21 +269,15 @@ function Step({ item, workspaceId, quiet }: { item: Tool; workspaceId: string; q
   );
 }
 
-/** The window a step is about, by its title as the board shows it (the Operator's refs are for its tools). */
+/** The window a step is about, by its name on the board (the Operator's refs are for its tools). */
 function WindowName({ id }: { id: WindowId }) {
-  const name = useStoreValue((s) => {
-    const pane = s.panes.get(id) ?? null;
-    const win = s.windows.get(id) ?? null;
-    if (!pane && !win) return null;
-    const agent = pane?.agentId ? (s.agents.get(pane.agentId) ?? null) : null;
-    return fieldsOf({ key: id, pane, win, agent, children: [], urgent: agent } as SidebarRow, undefined, 0).name;
-  });
+  const name = useContext(World).useName(id);
   return <>{name ?? "Closed window"}</>;
 }
 
-function Looks({ items, workspaceId }: { items: Tool[]; workspaceId: string }) {
+function Looks({ items }: { items: Tool[] }) {
   const [open, setOpen] = useState(false);
-  if (items.length === 1) return <Step item={items[0]!} workspaceId={workspaceId} quiet />;
+  if (items.length === 1) return <Step item={items[0]!} quiet />;
   const running = items.some((i) => i.state === "running");
   const failed = items.some((i) => i.state === "failed");
   return (
@@ -252,14 +289,15 @@ function Looks({ items, workspaceId }: { items: Tool[]; workspaceId: string }) {
               Show Each Step
             </Button>
           )}
-          {open && items.map((i) => <Step key={i.id} item={i} workspaceId={workspaceId} quiet />)}
+          {open && items.map((i) => <Step key={i.id} item={i} quiet />)}
         </Stack>
       </ChatStep>
     </Stack>
   );
 }
 
-function Approval({ item, workspaceId }: { item: Tool; workspaceId: string }) {
+function Approval({ item }: { item: Tool }) {
+  const world = useContext(World);
   const [busy, setBusy] = useState(false);
   return (
     <ChatApproval
@@ -268,7 +306,7 @@ function Approval({ item, workspaceId }: { item: Tool; workspaceId: string }) {
       busy={busy}
       onAnswer={(allow, reason) => {
         setBusy(true);
-        void operatorCall.answer(workspaceId, item.id, allow, reason).catch(() => setBusy(false));
+        void world.answer(item.id, allow, reason).catch(() => setBusy(false));
       }}
     />
   );

@@ -1,6 +1,7 @@
 // A conversation with an agent that acts (the Operator): requests, answers, steps in every state,
 // a step waiting for approval, a note when a turn was stopped.
-import { ChatApproval, ChatMessage, ChatNote, ChatStep } from "./chat.tsx";
+import { ChatApproval, ChatComposer, ChatLog, ChatMessage, ChatNote, ChatStep } from "./chat.tsx";
+import { AiField } from "./ai.tsx";
 import { Stack } from "./frame.tsx";
 import { CodeBlock } from "./layout.tsx";
 
@@ -9,7 +10,7 @@ const frame = { width: 420 };
 /** A turn: the request, steps as they ran (looks quiet, acts with the window they're about), the answer. */
 export const Conversation = () => (
   <div style={frame}>
-    <Stack gap={3}>
+    <ChatLog>
       <ChatMessage from="person" copy="Run the tests and start an agent on whatever fails.">
         Run the tests and start an agent on whatever fails.
       </ChatMessage>
@@ -26,7 +27,7 @@ export const Conversation = () => (
           Two tests fail in <code>osc.test.ts</code>. Claude is on it in its own terminal; I'll tell you when it's done.
         </p>
       </ChatMessage>
-    </Stack>
+    </ChatLog>
   </div>
 );
 
@@ -87,5 +88,14 @@ export const Streaming = () => (
       <ChatNote>Stopped.</ChatNote>
       <ChatNote tone="danger">Something went wrong: the provider is overloaded.</ChatNote>
     </Stack>
+  </div>
+);
+
+/** The prompt's place under the conversation. */
+export const Composer = () => (
+  <div style={frame}>
+    <ChatComposer>
+      <AiField value="" onChange={() => {}} onSubmit={() => {}} placeholder="What should I do?" aria-label="Ask" />
+    </ChatComposer>
   </div>
 );

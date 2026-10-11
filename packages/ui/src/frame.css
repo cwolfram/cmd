@@ -294,6 +294,9 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-chat-msg-row[data-from="person"] .ui-chat-msg-actions { top: 50%; left: auto; right: 100%; margin-right: var(--space-1); transform: translateY(-50%); background: none; }
 .ui-chat-msg-row:hover .ui-chat-msg-actions, .ui-chat-msg-actions:focus-within { opacity: 1; }
 .ui-chat-step-detail { user-select: text; }
+.ui-chat-log { display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-6); }
+/* Its prompt sits midway between its line and the window's outline (as a footer's text does). */
+.ui-chat-composer { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--inset) calc(var(--space-3) + var(--window-outline)); background: var(--toolbar-bg); box-shadow: inset 0 1px 0 var(--window-edge); }
 .ui-chat-msg[data-from="person"] { padding: var(--space-1-5) var(--space-3); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--accent) 14%, var(--group-bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, var(--group-edge)); white-space: pre-wrap; }
 .ui-chat-msg[data-from="agent"] > :first-child { margin-top: 0; }
 .ui-chat-msg[data-from="agent"] > :last-child { margin-bottom: 0; }
