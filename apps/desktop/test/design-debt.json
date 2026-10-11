@@ -1,18 +1,18 @@
 {
-  "apps/desktop/src/renderer/src/windows/jam/jam.css": {
-    "radius": 1,
-    "spacing": 1
+  "apps/desktop/src/renderer/src/pdf/pdf.css": {
+    "color": 1
   },
   "apps/desktop/src/renderer/src/shell/library.css": {
     "color": 2,
     "fontSize": 1
   },
-  "apps/desktop/src/renderer/src/pdf/pdf.css": {
-    "color": 1
-  },
   "apps/desktop/src/renderer/src/styles.css": {
     "fontSize": 1,
     "radius": 2
+  },
+  "apps/desktop/src/renderer/src/windows/jam/jam.css": {
+    "radius": 1,
+    "spacing": 1
   },
   "apps/desktop/src/renderer/src/workbench/workbench.css": {
     "spacing": 1
@@ -24,7 +24,6 @@
     "spacing": 1
   },
   "packages/ui/src/frame.css": {
-    "color": 4,
-    "radius": 1
+    "color": 4
   }
 }

@@ -90,6 +90,8 @@
   --row-h: 24px;
   /* Sidebar rows. */
   --row-h-lg: 28px;
+  /* Chart marks: bars, meter and ranking tracks, shares. Square with the corner just softened; never pills. */
+  --radius-chart: 1px;
   /* Inner shapes: a filmstrip thumbnail, an image on a stage. */
   --radius-xs: 3px;
   /* Small controls inside others: a toolbar item, a chip. */
@@ -174,6 +176,24 @@
   --media-ink: #ffffff;
   /* Darkens part of a picture or a video (the frames a trim cuts): neutral black in every theme, never tinted like --scrim. */
   --media-shade: rgb(0 0 0 / 0.6);
+  /* A chart's grid lines and empty buckets' ticks: hairlines that order the plot without being read. */
+  --chart-grid: color-mix(in srgb, var(--ink) 8%, transparent);
+  /* A chart's ticks, axis labels, the cursor's rule and reference lines (averages, targets). */
+  --chart-axis: var(--text-dim);
+  /* Bars and lines that give context: a single series' past buckets, the period before. */
+  --chart-neutral: color-mix(in srgb, var(--ink) 24%, transparent);
+  /* The bucket or series a chart is about: today, this week, the selected value. */
+  --chart-current: var(--accent);
+  /* Heat level 0 (Calendar, PunchCard): a cell with nothing in it, still visible. */
+  --chart-seq-0: color-mix(in srgb, var(--ink) 6%, transparent);
+  /* Heat level 1 of 4: the least. */
+  --chart-seq-1: color-mix(in srgb, var(--accent) 28%, transparent);
+  /* Heat level 2 of 4. */
+  --chart-seq-2: color-mix(in srgb, var(--accent) 50%, transparent);
+  /* Heat level 3 of 4. */
+  --chart-seq-3: color-mix(in srgb, var(--accent) 74%, transparent);
+  /* Heat level 4 of 4: the most. */
+  --chart-seq-4: var(--accent);
 
   /* ── window ── */
   /* A window's footer bar (View footer): one line of status in --text-faint, the same top line as the toolbar's (--window-edge). */

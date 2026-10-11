@@ -63,6 +63,14 @@
     }
   },
   "radius": {
+    "chart": {
+      "$description": "Chart marks: bars, meter and ranking tracks, shares. Square with the corner just softened; never pills.",
+      "$type": "dimension",
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    },
     "xs": {
       "$description": "Inner shapes: a filmstrip thumbnail, an image on a stage.",
       "$type": "dimension",

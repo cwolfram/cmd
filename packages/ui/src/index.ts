@@ -12,6 +12,8 @@ export { Checkbox, RadioGroup, Segmented, Select, Switch, TabPanel, Tabs, type O
 export { ClearButton, NumberField, SearchField, SecretField, ShortcutField, TextArea, TextField, type SecretStatus, type TextAreaProps, type TextFieldProps } from "./fields.tsx";
 export { FindBar, findCount, Glyph, Highlight, NO_FIND_OPTIONS, type FindBarHandle, type FindBarProps, type FindOptions, type FindResults } from "./find.tsx";
 export { Chart, Legend, Sparkline, type Series } from "./chart.tsx";
+export { Bars, Line, Plot, PlotGroup, Rule, Ticks, axisTicks, seriesColor, usePlot, useSize, type ChartSeries, type PlotProps, type PlotScales } from "./plot.tsx";
+export { Calendar, ChartHead, Delta, Distribution, Meter, PunchCard, Proportion, Ranking, TimeBars, TimeSeries, heatLevels, type RankingRow, type TimeChartProps } from "./charts.tsx";
 export { Dial, Document, Filmstrip, Hide, Picture, Viewport, Inline, Measure, MediaStage, Page, Pane, Panes, Split, Stack, Stage, Stat, StatusLine, Text, Thumb, Tiles, TitleBand, View, WebStage, ViewState, type Space, type ViewStateSpec } from "./frame.tsx";
 export { formatTime, Scrubber, type ScrubberProps, type TrimRange } from "./media.tsx";
 export { Ribbon, Timeline, TimelineEntry, type RibbonItem } from "./timeline.tsx";

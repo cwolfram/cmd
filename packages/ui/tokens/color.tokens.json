@@ -463,5 +463,96 @@
         "alpha": 0.6
       }
     }
+  },
+  "chart": {
+    "grid": {
+      "$description": "A chart's grid lines and empty buckets' ticks: hairlines that order the plot without being read.",
+      "$type": "color",
+      "$value": "{ink}",
+      "$extensions": {
+        "org.cmd.mix": {
+          "space": "srgb",
+          "amount": 0.08,
+          "with": "transparent"
+        }
+      }
+    },
+    "axis": {
+      "$description": "A chart's ticks, axis labels, the cursor's rule and reference lines (averages, targets).",
+      "$type": "color",
+      "$value": "{text.dim}"
+    },
+    "neutral": {
+      "$description": "Bars and lines that give context: a single series' past buckets, the period before.",
+      "$type": "color",
+      "$value": "{ink}",
+      "$extensions": {
+        "org.cmd.mix": {
+          "space": "srgb",
+          "amount": 0.24,
+          "with": "transparent"
+        }
+      }
+    },
+    "current": {
+      "$description": "The bucket or series a chart is about: today, this week, the selected value.",
+      "$type": "color",
+      "$value": "{accent}"
+    },
+    "seq": {
+      "0": {
+        "$description": "Heat level 0 (Calendar, PunchCard): a cell with nothing in it, still visible.",
+        "$type": "color",
+        "$value": "{ink}",
+        "$extensions": {
+          "org.cmd.mix": {
+            "space": "srgb",
+            "amount": 0.06,
+            "with": "transparent"
+          }
+        }
+      },
+      "1": {
+        "$description": "Heat level 1 of 4: the least.",
+        "$type": "color",
+        "$value": "{accent}",
+        "$extensions": {
+          "org.cmd.mix": {
+            "space": "srgb",
+            "amount": 0.28,
+            "with": "transparent"
+          }
+        }
+      },
+      "2": {
+        "$description": "Heat level 2 of 4.",
+        "$type": "color",
+        "$value": "{accent}",
+        "$extensions": {
+          "org.cmd.mix": {
+            "space": "srgb",
+            "amount": 0.5,
+            "with": "transparent"
+          }
+        }
+      },
+      "3": {
+        "$description": "Heat level 3 of 4.",
+        "$type": "color",
+        "$value": "{accent}",
+        "$extensions": {
+          "org.cmd.mix": {
+            "space": "srgb",
+            "amount": 0.74,
+            "with": "transparent"
+          }
+        }
+      },
+      "4": {
+        "$description": "Heat level 4 of 4: the most.",
+        "$type": "color",
+        "$value": "{accent}"
+      }
+    }
   }
 }

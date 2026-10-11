@@ -188,10 +188,10 @@ export function Pane({ title, aside, wide, children }: { title?: ReactNode; asid
   );
 }
 
-/** A metric: its label, the value in mono with a dim unit, a change, and something under it (a sparkline). */
-export function Stat({ label, value, unit, delta, deltaTone, children }: { label: ReactNode; value: ReactNode; unit?: ReactNode; delta?: ReactNode; deltaTone?: Tone; children?: ReactNode }) {
-  return (
-    <div className="ui-stat">
+/** A metric: its label, the value in mono with a dim unit, a change (text, or a Delta), and something under it (a sparkline). With `onSelect` it's a button (open its detail). */
+export function Stat({ label, value, unit, delta, deltaTone, onSelect, children }: { label: ReactNode; value: ReactNode; unit?: ReactNode; delta?: ReactNode; deltaTone?: Tone; onSelect?: () => void; children?: ReactNode }) {
+  const body = (
+    <>
       <div className="ui-stat-label">{label}</div>
       <div className="ui-stat-value">
         {value}
@@ -203,7 +203,14 @@ export function Stat({ label, value, unit, delta, deltaTone, children }: { label
         )}
       </div>
       {children}
-    </div>
+    </>
+  );
+  return onSelect ? (
+    <button type="button" className="ui-stat" onClick={onSelect}>
+      {body}
+    </button>
+  ) : (
+    <div className="ui-stat">{body}</div>
   );
 }
 

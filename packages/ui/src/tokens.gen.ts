@@ -9,7 +9,7 @@ export type SpaceStep = (typeof SPACE_STEPS)[number];
 export const TEXT_SIZES = ["2xs", "xs", "sm", "md", "base", "lg", "xl", "display"] as const;
 export type TextSize = (typeof TEXT_SIZES)[number];
 /** Corner radii (--radius-*; --radius itself for controls and rows). */
-export const RADII = ["xs", "sm", "md", "lg", "xl", "pill"] as const;
+export const RADII = ["chart", "xs", "sm", "md", "lg", "xl", "pill"] as const;
 export type RadiusName = (typeof RADII)[number];
 
 /** What light themes override (appearance-light.tokens.json), by name without the dashes. */
@@ -491,6 +491,12 @@ export const TOKENS: readonly TokenInfo[] = [
     "description": "Sidebar rows."
   },
   {
+    "name": "--radius-chart",
+    "type": "dimension",
+    "value": "1px",
+    "description": "Chart marks: bars, meter and ranking tracks, shares. Square with the corner just softened; never pills."
+  },
+  {
     "name": "--radius-xs",
     "type": "dimension",
     "value": "3px",
@@ -780,6 +786,60 @@ export const TOKENS: readonly TokenInfo[] = [
     "type": "color",
     "value": "rgb(0 0 0 / 0.6)",
     "description": "Darkens part of a picture or a video (the frames a trim cuts): neutral black in every theme, never tinted like --scrim."
+  },
+  {
+    "name": "--chart-grid",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--ink) 8%, transparent)",
+    "description": "A chart's grid lines and empty buckets' ticks: hairlines that order the plot without being read."
+  },
+  {
+    "name": "--chart-axis",
+    "type": "color",
+    "value": "var(--text-dim)",
+    "description": "A chart's ticks, axis labels, the cursor's rule and reference lines (averages, targets)."
+  },
+  {
+    "name": "--chart-neutral",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--ink) 24%, transparent)",
+    "description": "Bars and lines that give context: a single series' past buckets, the period before."
+  },
+  {
+    "name": "--chart-current",
+    "type": "color",
+    "value": "var(--accent)",
+    "description": "The bucket or series a chart is about: today, this week, the selected value."
+  },
+  {
+    "name": "--chart-seq-0",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--ink) 6%, transparent)",
+    "description": "Heat level 0 (Calendar, PunchCard): a cell with nothing in it, still visible."
+  },
+  {
+    "name": "--chart-seq-1",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 28%, transparent)",
+    "description": "Heat level 1 of 4: the least."
+  },
+  {
+    "name": "--chart-seq-2",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 50%, transparent)",
+    "description": "Heat level 2 of 4."
+  },
+  {
+    "name": "--chart-seq-3",
+    "type": "color",
+    "value": "color-mix(in srgb, var(--accent) 74%, transparent)",
+    "description": "Heat level 3 of 4."
+  },
+  {
+    "name": "--chart-seq-4",
+    "type": "color",
+    "value": "var(--accent)",
+    "description": "Heat level 4 of 4: the most."
   },
   {
     "name": "--footer-h",

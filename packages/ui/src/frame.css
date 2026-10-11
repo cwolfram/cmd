@@ -80,6 +80,9 @@
 .ui-pane-aside { font-size: var(--text-sm); color: var(--text-dim); font-variant-numeric: tabular-nums; }
 
 .ui-stat { min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
+button.ui-stat { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: var(--radius-xs); }
+button.ui-stat:hover .ui-stat-label { color: var(--text); }
+button.ui-stat:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--input-glow); }
 .ui-stat-label { font-size: var(--text-sm); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-stat-value { display: flex; align-items: baseline; gap: var(--space-0-5); font: 500 var(--text-lg) var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ui-stat-unit { font-size: var(--text-sm); color: var(--text-dim); }
@@ -87,18 +90,6 @@
 .ui-stat-delta[data-tone="success"] { color: var(--success); }
 .ui-stat-delta[data-tone="danger"] { color: var(--danger); }
 .ui-stat-delta[data-tone="warning"] { color: var(--warning); }
-
-/* ── charts ── */
-.ui-chart { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1-5); }
-.ui-chart-plot, .ui-sparkline { width: 100%; min-width: 0; }
-.ui-chart svg, .ui-sparkline svg { display: block; overflow: visible; }
-.ui-chart-grid { stroke: var(--separator); stroke-width: 1; }
-.ui-chart-tick { font: var(--text-2xs) var(--font-mono); fill: var(--text-dim); }
-.ui-chart-line { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
-.ui-chart-area { opacity: 0.14; }
-.ui-legend { display: flex; flex-wrap: wrap; gap: var(--space-0-5) var(--space-3); font-size: var(--text-sm); color: var(--text-dim); }
-.ui-legend-item { display: inline-flex; align-items: center; gap: var(--space-1); }
-.ui-legend-item i { width: 8px; height: 8px; border-radius: 2px; }
 
 /* ── content and media ── */
 .ui-measure { width: 100%; max-width: var(--measure); margin-inline: auto; padding: var(--space-6) var(--space-4) var(--space-8); }
