@@ -221,7 +221,8 @@ kbd {
 /* The core's health (shell/CoreStatus.tsx): the footer line is a button opening the details above it. */
 .core-status { position: relative; flex: 1; min-width: 0; display: flex; margin: 0 -8px; }
 .core-status-button {
-  flex: 1;
+  /* As wide as what it says (hover shows its extent), shrinking with the footer; the row's space stays .core-status's. */
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
