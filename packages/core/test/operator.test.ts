@@ -22,7 +22,7 @@ import { rmTemp } from "./tmp.ts";
 describe("what the Operator may call", () => {
   it("never its own rules, secrets or keys; typing, writing files and stopping agents only with approval", () => {
     for (const m of ["settings.set", "settings.reset", "secrets.set", "ai.connect", "data.forget", "remote.pair", "operator.send"] as const) expect(OPERATOR_ACCESS[m]).toBe("never");
-    expect(Object.entries(OPERATOR_ACCESS).filter(([, a]) => a === "confirm").map(([m]) => m).sort()).toEqual(["agent.kill", "agent.send", "fs.write", "pane.write"]);
+    expect(Object.entries(OPERATOR_ACCESS).filter(([, a]) => a === "confirm").map(([m]) => m).sort()).toEqual(["agent.kill", "agent.send", "browser.act", "fs.write", "pane.write"]);
     expect(OPERATOR_ACCESS["actions.run"]).toBe("act");
   });
 
@@ -118,6 +118,12 @@ describe("the service", () => {
         const q = m.params;
         moves.push(q.move);
         void core.call("workspace.arranged", { reqId: q.reqId, ...(q.move.op === "place" && !q.move.to && !q.move.before && !q.move.after ? { error: "nowhere to place it" } : {}) });
+      }
+      // The app's side of browser.act: a search field, and a password field it calls sensitive.
+      if (m.method === "event" && m.params?.type === "browser.actRequest") {
+        const q = m.params;
+        moves.push({ act: q.action, dry: !!q.dry, value: q.value });
+        void core.call("browser.acted", { reqId: q.reqId, result: { url: "https://thing.dev/search", title: "Thing", element: q.selector === "#pw" ? "<input type=password> Password" : "<input type=text> Search", ...(q.selector === "#pw" ? { sensitive: true } : {}) } });
       }
       // The app's side of browser.read, as a browser window answers.
       if (m.method === "event" && m.params?.type === "browser.request") {
@@ -534,6 +540,25 @@ describe("the service", () => {
     expect(outs[4]).toMatch(/stays where the person put it/);
     expect(moves).toMatchObject([{ op: "dock", side: "right" }, { op: "place", to: "first" }, { op: "mode", mode: "strip" }]);
     expect(core.panes.list().find((p) => p.workspaceId === other.id)).toBeTruthy();
+  });
+
+  it("acts on a page only after asking, with the element and the text; never in a password field", async () => {
+    const outs: string[] = [];
+    turns.push(async (r) => {
+      const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "url", target: "https://thing.dev" })).output)![1]!;
+      outs.push((await exec(r, "page", { ref, do: "fill", css: "#pw", value: "hunter2" })).output);
+      outs.push((await exec(r, "page", { ref, do: "fill", css: "#q", value: "cats" }, "p1")).output);
+    });
+    op.send(ws.id, "search for cats");
+    await vi.waitFor(() => expect(op.get(ws.id).items.some((i) => i.id === "p1" && i.kind === "tool" && i.state === "waiting")).toBe(true));
+    expect(op.get(ws.id).items.find((i) => i.id === "p1")).toMatchObject({ ask: "Type into Search on thing.dev", exact: "<input type=text> Search\n→ cats" });
+    // Only the dry runs reached the page so far.
+    expect(moves).toEqual([{ act: "fill", dry: true, value: "hunter2" }, { act: "fill", dry: true, value: "cats" }]);
+    op.answer(ws.id, "p1", true);
+    await idle();
+    expect(outs[0]).toMatch(/^refused: <input type=password> Password is a password, card or code field/);
+    expect(outs[1]).toBe("Done: fill <input type=text> Search. The page is now “Thing” (https://thing.dev/search); read it to see what happened.");
+    expect(moves.at(-1)).toEqual({ act: "fill", dry: false, value: "cats" });
   });
 
   it("keeps refs for the whole conversation and starts over on reset", async () => {

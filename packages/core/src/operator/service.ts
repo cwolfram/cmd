@@ -416,7 +416,9 @@ export class OperatorService {
       if (signal.aborted) return Promise.reject(new Error("stopped"));
       const access = OPERATOR_ACCESS[method];
       if (access === "never") return Promise.reject(new Error(`the Operator may not call ${method}`));
-      if (access === "confirm" && !allowed) return Promise.reject(new Error(`${method} needs the person's approval first`));
+      // A dry page action only finds and outlines the element: it is what the approval shows.
+      const dry = method === "browser.act" && (params as Params<"browser.act">).dry === true;
+      if (access === "confirm" && !allowed && !dry) return Promise.reject(new Error(`${method} needs the person's approval first`));
       // Whatever a tool does, an Operator window stays: the person's way to watch and stop it.
       if (method === "window.close") return this.#closing((params as Params<"window.close">).id).then(() => this.#d.call(method, params) as Promise<Result<M>>);
       return this.#d.call(method, params) as Promise<Result<M>>;

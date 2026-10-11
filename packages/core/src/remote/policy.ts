@@ -100,6 +100,8 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "window.select": "control",
   "browser.read": "never", // pages may hold what the Mac is signed in to
   "browser.reply": "never",
+  "browser.act": "never",
+  "browser.acted": "never",
   "workspace.arrange": "never",
   "workspace.arranged": "never",
   "window.closed": "never",
@@ -535,6 +537,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "operator.changed":
     case "browser.request": // to the Mac's app windows only
     case "workspace.arrangeRequest":
+    case "browser.actRequest":
     case "data.changed": // to its subscriber only, and data.* is never remote
     case "view.changed":
     case "magic.previewRequest": // sent to the app's previewer only, never broadcast

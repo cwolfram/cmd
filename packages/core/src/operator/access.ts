@@ -80,6 +80,8 @@ export const OPERATOR_ACCESS: { [M in Method]: OperatorAccess } = {
   "window.select": "act",
   "browser.read": "read",
   "browser.reply": "never",
+  "browser.act": "confirm", // the page tool: every action asks, showing the element and what it types
+  "browser.acted": "never",
   "workspace.arrange": "act",
   "workspace.arranged": "never",
   "window.closed": "never",

@@ -12,7 +12,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import type { WebviewTag } from "electron";
-import type { AppWindow } from "@cmd/protocol";
+import type { AppWindow, PageActed } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
 import { Button, PAGE_SCROLLBAR_CSS, scrollbarScript, ToolbarAddressField, ToolbarButton, ToolbarGroup, View, ViewState, WebStage, WindowToolbar, type FindResults } from "@cmd/ui";
 import { registerWindowActions, setWindowStatus } from "../../lib/windowActions.ts";
@@ -20,6 +20,7 @@ import { useFind } from "../../lib/find.tsx";
 import { handleEmbedMessage } from "../../lib/embed.ts";
 import { deviceById, type Device } from "./devices.ts";
 import { readPage } from "./pageReader.ts";
+import { actScript } from "./pageActor.ts";
 
 /** Room around an emulated device: sides and bottom, and the top (its caption). */
 const PAD = 16;
@@ -52,10 +53,20 @@ export function BrowserView({ win, focused }: { win: AppWindow; focused: boolean
   const stage = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState({ w: 0, h: 0 });
 
-  // browser.read (the Operator's read tool): the page, read in the webview, answered to the core.
+  // browser.read and browser.act (the Operator's read and page tools): in the webview, answered to the core.
   useEffect(
     () =>
       cmd.onEvent((e) => {
+        if (e.type === "browser.actRequest" && e.id === win.id) {
+          const wv = ref.current;
+          const acted = (p: { result?: PageActed; error?: string }) => void cmd.call("browser.acted", { reqId: e.reqId, ...p }).catch(() => {});
+          if (!wv || !live) return acted({ error: "the window shows no page" });
+          wv.executeJavaScript(actScript(e)).then(
+            (result: PageActed) => acted({ result }),
+            (err: Error) => acted({ error: err.message.replace(/^Error invoking remote method[^:]*: (Error: )?/, "") }),
+          );
+          return;
+        }
         if (e.type !== "browser.request" || e.id !== win.id) return;
         const wv = ref.current;
         const answer = (p: { result?: Awaited<ReturnType<typeof readPage>>; error?: string }) => void cmd.call("browser.reply", { reqId: e.reqId, ...p }).catch(() => {});

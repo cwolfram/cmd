@@ -1,9 +1,10 @@
 // Reading a browser window's page (browser.read): the page lives in the app's renderer, in a
 // webview the core can't reach, so the core asks the app windows (the browser.request event)
 // and the one showing that window answers (browser.reply), through AppAsk (app-ask.ts).
-// Used by the Operator's read tool (docs/51); fails plainly when no app window shows the page.
+// Acting on it (browser.act: click, fill, submit) goes the same way. Used by the Operator's read
+// and page tools (docs/51); fails plainly when no app window shows the page.
 
-import type { PageRead, PageReadMode, WindowId } from "@cmd/protocol";
+import type { PageAction, PageActed, PageRead, PageReadMode, WindowId } from "@cmd/protocol";
 import type { CoreContext } from "../kernel/context.ts";
 import { appAsk } from "./app-ask.ts";
 
@@ -18,4 +19,10 @@ export function readPage(core: Pick<CoreContext, "broadcast">, id: WindowId, mod
     REPLY_MS,
     "no app window shows this page right now (it may be in another workspace, or still loading): show it and read again",
   );
+}
+
+/** Act on a page (or, dry, find and describe the element); the app window showing it does. */
+export function actOnPage(core: Pick<CoreContext, "broadcast">, id: WindowId, a: { action: PageAction; selector: string; index?: number; value?: string; dry?: boolean }): Promise<PageActed> {
+  if (!a.selector.trim()) return Promise.reject(new Error("give a CSS selector for the element"));
+  return appAsk(core).ask<PageActed>((reqId) => ({ type: "browser.actRequest", reqId, id, ...a }), REPLY_MS, "no app window shows this page right now: show it and try again");
 }

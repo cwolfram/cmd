@@ -11,6 +11,7 @@ import { denied } from "./deny.ts";
 import { isQuiet } from "./access.ts";
 import { agentIn, board, fmtTime, num, readablePath, ref, schema, str, windowName, windowOf, type Bench, type Input, type OperatorTool } from "./tool-kit.ts";
 import { WINDOW_TOOLS } from "./window-tools.ts";
+import { PAGE_TOOLS } from "./page-tools.ts";
 
 export type { Ask, Bench, OperatorTool } from "./tool-kit.ts";
 export { windowName } from "./tool-kit.ts";
@@ -449,4 +450,4 @@ const eventsTool: OperatorTool = {
   },
 };
 
-export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, editTool, ...WINDOW_TOOLS, searchTool, eventsTool];
+export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, editTool, ...WINDOW_TOOLS, ...PAGE_TOOLS, searchTool, eventsTool];
