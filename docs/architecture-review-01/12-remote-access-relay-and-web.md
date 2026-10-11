@@ -100,7 +100,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-04 · Open a session only after the device's first transport message, not after a replayable message 1
 
-- **Status:** in progress (remote-hardening)
+- **Status:** done (remote-hardening branch)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/remote/session.ts:86-92`, `packages/core/src/remote/session.ts:107-117`, `packages/core/src/remote/service.ts:284-289`
@@ -112,12 +112,14 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 **Proposal.** Add a `confirming` state: after writing message 2, wait (with a 10 s timer) for the first DATA frame to decrypt. Only then set `lastSeenAt`, call `serve`/`opened` and audit `session`. The web client already sends `remote.bootstrap` first, so no client change. This is the standard IK treatment (WireGuard confirms the session on the initiator's first transport packet for the same reason).
 
 **Success criteria.**
-- [ ] A test replays a recorded message 1 on a new channel: no `session` audit, `lastSeenAt` unchanged, `sessions()` empty, the channel closes within the timeout.
-- [ ] The existing session tests in `packages/core/test/remote.test.ts` still pass unchanged.
+- [x] A test replays a recorded message 1 on a new channel: no `session` audit, `lastSeenAt` unchanged, `sessions()` empty, the channel closes within the timeout.
+- [x] The existing session tests in `packages/core/test/remote.test.ts` still pass unchanged.
+
+**Progress (2026-10-11).** `HostChannel` has a `confirming` state: after its reply it waits up to `CONFIRM_MS` (10 s) for a DATA frame to decrypt, and only then calls `seen` (the device's `lastSeenAt`, split out of `device()`), `serve` and `opened` (the `session` audit); otherwise it counts a failure and closes. Devices send an empty line as soon as their session is up (`openDeviceSession`; an empty line is ignored by every core), so no client needs more. Test: `remote-handshake.test.ts` replays a captured message 1 on a new channel. The existing session tests pass with one change: the pairing test polls for `connected: true`, since the session now opens a moment after the device's.
 
 ### AR1-12-05 · Don't let anyone who knows the route lock every device out or burn the pairing link
 
-- **Status:** in progress (remote-hardening)
+- **Status:** mostly done (remote-hardening branch; the Settings "Reset route" button is left)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/remote/service.ts:24-25`, `packages/core/src/remote/service.ts:257-260`, `packages/core/src/remote/service.ts:291-295`, `packages/core/src/remote/session.ts:95-98`
@@ -129,9 +131,11 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 **Proposal.** Key the limiter by the relay-reported IP (already passed in the `open` frame) with a short backoff per source rather than a global cut-off; keep a global ceiling well above what one attacker IP can trigger. Peek the pairing, run `readMessage`, and consume it only when the PSK decrypted. Offer "Reset route" (register a new one) in Settings for a leaked route, which also needs re-pairing; say so in the button.
 
 **Success criteria.**
-- [ ] A test: three bad handshakes from IP A, then a paired device from IP B connects.
-- [ ] A test: a junk `pair` frame, then the real IKpsk1 handshake with the right PSK pairs.
-- [ ] The limiter's memory is bounded (entries older than a minute pruned) and tested.
+- [x] A test: three bad handshakes from IP A, then a paired device from IP B connects.
+- [x] A test: a junk `pair` frame, then the real IKpsk1 handshake with the right PSK pairs.
+- [x] The limiter's memory is bounded (entries older than a minute pruned) and tested.
+
+**Progress (2026-10-11).** `remote/limiter.ts` (`FailureLimiter`): 3 failures per source IP a minute block that source, 30 over all block everyone, entries older than a minute are pruned and at most 1,000 sources are kept. The pairing is peeked (`pairing()`) and used up (`usePairing`) only after `readMessage` proved the PSK. Tests in `remote-handshake.test.ts`. Not done: a "Reset route" button in Settings for a leaked route (UI and copy for the person to review).
 
 ### AR1-12-06 · Bound and authenticate route registration on the relay
 
@@ -153,7 +157,7 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 
 ### AR1-12-07 · Give the channel real backpressure instead of letting the relay drop slow phones
 
-- **Status:** in progress (remote-hardening)
+- **Status:** done (remote-hardening branch)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/remote/session.ts:11-14`, `packages/core/src/remote/session.ts:164-189`, `packages/core/src/remote/link.ts:49-51`, `apps/relay/src/relay.ts:147`
@@ -165,13 +169,15 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 **Proposal.** Track in-flight bytes per channel in the core: count bytes handed to the link, and have the device acknowledge received bytes every 64 KiB (a tiny `ack` line, or a relay-level credit frame). When unacknowledged output per channel passes a window (256 KiB), stop sending that device's `pane.output`, mark the panes dirty and send `pane.resync` once acks catch up, which the client already handles. This is SSH's channel window and VS Code's remote `PersistentProtocol` ack scheme. Also stop sending when the host link's `bufferedAmount` passes a ceiling. Local socket flow control is AR1-02-01 (see doc 02).
 
 **Success criteria.**
-- [ ] A core test with a device that reads slowly: 20 MiB of pane output yields `pane.resync`, the channel stays open, and the core's queued bytes for that channel stay under 512 KiB.
-- [ ] A relay test confirms the device is not terminated in that scenario.
-- [ ] `session.ts`'s top comment describes the window and the ack.
+- [x] A core test with a device that reads slowly: 20 MiB of pane output yields `pane.resync`, the channel stays open, and the core's queued bytes for that channel stay under 512 KiB.
+- [x] A relay test confirms the device is not terminated in that scenario.
+- [x] `session.ts`'s top comment describes the window and the ack.
+
+**Progress (2026-10-11).** `remote.ack { received }` (protocol, policy `view` with an argument check). `RemoteConnection` counts characters it seals; from the device's first ack its writer (`kernel/writer.ts`, AR1-02-01's) is blocked past `WINDOW` (256 KiB) unread and holds output, with `maxPending` the same, so past it the device gets `pane.resync`; an ack drains it. A device that never acks (an older web client) has no window. The web client acks once after `core.hello` (when the Mac lists `remote.ack`) and every 64 KiB. Test in `remote.test.ts` through the real relay: a device that stops acking while a terminal prints 20 MiB; what the Mac holds for it stays under 512 KiB (`RemoteService.queued()`), it gets a resync once it acks, and the relay never cuts it off (the test fails with an infinite window). Not done: pausing on the host link's own `bufferedAmount` (shared by all channels, it has no drain signal).
 
 ### AR1-12-08 · Project bootstrap and events per remote session the way calls are checked
 
-- **Status:** in progress (remote-hardening)
+- **Status:** done (remote-hardening branch)
 - **Severity:** medium
 - **Effort:** M
 - **Where:** `packages/core/src/remote/policy.ts:360-379`, `packages/core/src/core.ts:869-877`, `packages/core/src/core.ts:1417-1420`, `packages/core/src/remote/policy.ts:241-250`
@@ -183,10 +189,12 @@ Policy measurement: 142 methods in `REMOTE_ACCESS`: 98 `never`, 23 `view`, 21 `c
 **Proposal.** One `remoteView(conn)` projection in `policy.ts` used by both bootstrap and events: drop entities outside open non-Home workspaces (AR1-12-01's rule), and strip window state through a per-type hook on the window type registry (`remoteState(state) => …`, default: none), so a new window type leaks nothing until it opts in. Decide prompts explicitly (keep `lastPrompt`, drop `spawn.prompt`, or the reverse) and write it in doc 13. Cap `fs.watch` at 32 per session and give `jam.change` text limits.
 
 **Success criteria.**
-- [ ] A test: a pane in a closed workspace is absent from `remote.bootstrap` and its `pane.updated` doesn't reach the session.
-- [ ] A test: a browser window's history is absent from the remote copy of its state.
-- [ ] Every reachable method with parameters has an `ARGS` entry; a test enumerates them.
-- [ ] The 33rd `fs.watch` from one session is denied.
+- [x] A test: a pane in a closed workspace is absent from `remote.bootstrap` and its `pane.updated` doesn't reach the session.
+- [x] A test: a browser window's history is absent from the remote copy of its state.
+- [x] Every reachable method with parameters has an `ARGS` entry; a test enumerates them.
+- [x] The 33rd `fs.watch` from one session is denied.
+
+**Progress (2026-10-11).** `remoteResult` and `remoteEvent` in `policy.ts`, applied in `kernel/server.ts` to every result and subscribed event of a remote connection (`subscribe` may return a replacement event): open workspaces only (the call rule, Home's terminals included), a closed workspace becomes `workspace.removed`, agents without `lastPrompt` and the spawn prompt (both dropped: decided in doc 13), windows with only `WindowType.remoteState`'s state (none by default; the web client reads none). The `*.list` methods were unfiltered too and now go through it. `MAX_WATCHES` 32 in `fs.watch`; `jam.change` has its checks; `NO_ARGS` names the reachable methods without params, and `remote-policy.test.ts` checks every reachable method is in one or the other.
 
 ### AR1-12-09 · Keep the host key in the Keychain and give it a rotation path
 
