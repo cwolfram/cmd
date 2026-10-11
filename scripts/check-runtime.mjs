@@ -32,7 +32,7 @@ try {
       const hello = await c.client.call("core.hello", {});
       const types = await c.client.call("window.types", {});
       c.close();
-      console.log(`staged core ${hello.version} answers; window types: ${types.map((t) => t.kind).join(", ")}`);
+      console.log(`staged core ${hello.app ?? hello.version} answers; window types: ${types.map((t) => t.kind).join(", ")}`);
       ok = true;
       break;
     } catch {

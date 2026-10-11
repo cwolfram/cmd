@@ -49,7 +49,8 @@ try {
   const page = await win.evaluate(() => ({ url: location.href, cmd: typeof window.cmd?.call }));
   check(page.cmd === "function" && page.url.includes("app.asar/out/renderer/index.html"), `its window gets window.cmd from app.asar (${page.url.replace(/\?.*/, "")})`);
   const hello = await until(() => win.evaluate(() => window.cmd.call("core.hello", {})), 30_000, "the core");
-  check(!!hello.version, `its bundled core starts and answers (${hello.version}, pid ${hello.pid})`);
+  // core.hello names the app version the core came with `app` (CoreHello, protocol version.ts); `version` was its old name.
+  check(!!hello.pid && !!hello.app, `its bundled core starts and answers (${hello.app}, pid ${hello.pid})`);
   const pane = await win.evaluate(() => window.cmd.call("pane.create", {}));
   const text = await until(
     async () => {
