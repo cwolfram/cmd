@@ -217,7 +217,7 @@ Disk, the WAL, retention and every full-log read (stats, rebuilds, FTS) pay for 
 
 ### AR1-06-09 · Make subscriptions say what changed, and stop emitting no-ops
 
-- **Status:** in progress (ar1-batch2)
+- **Status:** done (a0b6270d, ar1-batch2)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/core.ts:1456-1484`, `packages/core/src/data/service.ts:135-168`
@@ -235,10 +235,12 @@ Per event, the cost is O(connections × subscriptions) in-memory matches. That i
 **Proposal.** Have `store.record` return `{ seq, inserted, changed }`, and have `record`/`recordBatch` emit only when `changed`. Shape the event `data.changed { id, added, updated, removed, truncated }`, so a client resyncs (`data.query` with `after`) when `truncated`. Cache the `textMatches` statement. For text subscriptions, match once per batch: `SELECT rowid FROM events_fts WHERE MATCH ? AND rowid IN (…batch seqs)`.
 
 **Success criteria.**
-- [ ] A test records the same visit twice and gets one `data.changed`.
-- [ ] A test records 600 matching events in one batch and gets `truncated: true` (or all 600).
-- [ ] `grep -n "prepare(" packages/core/src/data/service.ts` shows no call inside `textMatches`.
+- [x] A test records the same visit twice and gets one `data.changed`.
+- [x] A test records 600 matching events in one batch and gets `truncated: true` (or all 600).
+- [x] `grep -n "prepare(" packages/core/src/data/service.ts` shows no call inside `textMatches`.
 
+
+What landed: over 500 events, the subscriber gets the query's result again with `reset` and `truncated` (the CLI's followers read the rest by seq); the statement is prepared once and matches a batch with `json_each`. Removals were already sent (`dataRemoved`).
 ### AR1-06-10 · Mint event ids in one place and refuse cross-type upserts
 
 - **Status:** done (8a526d5d)

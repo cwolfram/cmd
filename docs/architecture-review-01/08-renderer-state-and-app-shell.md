@@ -133,7 +133,7 @@ The renderer is React 19.3 (`apps/desktop/package.json`) on four HTML pages buil
 
 ### AR1-08-06 · Re-send pending UI and view writes after a reconnect
 
-- **Status:** in progress (ar1-batch2)
+- **Status:** done (257a9591, ar1-batch2)
 - **Severity:** medium
 - **Effort:** S (< ½ day)
 - **Where:** `apps/desktop/src/renderer/src/store.ts:214-234`, `store.ts:251-291`, `store.ts:567-576`
@@ -146,10 +146,12 @@ The renderer is React 19.3 (`apps/desktop/package.json`) on four HTML pages buil
 **Proposal.** Keep an outbox of `{ kind: "ui" | "view", key, value }`, cleared on a successful call (not only on echo). On `connected`, after the snapshot: re-apply the outbox over `snap.ui` and the workspaces, then send it. That is local-first write-then-sync with replay after offline, as Linear does [LIN-SYNC]. For unload, flush synchronously through main (`ipcRenderer.sendSync` to a main-side writer), or have main flush on `before-quit` from a copy it already holds.
 
 **Success criteria.**
-- [ ] A reducer/outbox test: a view write made while disconnected is sent once on reconnect and then cleared from pending.
-- [ ] A `setUi` value set while disconnected survives the reconnect snapshot (test).
-- [ ] Manual or e2e: move a sidebar, Restart Core within 250 ms, relaunch the app, and the moved sidebar is kept.
+- [x] A reducer/outbox test: a view write made while disconnected is sent once on reconnect and then cleared from pending.
+- [x] A `setUi` value set while disconnected survives the reconnect snapshot (test).
+- [ ] (not checked by hand yet) Manual or e2e: move a sidebar, Restart Core within 250 ms, relaunch the app, and the moved sidebar is kept.
 
+
+What landed: `UiOutbox` (ui.set) and `PendingViews.failed` (workspace views) keep a failed write over the reconnect's snapshot and send it again after it (`resendWrites` in store.ts); a view write refused 3 times is dropped. Not done: the synchronous flush on unload through main.
 ### AR1-08-07 · Install ESLint with react-hooks and a renderer layering rule
 
 - **Status:** open

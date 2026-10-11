@@ -185,7 +185,7 @@ The proposal's other half, a snapshot "as parsed now" with no flush, is unsafe a
 
 ### AR1-04-09 · Give the procinfo helper request ids and a timeout
 
-- **Status:** in progress (ar1-batch2)
+- **Status:** done (9c63e3f6, ar1-batch2)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/agents/procinfo.ts:132-226`, `packages/core/src/panes.ts:483-496`, `packages/core/native/procinfo.c:51-75`, `packages/core/native/procinfo.c:203-218`
@@ -197,10 +197,12 @@ The proposal's other half, a snapshot "as parsed now" with no flush, is unsafe a
 **Proposal.** Prefix requests with an id the helper echoes (`<id> <cmd> …` → `{"id":…}`), resolve by id, and time out at 1 s by killing and respawning the helper (failures counted and logged). Zero-initialise `fi` and fall back to the shell's name when it is unset; read lines with `getline` instead of a fixed buffer. Classification quality is doc 05's (see doc 05).
 
 **Success criteria.**
-- [ ] A test with a fake helper that never answers shows `pollForeground` resolving within 1.5 s and the next poll running.
-- [ ] A test sends a `t` request with 3,000 pids and the next `query` gets its own answer.
-- [ ] `procinfo.c` initialises `fi` (`struct kinfo_proc fi = {0};`).
+- [x] A test with a fake helper that never answers shows `pollForeground` resolving within 1.5 s and the next poll running.
+- [x] A test sends a `t` request with 3,000 pids and the next `query` gets its own answer.
+- [x] `procinfo.c` initialises `fi` (`struct kinfo_proc fi = {0};`).
 
+
+What landed differs from the proposal: no request ids, because a core and a helper built at different times (a checkout not reinstalled) must still understand each other. Answers stay in order, every request has a 1 s deadline that kills the helper and answers what it owed with nothing, `t`/`p` requests go in lines of 500 pids, and the helper reads lines of any length with `getline`.
 ## Course corrections
 
 1. **Make the host the single source of terminal truth, with a position** (AR1-04-01, then AR1-04-03): offsets on every chunk and snapshot, and the headless terminal answering queries. One `HOST_PROTOCOL` bump carries both, and AR1-04-04's move of OSC parsing into the host if taken. This closes the byte-loss defect and the duplicate-reply defect at their root, and gives doc 02's flow control (AR1-02-01) the exact resync point it needs. For that flow control, put the PTY pause in the host: it already throttles reading implicitly; add `pty.pause()` when the core socket's `writableLength` passes a watermark (`host.ts:208-210` ignores `write`'s return today).
