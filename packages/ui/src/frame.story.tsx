@@ -53,8 +53,8 @@ export const Dials = () => {
 export const Paragraphs = () => (
   <div style={{ width: 340 }}>
     <Stack gap={3}>
-      <Text>This version brings your recorded data up to date. It happens once.</Text>
-      <Text balance>This version brings your recorded data up to date. It happens once.</Text>
+      <Text>This version brings your records up to date. It happens once.</Text>
+      <Text balance>This version brings your records up to date. It happens once.</Text>
     </Stack>
   </div>
 );

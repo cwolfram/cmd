@@ -174,7 +174,7 @@ export function migrate(db: DatabaseSync, file: string, steps: Migration[] = MIG
   const t0 = Date.now();
   let backup: string | null = null;
   // Shown while the core can't answer yet (kernel/boot.ts): the app and the CLI say what's going on.
-  inBootStep("migrate", "Updating recorded data", (boot) => {
+  inBootStep("migrate", "Updating records", (boot) => {
     if (file !== ":memory:" && file !== "") {
       // A copy of the file as it was (VACUUM INTO: consistent, compact; it refuses a file that exists).
       backup = `${file}.bak-v${from}`;
@@ -182,7 +182,7 @@ export function migrate(db: DatabaseSync, file: string, steps: Migration[] = MIG
       const need = Math.ceil(liveBytes(db) * 1.1);
       if (freeBytes(path.dirname(file)) < need) throw new NoSpaceForMigration(file, need);
       log.info(`event log: schema ${from} → ${newest}; copying it aside first`, { backup });
-      boot.detail("Making a copy first");
+      boot.detail("Making a backup");
       db.prepare(`VACUUM INTO ?`).run(backup);
       log.info("event log: copied aside", { ms: Date.now() - t0, bytes: fs.statSync(backup).size });
     }

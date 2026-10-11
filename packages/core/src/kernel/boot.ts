@@ -50,7 +50,7 @@ export interface BootProgress {
   end(): void;
 }
 
-/** Starts a step of boot work, shown as `label` ("Updating recorded data"). */
+/** Starts a step of boot work, shown as `label` ("Updating records"). */
 export function bootStep(id: string, label: string): BootProgress {
   const step: BootStep = { id, label };
   report.steps = [...report.steps.filter((s) => s.id !== id), step];

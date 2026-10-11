@@ -306,7 +306,7 @@ export class Core {
     const s = this.scheduler;
     if (o.stateDir) {
       // What older cmds kept in cmd.sqlite comes along once, then its tables go: their readers read the log now.
-      s.startup("legacy", "Importing older data", () => {
+      s.startup("legacy", "Bringing over older data", () => {
         this.data.importLegacy(this.store.db);
         this.store.db.exec(`DROP TABLE IF EXISTS agent_events; DROP TABLE IF EXISTS agent_turns; DROP TABLE IF EXISTS journal_events;`);
         this.data.importRemoteLog(this.store.db);
@@ -316,17 +316,17 @@ export class Core {
       });
     }
     // Views whose rules changed: from the log again (after the import, which they read).
-    if (this.agents.activity.needsRebuild) s.startup("turns", "Rebuilding agent turns", async () => void (await this.agents.activity.rebuild((done, total) => s.progress("turns", done, total))));
+    if (this.agents.activity.needsRebuild) s.startup("turns", "Catching up on agent turns", async () => void (await this.agents.activity.rebuild((done, total) => s.progress("turns", done, total))));
     if (this.sessions.needsRebuild) s.startup("sessions", "Indexing sessions", () => this.sessions.rebuild((done, total) => s.progress("sessions", done, total)).then(() => this.search.view.invalidate()));
     // Transcripts are read in a worker and recorded here in paced steps; the reading's own progress is search.status.
-    if (o.transcripts || o.transcriptRoots) s.startup("transcripts", "Starting the transcript reader", () => void this.settings.bind(["data.record.transcripts", "search.archiveDirs"], () => this.search.restart()));
-    if (o.stateDir) s.startup("search", "Preparing search", () => this.search.view.warm());
+    if (o.transcripts || o.transcriptRoots) s.startup("transcripts", "Reading agent sessions", () => void this.settings.bind(["data.record.transcripts", "search.archiveDirs"], () => this.search.restart()));
+    if (o.stateDir) s.startup("search", "Warming up search", () => this.search.view.warm());
     // Commands from before their output was searchable: once, from what they printed.
-    if (o.stateDir) s.startup("command-output", "Indexing command output", () => void indexCommandOutput(this.data, s).then((n) => n && log.info("command output indexed", { commands: n })));
+    if (o.stateDir) s.startup("command-output", "Reading command output", () => void indexCommandOutput(this.data, s).then((n) => n && log.info("command output indexed", { commands: n })));
     if (o.stateDir && o.statusRoot) s.startup("homes", "Looking for agents", () => this.agentSetup.discover());
-    if (o.stateDir) s.startup("retention", "Scheduling retention", () => this.data.start());
+    if (o.stateDir) s.startup("retention", "Planning cleanup", () => this.data.start());
     // The event log's copy aside from a migration is the way back for a week (migrations.ts), then it goes.
-    if (o.stateDir) s.startup("log-backups", "Removing old event log copies", () => void removeOldBackups(path.join(o.stateDir!, "data", "events.sqlite")));
+    if (o.stateDir) s.startup("log-backups", "Removing old backups", () => void removeOldBackups(path.join(o.stateDir!, "data", "events.sqlite")));
     // Workspaces whose folder was removed (a worktree after its merge) say so.
     if (o.stateDir)
       s.startup("workspaces", "Checking workspaces", () => {
@@ -337,7 +337,7 @@ export class Core {
     // Last, the jobs that wait for long work (the stats build, the full-text index): retention mustn't queue behind them.
     if (o.stateDir) for (const f of ALL) if (f.startup) s.startup(f.id, f.startup.label, () => f.startup!.run(this.#ctx));
     // A full-text index older than fts.ts's format: built again beside it in paced steps, the old one serving meanwhile.
-    if (o.stateDir && this.data.store.needsFtsRebuild) s.startup("fts", "Indexing for search", () => this.search.rebuildFts());
+    if (o.stateDir && this.data.store.needsFtsRebuild) s.startup("fts", "Building the search index", () => this.search.rebuildFts());
     s.ready();
   }
 

@@ -45,7 +45,7 @@ export function compactLog(store: DataStore): boolean {
   const before = pages(db);
   const done = { other: 0, lines: 0, hooks: 0 };
   // Reported only when there's something to wait for: a new or small log is done in a blink.
-  const boot = before.total > 1000 ? bootStep("compact", "Shrinking recorded data") : null;
+  const boot = before.total > 1000 ? bootStep("compact", "Slimming down records") : null;
   try {
     store.transaction(() => {
       done.other = Number(db.prepare(`DELETE FROM events WHERE type = 'transcript.other' AND source >= 'transcript:claude' AND source < 'transcript:claudf'`).run().changes);
@@ -63,7 +63,7 @@ export function compactLog(store: DataStore): boolean {
       log.warn(`event log: not vacuumed, it needs about ${gb(need)} free; trying again next launch`);
       return true;
     }
-    boot?.detail("Freeing disk space");
+    boot?.detail("Freeing up space");
     try {
       vacuum(db, store.file);
     } catch (err) {

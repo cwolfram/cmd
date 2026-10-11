@@ -22,7 +22,7 @@ No registry of steps: the blocking work is already a sequence (`main.ts` → `pr
 
 `kernel/boot.ts` is that: `bootStep(id, label)` starts a step and returns `progress(done, total, detail?)` and `end()`. Until `startBootReport(home)` (main.ts, right after the pid file) it does nothing, so tests and the in-memory core pay nothing. It writes `<home>/core.boot.json`: `{ pid, at, steps: [{ id, label, done?, total?, detail?, ended? }] }`, with a temp file and a rename, synchronously (it runs inside a migration's transaction, on a thread that's blocked anyway), at most four times a second except when a step starts or ends. `listen()` succeeding deletes it, and so does the core's exit.
 
-Reported now: the event log's migration ("Updating recorded data": the copy aside, each step with its rows, the commit) and the compaction ("Shrinking recorded data": the rows, then the vacuum). A single `VACUUM`, `VACUUM INTO`, `CREATE INDEX` or `COMMIT` can't report while it runs; the step says what it's doing before it starts (`detail`), with no count, and the app's wait allows for that (below). `cmd.sqlite`'s migration is milliseconds and isn't reported.
+Reported now: the event log's migration ("Updating records": the copy aside, each step with its rows, the commit) and the compaction ("Slimming down records": the rows, then the vacuum). A single `VACUUM`, `VACUUM INTO`, `CREATE INDEX` or `COMMIT` can't report while it runs; the step says what it's doing before it starts (`detail`), with no count, and the app's wait allows for that (below). `cmd.sqlite`'s migration is milliseconds and isn't reported.
 
 ### The app waits on it
 
@@ -44,7 +44,7 @@ The fixed ten minutes are gone: the app waits as long as the file changes, and g
 
 ### The CLI
 
-`cmd` against a core that isn't listening yet reads the same file and says "cmd is getting its data ready: Updating recorded data (41%)…", waiting up to 10 minutes (`BOOT_WAIT_MS`), instead of "no core running". So a script that runs `cmd` right after an update waits too, rather than failing. Hooks never wait: `cmd hook` returns before connecting.
+`cmd` against a core that isn't listening yet reads the same file and says "cmd is getting ready: Updating records · 41%…", waiting up to 10 minutes (`BOOT_WAIT_MS`), instead of "no core running". So a script that runs `cmd` right after an update waits too, rather than failing. Hooks never wait: `cmd hook` returns before connecting.
 
 ## Crashes and other cases
 

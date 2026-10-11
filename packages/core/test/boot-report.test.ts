@@ -44,31 +44,31 @@ describe("the boot report", () => {
     bootStep("early", "Not reported").end();
     expect(fs.existsSync(file())).toBe(false);
     startBootReport(dir);
-    const p = bootStep("migrate", "Updating recorded data");
-    expect(report()).toMatchObject({ pid: process.pid, steps: [{ id: "migrate", label: "Updating recorded data" }] });
-    p.detail("Making a copy first");
-    expect(runningStep(report())).toMatchObject({ detail: "Making a copy first" });
+    const p = bootStep("migrate", "Updating records");
+    expect(report()).toMatchObject({ pid: process.pid, steps: [{ id: "migrate", label: "Updating records" }] });
+    p.detail("Making a backup");
+    expect(runningStep(report())).toMatchObject({ detail: "Making a backup" });
     p.end();
-    inBootStep("compact", "Shrinking recorded data", (b) => b.progress(5, 10));
+    inBootStep("compact", "Slimming down records", (b) => b.progress(5, 10));
     expect(report().steps.map((s) => [s.id, s.ended])).toEqual([["migrate", true], ["compact", true]]);
     endBootReport();
     expect(fs.existsSync(file())).toBe(false);
   });
 
-  it("reads in one line: a count as a percentage, else what it does", () => {
-    expect(stepLine({ id: "m", label: "Updating recorded data", done: 41, total: 100 })).toBe("Updating recorded data (41%)");
-    expect(stepLine({ id: "c", label: "Shrinking recorded data", detail: "Freeing disk space" })).toBe("Shrinking recorded data: Freeing disk space");
+  it("reads in one line, like the footer: a count as a percentage, else what it does", () => {
+    expect(stepLine({ id: "m", label: "Updating records", done: 41, total: 100 })).toBe("Updating records · 41%");
+    expect(stepLine({ id: "c", label: "Slimming down records", detail: "Freeing up space" })).toBe("Slimming down records · Freeing up space");
   });
 
   it("is trusted only from the live core: its pid in core.pid, alive, holding the lock", () => {
     startBootReport(dir);
-    bootStep("migrate", "Updating recorded data");
+    bootStep("migrate", "Updating records");
     expect(readBoot(dir)).toBeNull(); // no core.pid
     fs.writeFileSync(path.join(dir, "core.pid"), String(process.pid));
     expect(readBoot(dir)).toBeNull(); // nobody holds the lock: a crashed core's leftover
     const lock = acquireLock(path.join(dir, "core.lock"))!;
     try {
-      expect(readBoot(dir)?.steps[0]?.label).toBe("Updating recorded data");
+      expect(readBoot(dir)?.steps[0]?.label).toBe("Updating records");
       fs.writeFileSync(path.join(dir, "core.pid"), String(process.pid + 1_000_000));
       expect(readBoot(dir)).toBeNull(); // another core's
     } finally {
@@ -87,7 +87,7 @@ describe("who reports", () => {
     migrate(old, log);
     old.close();
     const steps = seen.map((r) => runningStep(r)).filter(Boolean);
-    expect(steps.map((s) => s!.detail).filter(Boolean)).toEqual(["Making a copy first", "Saving"]);
+    expect(steps.map((s) => s!.detail).filter(Boolean)).toEqual(["Making a backup", "Saving"]);
     expect(seen.at(-1)!.steps).toEqual([expect.objectContaining({ id: "migrate", ended: true })]);
   });
 
@@ -114,7 +114,7 @@ describe("who reports", () => {
     expect(compactLog(store)).toBe(true);
     expect(store.meta("compact")).toBeNull(); // not vacuumed: again next launch
     expect(seen.some((r) => runningStep(r)?.total === 300)).toBe(true);
-    expect(seen.at(-1)!.steps).toEqual([expect.objectContaining({ id: "compact", label: "Shrinking recorded data", ended: true })]);
+    expect(seen.at(-1)!.steps).toEqual([expect.objectContaining({ id: "compact", label: "Slimming down records", ended: true })]);
     vi.mocked(fs.statfsSync).mockRestore();
     expect(compactLog(store)).toBe(true);
     expect(store.meta("compact")).not.toBeNull();

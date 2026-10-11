@@ -24,9 +24,9 @@ export async function connectWaiting(): Promise<Connection> {
       const step = runningStep(readBoot());
       if (!step || Date.now() - t0 > BOOT_WAIT_MS) throw err;
       // A terminal gets one line that updates; a pipe a line per step.
-      const line = `cmd is getting its data ready: ${stepLine(step)}…`;
+      const line = `cmd is getting ready: ${stepLine(step)}…`;
       if (process.stderr.isTTY) process.stderr.write(`\r\x1b[K${line}`);
-      else if (!said.startsWith(`cmd is getting its data ready: ${step.label}`)) console.error(line);
+      else if (!said.startsWith(`cmd is getting ready: ${step.label}`)) console.error(line);
       said = line;
       await new Promise((r) => setTimeout(r, 500));
     }
