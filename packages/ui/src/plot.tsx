@@ -212,8 +212,9 @@ export function Plot({ n, max, height = 120, format = String, ticks: tickKind = 
                 </text>
               </g>
             ))}
-            {children}
+            {/* The cursor under the marks: the dots sit on it, their ring a gap around them. */}
             {cursor && hover !== null && <line className="ui-plot-cursor" x1={Math.round(scales.cx(hover)) + 0.5} x2={Math.round(scales.cx(hover)) + 0.5} y1={pad.t} y2={pad.t + ih} />}
+            {children}
             {xs.map((i) => (
               <text key={i} className="ui-plot-tick" data-on={i === hover || i === current || undefined} x={Math.min(Math.max(scales.cx(i), pad.l + 8), pad.l + iw - 8)} y={h - 4} textAnchor="middle">
                 {xLabel!(i)}

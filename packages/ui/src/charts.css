@@ -34,7 +34,7 @@
 .ui-plot-empty { fill: var(--chart-grid); }
 .ui-plot-line path { stroke-linejoin: round; stroke-linecap: round; }
 .ui-plot-area { opacity: 0.12; stroke: none; }
-.ui-plot-dot { stroke: var(--bg); stroke-width: 1; }
+.ui-plot-dot { stroke: var(--bg); stroke-width: 2; }
 .ui-plot-rule line { stroke: var(--chart-axis); stroke-width: 1; }
 .ui-plot-rule-label { fill: var(--chart-axis); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
 .ui-plot-ticks line { stroke: var(--text); stroke-width: 1.5; opacity: 0.55; }
