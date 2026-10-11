@@ -6,24 +6,42 @@ import path from "node:path";
 import type { AppWindow } from "@cmd/protocol";
 import { readablePath, ref, schema, str, windowName, windowOf, type OperatorTool } from "./tool-kit.ts";
 
+/** A web address to open: http or https only. */
+function urlOf(target: string | undefined): URL {
+  let url: URL;
+  try {
+    url = new URL(target ?? "");
+  } catch {
+    throw new Error("a URL starts with http:// or https://");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("a URL starts with http:// or https://");
+  return url;
+}
+
 const openTool: OperatorTool = {
   acts: true,
   spec: {
     name: "open",
     explores: false,
     description:
-      "Open a window in the workspace: a terminal (in a folder of the workspace), a file or folder (in the window type that shows it), or a URL in a browser. Returns its ref. With `ref`, the window already open shows it instead: a browser goes to the URL, a file browser to the folder (prefer this to opening another window). To run a command, open nothing: use run or type.",
+      "Open a window in the workspace: a terminal (in a folder of the workspace), a file or folder (in the window type that shows it), or a URL in a browser. Returns its ref. With `ref`, the window already open shows it instead: a browser goes to the URL, a file browser to the folder (prefer this to opening another window). A URL asks the person first, unless they allow its site here. To run a command, open nothing: use run or type.",
     schema: schema({ kind: { type: "string", enum: ["terminal", "path", "url"] }, target: { type: "string", description: "The path (relative to the workspace's folder) or URL; for a terminal, the folder to start in." }, ref: { ...ref, description: "A browser or file browser to show it in, instead of a new window." } }, ["kind"]),
   },
   target: (i, b) => (i.ref ? b.refs.id(i.ref) : null),
+  // A URL asks first: a page can tell the Operator to visit an address carrying what it read. Remembered per site.
+  async confirm(i) {
+    if (i.kind !== "url") return null;
+    const url = urlOf(str(i.target));
+    const site = url.hostname.replace(/^www\./, "");
+    return { title: `Open ${site}`, exact: url.href, rule: { key: `url:${site}`, label: `opening pages on ${site}` } };
+  },
   async run(i, b) {
     const ws = b.workspace();
     const target = str(i.target);
     if (i.ref) {
       const w = await windowOf(b, i.ref);
       if (w.kind === "browser" && i.kind === "url") {
-        if (!target || !/^https?:\/\//.test(target)) throw new Error("a URL starts with http:// or https://");
-        await b.call("window.update", { id: w.id, state: { url: target } });
+        await b.call("window.update", { id: w.id, state: { url: urlOf(target).href } });
         return `${String(i.ref)} goes to ${target}.`;
       }
       if (w.kind === "files" && i.kind === "path") {
@@ -35,10 +53,7 @@ const openTool: OperatorTool = {
     }
     let w: AppWindow | null;
     if (i.kind === "terminal") w = await b.call("window.open", { kind: "terminal", input: { cwd: target ? readablePath(b, target) : ws.root }, workspaceId: ws.id });
-    else if (i.kind === "url") {
-      if (!target || !/^https?:\/\//.test(target)) throw new Error("a URL starts with http:// or https://");
-      w = await b.call("window.open", { kind: "browser", input: { url: target }, workspaceId: ws.id });
-    } else w = await b.call("window.openTarget", { target: readablePath(b, target ?? "."), workspaceId: ws.id });
+    else if (i.kind === "url") w = await b.call("window.open", { kind: "browser", input: { url: urlOf(target).href }, workspaceId: ws.id }); else w = await b.call("window.openTarget", { target: readablePath(b, target ?? "."), workspaceId: ws.id });
     if (!w) return "No window type shows that; nothing opened.";
     return `Opened ${w.kind} ${b.refs.of(w.id)} "${w.title}".`;
   },

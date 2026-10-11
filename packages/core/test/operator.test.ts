@@ -108,7 +108,10 @@ describe("the service", () => {
     runs = [];
     agentFns = [];
     const broadcast = (e: CoreEvent) => {
-      if (e.type === "operator.changed") events.push(e);
+      if (e.type !== "operator.changed") return;
+      events.push(e);
+      // Opening a URL asks first (its own test below): allowed here, so the others go on.
+      for (const i of e.items ?? []) if (i.kind === "tool" && i.tool === "open" && i.state === "waiting") queueMicrotask(() => op.answer(ws.id, i.id, true));
     };
     core.serve({ access: "local", send: (line) => {
       const m = JSON.parse(line) as { method?: string; params?: CoreEvent };
@@ -495,7 +498,7 @@ describe("the service", () => {
     op.send(ws.id, "go to wikipedia");
     await idle();
     expect(outs[0]).toMatch(/goes to https:\/\/wikipedia.org/);
-    expect(core.windows.others().filter((w) => w.kind === "browser").map((w) => w.state.url)).toEqual(["https://wikipedia.org"]);
+    expect(core.windows.others().filter((w) => w.kind === "browser").map((w) => w.state.url)).toEqual(["https://wikipedia.org/"]);
     expect(outs[1]).not.toContain("command");
     expect(outs[2]).toContain("in every workspace");
     expect(outs[2]).toContain("command 1");
@@ -533,7 +536,7 @@ describe("the service", () => {
     });
     op.send(ws.id, "tidy up");
     await idle();
-    expect(outs[0]).toBe("Docked the browser “https://thing.dev” on the right.");
+    expect(outs[0]).toBe("Docked the browser “https://thing.dev/” on the right.");
     expect(outs[1]).toMatch(/^Placed the terminal “.*” first\.$/);
     expect(outs[2]).toBe("The board shows as strip.");
     expect(outs[3]).toMatch(new RegExp(`^Moved the terminal “.*” to the workspace “${other.name}”\\.$`));
@@ -602,10 +605,25 @@ describe("remembered approvals", () => {
       expect(op.grants(ws.id)).toMatchObject([{ key: "type:pnpm test", label: "commands starting “pnpm test”" }]);
       // The same kind: no question.
       turns.push(async (r) => void (await exec(r, "type", { ref, text: "pnpm test packages/core" }, "t2")));
+      // A URL asks before going to its site; remembered, that site doesn't ask again (another one does).
+      turns.push(async (r) => {
+        await exec(r, "open", { kind: "url", target: "https://www.github.com/x" }, "u1");
+        await exec(r, "open", { kind: "url", target: "https://github.com/y" }, "u2");
+        await exec(r, "open", { kind: "url", target: "https://evil.example/?q=secret" }, "u3");
+      });
       op.send(ws.id, "again");
       await idle();
       expect(item("t2")).toMatchObject({ state: "done", remembered: "commands starting “pnpm test”" });
       expect(f.ptys.at(-1)!.written.join("")).toContain("pnpm test packages/core\r");
+      op.send(ws.id, "look things up");
+      await vi.waitFor(() => expect(item("u1")?.state).toBe("waiting"));
+      expect(item("u1")).toMatchObject({ ask: "Open github.com", exact: "https://www.github.com/x", offer: "opening pages on github.com" });
+      op.answer(ws.id, "u1", true, undefined, true);
+      await vi.waitFor(() => expect(item("u3")?.state).toBe("waiting"));
+      expect(item("u2")).toMatchObject({ state: "done", remembered: "opening pages on github.com" });
+      expect(item("u3")).toMatchObject({ ask: "Open evil.example", exact: "https://evil.example/?q=secret" });
+      op.answer(ws.id, "u3", false);
+      await idle();
       // Another kind still asks; a forgotten one asks again.
       op.revoke(ws.id, "type:pnpm test");
       turns.push(async (r) => void (await exec(r, "type", { ref, text: "pnpm test" }, "t3")));
@@ -613,7 +631,7 @@ describe("remembered approvals", () => {
       await vi.waitFor(() => expect(item("t3")?.state).toBe("waiting"));
       op.answer(ws.id, "t3", false);
       await idle();
-      expect(op.grants(ws.id)).toEqual([]);
+      expect(op.grants(ws.id).map((g) => g.key)).toEqual(["url:github.com"]);
     } finally {
       op.dispose();
       await core.close();

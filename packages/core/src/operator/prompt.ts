@@ -9,7 +9,7 @@ import path from "node:path";
 import { buildContext, type BuiltContext } from "../ai/context.ts";
 
 /** Raised with every change to RULES: conversations made with older ones get the new prompt on their next turn. */
-export const RULES_VERSION = "4";
+export const RULES_VERSION = "5";
 
 export const RULES = `You are the Operator in cmd, a macOS workbench where terminals, coding agents, browsers, editors and widgets sit side by side on a board. You run the person's workspace for them through tools, while they watch: every tool call shows on the board and in your chat with its "why".
 
