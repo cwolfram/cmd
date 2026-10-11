@@ -4,8 +4,8 @@
 // the Panel frame of the file browser's sidebar (a PanelHeader: a name that opens
 // a menu, a summary, actions shown on hover). Chip is the coloured project label.
 
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
-import { GLIDE_MS, reducedMotion, useFlip } from "./motion.ts";
+import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { timing, useFlip } from "./motion.ts";
 import { ICON, iconNode } from "./icon.tsx";
 import { StatusDot, type DotState } from "./status.tsx";
 
@@ -107,9 +107,9 @@ export function List({ nav, children }: { nav?: boolean; children: ReactNode }) 
   // Rows and sections, and a row's icon and text (a row growing to two lines recentres them).
   // While a section folds, the layout itself glides what's below it: measure, don't move;
   // and when it's done, take where things are as the new start.
-  const settle = useFlip(ref, { selector: PARTS, keyOf: partKey, leave: true, still: () => !!ref.current?.querySelector(".ui-list-rows[data-motion]") });
+  const settle = useFlip(ref, { selector: PARTS, keyOf: partKey, leave: true, still: () => !!ref.current?.getAnimations({ subtree: true }).some((a) => a.id === "fold") });
   return (
-    <div ref={ref} className="ui-list" data-nav={nav || undefined} onAnimationEnd={settle}>
+    <div ref={ref} className="ui-list" data-nav={nav || undefined}>
       <Settle.Provider value={settle}>{children}</Settle.Provider>
     </div>
   );
@@ -129,29 +129,46 @@ const Settle = createContext<(() => void) | null>(null);
  */
 export function ListSection({ title, count, open, onToggle, tone, flipKey, className, children, ...rest }: { title: ReactNode; count?: number; open?: boolean; onToggle?: () => void; tone?: "needs" | "danger"; flipKey?: string; className?: string; children?: ReactNode } & Omit<HTMLAttributes<HTMLElement>, "title" | "children">) {
   const shown = open !== false;
-  // Its rows stay while they fold, until the fold has played (not a timer: one that ends a frame
-  // early leaves the last pixels of it to jump); a fold that never plays ends after twice its time.
+  // Its rows stay while they fold, until the fold has played.
   const [present, setPresent] = useState(shown);
   if (shown && !present) setPresent(true);
-  const closing = !shown && present;
-  useEffect(() => {
-    if (!closing) return;
-    const t = setTimeout(() => setPresent(false), reducedMotion() ? 0 : 2 * GLIDE_MS);
-    return () => clearTimeout(t);
-  }, [closing]);
-  // Fold or unfold only when it's toggled, not as the list first renders; noticed in the
-  // render that toggles it, so the rows' first frame is already the fold's.
-  const [moving, setMoving] = useState(false);
-  const [was, setWas] = useState(shown);
-  if (was !== shown) (setWas(shown), setMoving(true));
-  // Its rows came, went or finished folding without the List rendering: tell it where things are.
+  const rows = useRef<HTMLDivElement>(null);
   const settle = useContext(Settle);
-  useLayoutEffect(() => settle?.(), [settle, present, moving]);
+  /** Rows were on screen at the last toggle (else they unfold from nothing). */
+  const had = useRef(present);
+  const first = useRef(true);
+  useLayoutEffect(() => {
+    const el = rows.current;
+    const fresh = !had.current;
+    had.current = true;
+    if (first.current) return void (first.current = false);
+    if (!el) return;
+    // From where the fold is now, whichever way it was going: toggling halfway turns it back.
+    const cs = getComputedStyle(el);
+    const from = fresh ? { height: "0px", paddingBottom: "0px", opacity: "0" } : { height: cs.height, paddingBottom: cs.paddingBottom, opacity: cs.opacity };
+    for (const a of el.getAnimations()) if (a.id === "fold") a.cancel();
+    // Its own size, unfolded (the padding is the gap after it).
+    const to = shown ? { height: `${el.getBoundingClientRect().height}px`, paddingBottom: getComputedStyle(el).paddingBottom, opacity: "1" } : { height: "0px", paddingBottom: "0px", opacity: "0" };
+    el.style.overflow = "hidden";
+    const fold = el.animate([from, to], timing("glide", { id: "fold", fill: "forwards" }));
+    fold.finished.then(
+      () => {
+        // Folded, it stays folded until its rows go (cancelling would show them for a frame).
+        if (!shown) return void ((had.current = false), setPresent(false));
+        fold.cancel();
+        el.style.overflow = "";
+        settle?.();
+      },
+      () => {},
+    );
+  }, [shown]);
+  // Its rows came or went without the List rendering: tell it where things are.
+  useLayoutEffect(() => settle?.(), [settle, present]);
   return (
     <section className={cls("ui-list-section", className)} data-key={flipKey ?? (typeof title === "string" ? `section:${title}` : undefined)} {...rest}>
       <ListHeading title={title} count={count} open={open} onToggle={onToggle} tone={tone} />
       {present && (
-        <div className="ui-list-rows" data-motion={moving ? "reveal" : undefined} data-closing={closing || undefined} onAnimationEnd={(e) => e.target === e.currentTarget && (closing ? setPresent(false) : setMoving(false))}>
+        <div ref={rows} className="ui-list-rows" data-closing={!shown || undefined}>
           {children}
         </div>
       )}

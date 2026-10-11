@@ -57,8 +57,6 @@ const LAYOUT: { file: string; selector: RegExp; why: string }[] = [
 const LAYOUT_KEYFRAMES: Record<string, string> = {
   "ui-reveal-in": "data-motion=reveal opens a bar to its height",
   "ui-reveal-out": "data-motion=reveal closes a bar",
-  "ui-rows-in": "a List section's rows unfold, their gap with them (frame.css)",
-  "ui-rows-out": "a List section's rows fold, their gap with them (frame.css)",
   "ui-progress": "the indeterminate progress bar sweeps",
 };
 

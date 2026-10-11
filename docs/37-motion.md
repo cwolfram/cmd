@@ -51,8 +51,8 @@ How windows, sidebars and workspaces move, why, and how it's measured. The engin
    sizes. Find bars open and close. A `List` (list.tsx; every list) moves as one:
    rows and sections that a render moved glide there, a row's icon and text with it when
    it grows to two lines, new rows fade in, removed ones fade out where they were, and a
-   section's rows fold and unfold on the glide (its gap with them), the sections below
-   following by layout. Toasts glide the same way (`useFlip`).
+   section's rows fold and unfold on the glide (its gap with them; toggled halfway, it
+   turns back from where it is), the sections below following by layout. Toasts glide the same way (`useFlip`).
    The selection ring changes with the dimming. Browser windows fade in over the
    well instead of flashing white.
 10. **Content is laid out once, at its final size, as a move starts**, so moves end

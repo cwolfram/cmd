@@ -610,6 +610,8 @@ const heading = win.locator(".navigator .ui-list-heading.collapsible").first();
 if (await heading.count()) {
   await scenario("list: fold a section", () => heading.click(), { settle: 600 });
   await scenario("list: unfold it", () => heading.click(), { settle: 600 });
+  // Toggled again halfway: it turns back from where it is (one change of direction allowed).
+  await scenario("list: fold, then unfold halfway", async () => (await heading.click(), await win.waitForFunction(() => [...document.querySelectorAll(".navigator .ui-list-rows[data-closing]")].some((el) => el.getAnimations().some((x) => x.id === "fold" && Number(x.currentTime) > 120))), await heading.click()), { settle: 700, reversals: 1 });
 }
 await scenario("workspace menu: open", () => win.locator(".workspace-trigger").first().click());
 await scenario("workspace menu: close", () => win.keyboard.press("Escape"));
