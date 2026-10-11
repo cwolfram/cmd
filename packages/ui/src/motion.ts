@@ -154,44 +154,59 @@ interface FlipOptions {
   keyOf?: (el: HTMLElement) => string | null | undefined;
   /** New rows (after the first render) fade in. Default true. */
   enter?: boolean;
+  /** Rows that a render removed fade out where they were (a copy over the root, which must be positioned), while the rows below glide up. Default false. */
+  leave?: boolean;
+  /** While true, rows are only measured, not moved: something else is moving them by layout (a section folding). */
+  still?: () => boolean;
 }
 
 /**
  * After every render, rows under `root` that moved (inserted above, reordered, a row
- * above growing) glide from where they were; new ones fade in. Interrupted, a row turns
- * from where it is; rows that nest move relative to their parent. Positions are kept
- * relative to the root's content, so scrolling it isn't a move.
+ * above growing) glide from where they were; new ones fade in, and with `leave` gone
+ * ones fade out where they were. Interrupted, a row turns from where it is; rows that
+ * nest move relative to their parent. Positions are kept relative to the root's
+ * content, so scrolling it isn't a move.
  */
-export function useFlip(root: RefObject<HTMLElement | null>, { selector, keyOf = (el) => el.dataset.key, enter = true }: FlipOptions): void {
+export function useFlip(root: RefObject<HTMLElement | null>, { selector, keyOf = (el) => el.dataset.key, enter = true, leave = false, still }: FlipOptions): () => void {
   const last = useRef<Map<string, { x: number; y: number }> | null>(null);
-  useLayoutEffect(() => {
+  /** Last render's rows, for the ones a render removes (leave). */
+  const lastEls = useRef<Map<string, { el: HTMLElement; w: number; h: number }>>(new Map());
+  /** Measure the rows (and move the ones that moved, unless `quiet`). */
+  const run = (quiet: boolean) => {
     const box = root.current;
     if (!box) return;
     const els = [...box.querySelectorAll<HTMLElement>(selector)];
+    // Only measuring: glides under way go on, and their offsets are taken out of the measure.
+    const hold = quiet || !!still?.();
     // Where each is shown now (a glide under way included), then where it's laid out.
     const shown = new Map<HTMLElement, { x: number; y: number }>();
     for (const el of els) {
+      if (el.dataset.ghost !== undefined) continue;
       const running = el.getAnimations().filter((a) => a.id === "flip");
       if (!running.length) continue;
       const t = getComputedStyle(el).transform;
       const m = new DOMMatrixReadOnly(t === "none" ? undefined : t);
       shown.set(el, { x: m.m41, y: m.m42 });
-      running.forEach((a) => a.cancel());
+      if (!hold) running.forEach((a) => a.cancel());
     }
     const b = box.getBoundingClientRect();
     const at = (el: HTMLElement) => {
       const r = el.getBoundingClientRect();
-      return { x: r.left - b.left + box.scrollLeft, y: r.top - b.top + box.scrollTop };
+      const off = hold ? shown.get(el) : undefined;
+      return { x: r.left - b.left + box.scrollLeft - (off?.x ?? 0), y: r.top - b.top + box.scrollTop - (off?.y ?? 0) };
     };
     const next = new Map<string, { x: number; y: number }>();
     const moved = new Map<HTMLElement, { x: number; y: number }>();
     const prev = last.current;
-    const animate = prev && !reducedMotion();
+    const animate = prev && !hold && !reducedMotion();
+    const nextEls = new Map<string, { el: HTMLElement; w: number; h: number }>();
     for (const el of els) {
+      if (el.dataset.ghost !== undefined) continue;
       const key = keyOf(el);
       if (!key) continue;
       const now = at(el);
       next.set(key, now);
+      if (leave) nextEls.set(key, { el, w: el.offsetWidth, h: el.offsetHeight });
       if (!animate) continue;
       const was = prev.get(key);
       if (!was) {
@@ -209,6 +224,28 @@ export function useFlip(root: RefObject<HTMLElement | null>, { selector, keyOf =
       if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
       el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], timing("glide", { id: "flip" }));
     }
+    if (leave && animate) {
+      // What React removed is detached but whole: put it back over the root where it was, and fade it out.
+      for (const [key, { el, w, h }] of lastEls.current) {
+        // Gone with what folded it away (a section's rows, closing) is gone already.
+        if (next.has(key) || el.isConnected || el.closest("[data-closing]")) continue;
+        const was = prev.get(key);
+        // Inside a row that's leaving too: that one's ghost carries it.
+        const parent = el.parentElement?.closest<HTMLElement>(selector);
+        if (!was || (parent && lastEls.current.has(keyOf(parent) ?? "") && !next.has(keyOf(parent) ?? ""))) continue;
+        el.dataset.ghost = "";
+        el.setAttribute("aria-hidden", "true");
+        Object.assign(el.style, { position: "absolute", left: `${was.x}px`, top: `${was.y}px`, width: `${w}px`, height: `${h}px`, margin: "0", pointerEvents: "none", transform: "" });
+        box.append(el);
+        el.animate([{ opacity: 1 }, { opacity: 0 }], timing("exit", { id: "flip-out", fill: "forwards" })).finished.then(() => el.remove(), () => el.remove());
+      }
+    }
+    if (leave) lastEls.current = nextEls;
     last.current = next;
-  });
+  };
+  useLayoutEffect(() => run(false));
+  // What the caller uses to say "the rows are where they are now" after a change it moved itself.
+  const settle = useRef(() => run(true));
+  settle.current = () => run(true);
+  return useRef(() => settle.current()).current;
 }

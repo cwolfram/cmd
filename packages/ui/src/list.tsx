@@ -4,7 +4,8 @@
 // the Panel frame of the file browser's sidebar (a PanelHeader: a name that opens
 // a menu, a summary, actions shown on hover). Chip is the coloured project label.
 
-import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { GLIDE_MS, reducedMotion, useFlip } from "./motion.ts";
 import { ICON, iconNode } from "./icon.tsx";
 import { StatusDot, type DotState } from "./status.tsx";
 
@@ -96,21 +97,64 @@ export function ListHeading({ title, count, open, onToggle, tone }: { title: Rea
  * stand apart by --section-gap after one that shows its rows, collapsed ones stack.
  * `nav`: the pages beside a page (Settings' sidebar), highlights on the inset like the
  * field above them.
+ *
+ * It moves as one: rows and sections that a render moved glide there (rows keyed by
+ * flipKey, sections by their title), new ones fade in, removed ones fade out where they
+ * were, and a section's rows fold and unfold on the glide. Views need nothing for it.
  */
 export function List({ nav, children }: { nav?: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Rows and sections, and a row's icon and text (a row growing to two lines recentres them).
+  // While a section folds, the layout itself glides what's below it: measure, don't move;
+  // and when it's done, take where things are as the new start.
+  const settle = useFlip(ref, { selector: PARTS, keyOf: partKey, leave: true, still: () => !!ref.current?.querySelector(".ui-list-rows[data-motion]") });
   return (
-    <div className="ui-list" data-nav={nav || undefined}>
-      {children}
+    <div ref={ref} className="ui-list" data-nav={nav || undefined} onAnimationEnd={settle}>
+      <Settle.Provider value={settle}>{children}</Settle.Provider>
     </div>
   );
 }
 
-/** A heading and its rows; collapsed (open false), only the heading. Other attributes (role, aria-label) go on the section. */
-export function ListSection({ title, count, open, onToggle, tone, className, children, ...rest }: { title: ReactNode; count?: number; open?: boolean; onToggle?: () => void; tone?: "needs" | "danger"; className?: string; children?: ReactNode } & Omit<HTMLAttributes<HTMLElement>, "title" | "children">) {
+const PARTS = "[data-key], [data-key] > .ui-mark, [data-key] > .ui-list-row-content";
+/** A row's or section's key; a row's icon and text are keyed by their row's. */
+const partKey = (el: HTMLElement) => el.dataset.key ?? (el.parentElement?.dataset.key && `${el.parentElement.dataset.key}/${el.classList[0]}`);
+
+/** A List's "rows are where they are now", for a section that moved them itself (folding). */
+const Settle = createContext<(() => void) | null>(null);
+
+/**
+ * A heading and its rows; collapsed (open false), only the heading. Opening and closing
+ * it unfolds and folds its rows on the glide. Its identity in its List's moves is
+ * `flipKey`, else its title. Other attributes (role, aria-label) go on the section.
+ */
+export function ListSection({ title, count, open, onToggle, tone, flipKey, className, children, ...rest }: { title: ReactNode; count?: number; open?: boolean; onToggle?: () => void; tone?: "needs" | "danger"; flipKey?: string; className?: string; children?: ReactNode } & Omit<HTMLAttributes<HTMLElement>, "title" | "children">) {
+  const shown = open !== false;
+  // Its rows stay while they fold, until the fold has played (not a timer: one that ends a frame
+  // early leaves the last pixels of it to jump); a fold that never plays ends after twice its time.
+  const [present, setPresent] = useState(shown);
+  if (shown && !present) setPresent(true);
+  const closing = !shown && present;
+  useEffect(() => {
+    if (!closing) return;
+    const t = setTimeout(() => setPresent(false), reducedMotion() ? 0 : 2 * GLIDE_MS);
+    return () => clearTimeout(t);
+  }, [closing]);
+  // Fold or unfold only when it's toggled, not as the list first renders; noticed in the
+  // render that toggles it, so the rows' first frame is already the fold's.
+  const [moving, setMoving] = useState(false);
+  const [was, setWas] = useState(shown);
+  if (was !== shown) (setWas(shown), setMoving(true));
+  // Its rows came, went or finished folding without the List rendering: tell it where things are.
+  const settle = useContext(Settle);
+  useLayoutEffect(() => settle?.(), [settle, present, moving]);
   return (
-    <section className={cls("ui-list-section", className)} {...rest}>
+    <section className={cls("ui-list-section", className)} data-key={flipKey ?? (typeof title === "string" ? `section:${title}` : undefined)} {...rest}>
       <ListHeading title={title} count={count} open={open} onToggle={onToggle} tone={tone} />
-      {open !== false && <div className="ui-list-rows">{children}</div>}
+      {present && (
+        <div className="ui-list-rows" data-motion={moving ? "reveal" : undefined} data-closing={closing || undefined} onAnimationEnd={(e) => e.target === e.currentTarget && (closing ? setPresent(false) : setMoving(false))}>
+          {children}
+        </div>
+      )}
     </section>
   );
 }

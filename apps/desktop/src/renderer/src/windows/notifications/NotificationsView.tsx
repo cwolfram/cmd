@@ -5,8 +5,8 @@
 // every workspace's; those about nothing in particular show in every workspace. A click
 // goes to the terminal or window it is about.
 
-import { EmptyState, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Panel, PanelBody, useFlip } from "@cmd/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { EmptyState, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Panel, PanelBody } from "@cmd/ui";
+import { useEffect, useMemo, useState } from "react";
 import { notificationOf, type AppNotification } from "@cmd/protocol";
 import { copy } from "../../lib/actions.ts";
 import { showContextMenu } from "../../lib/context.ts";
@@ -57,8 +57,6 @@ export function NotificationsView({ win }: WindowViewProps) {
   const s = useStore();
   const all = useNotifications();
   // New ones arrive at the top: the rest glide down, the new one fades in.
-  const listRef = useRef<HTMLDivElement>(null);
-  useFlip(listRef, { selector: "[data-key]" });
   const scope = scopeOf(win.state.scope);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -92,32 +90,32 @@ export function NotificationsView({ win }: WindowViewProps) {
   return (
     <Panel>
       <PanelBody>
-        <div ref={listRef}>
-        {groups.map((g) => (
-          <ListSection key={g.title} title={g.title} count={g.items.length}>
-            {g.items.map((n) => (
-              <ListRow
-                key={n.id}
-                flipKey={n.id}
-                tip={n.body.length > 60 ? n.body : undefined}
-                onClick={() => open(n)}
-                onContextMenu={() => rowMenu(n)}
-              >
-                <ListRowIcon icon={ICONS[n.source] ?? "bell"} />
-                <ListRowContent title={n.title} detail={n.body || " "} tone={n.urgent && n.source !== "timer" ? "needs" : undefined} />
-                <ListRowEnd>
-                  <ListValue>{n.at >= today ? new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : shortAgo(n.at, now)}</ListValue>
-                </ListRowEnd>
-              </ListRow>
-            ))}
-          </ListSection>
-        ))}
+        <List>
+          {groups.map((g) => (
+            <ListSection key={g.title} title={g.title} count={g.items.length}>
+              {g.items.map((n) => (
+                <ListRow
+                  key={n.id}
+                  flipKey={n.id}
+                  tip={n.body.length > 60 ? n.body : undefined}
+                  onClick={() => open(n)}
+                  onContextMenu={() => rowMenu(n)}
+                >
+                  <ListRowIcon icon={ICONS[n.source] ?? "bell"} />
+                  <ListRowContent title={n.title} detail={n.body || " "} tone={n.urgent && n.source !== "timer" ? "needs" : undefined} />
+                  <ListRowEnd>
+                    <ListValue>{n.at >= today ? new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : shortAgo(n.at, now)}</ListValue>
+                  </ListRowEnd>
+                </ListRow>
+              ))}
+            </ListSection>
+          ))}
+        </List>
         {shown.length === 0 && (
           <EmptyState compact icon="bell" title="No notifications">
             When an agent needs you or a long command finishes, it shows up here, even if you missed it.
           </EmptyState>
         )}
-        </div>
       </PanelBody>
     </Panel>
   );

@@ -178,16 +178,24 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 
 /* Rows in a view (List, ListSection, ListRow; list.tsx): a little room above and below; the sides are the rows' own. */
 .ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--list-pad)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
-.ui-list-rows { display: contents; }
+.ui-list-rows { display: flow-root; } /* a box: it folds (data-motion reveal) and carries its section's gap */
 /* Nav: the pages beside a page; a selected row's pill lines up with the field above it. */
 .ui-list[data-nav] { --list-inset: var(--inset); }
 /* Sections stand apart: --section-gap after one that shows its rows, and around a ListGroup and
-   callouts; a collapsed one (no rows) is followed closely, so collapsed headings stack. */
+   callouts; collapsed headings stack closely. The gap after an open section is its rows' own
+   (padding), so it folds away with them. */
+.ui-list { position: relative; } /* rows that leave fade out over it, where they were */
 .ui-list > * + * { margin-top: var(--section-gap); }
-.ui-list > .ui-list-section:not(:has(> .ui-list-rows)) + * { margin-top: var(--space-1-5); }
-/* Rows are display: contents, so the gaps above a section's or a ListGroup's rows go on their first row. */
+.ui-list > .ui-list-section + * { margin-top: var(--space-1-5); }
+.ui-list > .ui-list-section:has(+ .ui-list-section) > .ui-list-rows { padding-bottom: calc(var(--section-gap) - var(--space-1-5)); } /* (not :last-child: a row fading out is appended after them) */
 .ui-list-heading + .ui-list-rows > :first-child { margin-top: var(--heading-gap); }
 .ui-list > * + .ui-list-rows > :first-child { margin-top: var(--section-gap); }
+/* Folding and unfolding a section: its rows' height on the glide, the sections below with it. */
+.ui-list-rows[data-motion="reveal"] { animation-name: ui-rows-in; animation-duration: var(--glide-dur); animation-timing-function: var(--glide); }
+.ui-list-rows[data-motion="reveal"][data-closing] { animation-name: ui-rows-out; animation-timing-function: var(--glide); }
+/* The gap after the rows (their padding) folds with them. */
+@keyframes ui-rows-in { from { height: 0; padding-bottom: 0; opacity: 0; } }
+@keyframes ui-rows-out { to { height: 0; padding-bottom: 0; opacity: 0; } }
 /* What isn't rows in a list (a Callout) sits on the inset, the top too (the list's padding is the rows'). */
 .ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row) { margin-inline: var(--inset); }
 .ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row):first-child { margin-top: var(--list-pad); }

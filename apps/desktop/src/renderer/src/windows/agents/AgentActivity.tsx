@@ -4,8 +4,8 @@
 // the two never disagree; a click goes to the agent's terminal. The counts are
 // the title bar's status, and its menu switches the scope.
 
-import { Button, type DotState, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Stack, Text, useFlip, View } from "@cmd/ui";
-import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
+import { Button, type DotState, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Stack, Text, View } from "@cmd/ui";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { bucketOf, type Agent } from "@cmd/protocol";
 import { newAgent, selectPane } from "../../lib/actions.ts";
 import { cmd } from "../../lib/bridge.ts";
@@ -35,8 +35,6 @@ export function AgentActivity({ win }: WindowViewProps) {
   }, []);
 
   // Agents re-sort as their state changes: they glide to their new place.
-  const listRef = useRef<HTMLDivElement>(null);
-  useFlip(listRef, { selector: "[data-key]" });
   const { roots, children } = useMemo(() => {
     const shown = [...s.agents.values()].filter((a) => scope === "all" || a.workspaceId === win.workspaceId);
     const ids = new Set(shown.map((a) => a.id));
@@ -96,7 +94,7 @@ export function AgentActivity({ win }: WindowViewProps) {
   };
   for (const a of roots) add(a, 0);
 
-  return <AgentActivityView lines={lines} scope={scope} listRef={listRef} onNew={() => void newAgent("claude")} />;
+  return <AgentActivityView lines={lines} scope={scope} onNew={() => void newAgent("claude")} />;
 }
 
 /** One agent's row: what the sidebar says about it (fieldsOf), where it works, since when. */
@@ -117,10 +115,9 @@ export interface ActivityLine {
 }
 
 /** The list, drawn (AgentActivity.story.tsx shows every state). */
-export function AgentActivityView({ lines, scope, listRef, onNew }: { lines: ActivityLine[]; scope: "all" | "workspace"; listRef?: Ref<HTMLDivElement>; onNew: () => void }) {
+export function AgentActivityView({ lines, scope, onNew }: { lines: ActivityLine[]; scope: "all" | "workspace"; onNew: () => void }) {
   return (
     <View
-      bodyRef={listRef}
       state={
         lines.length
           ? null

@@ -375,11 +375,22 @@ function analyse(rec, { expect = "glide", reversals: allowed = 0 } = {}) {
   const byEl = new Map();
   for (const sh of rec.shifts ?? []) {
     if (sh.t < frames[0].t) continue;
-    const x = byEl.get(sh.el) ?? { n: 0, d: 0, dy: 0, dh: 0, path: 0 };
+    const x = byEl.get(sh.el) ?? { n: 0, d: 0, dy: 0, dh: 0, path: 0, from: sh.t, to: sh.t };
     x.n++;
     x.path += sh.d;
+    x.to = sh.t;
     if (sh.d > x.d) Object.assign(x, { d: sh.d, dy: sh.dy, dh: sh.dh });
     byEl.set(sh.el, x);
+  }
+  // The API names one element per shift, not always the same one: a section gliding by layout
+  // (a List folding the one above it) can have a frame of its glide reported on a row inside it.
+  // A few shifts on an element inside one that glides, while it glides, are that glide.
+  const last = (el) => el.split(" > ").at(-1);
+  const gliding = [...byEl].filter(([, x]) => x.n >= 4 && x.d <= 0.5 * x.path);
+  for (const [el, x] of [...byEl]) {
+    if (x.n >= 4) continue;
+    const inside = gliding.find(([g, gx]) => g !== el && el.split(" > ").slice(0, -1).includes(last(g)) && x.from >= gx.from - 20 && x.to <= gx.to + 50);
+    if (inside) byEl.delete(el);
   }
   // A shift spread over many frames is something gliding by layout (a sheet's size, a slot's
   // width): only one frame doing most of an element's move is a jump.
@@ -593,6 +604,12 @@ const pane = (await call("pane.list"))[0];
 if (pane) {
   await scenario("terminal: a command runs", () => call("pane.write", { paneId: pane.id, data: "sleep 0.3; echo done\r" }), { settle: 1200 });
   await scenario("notification", () => call("notify.send", { paneId: pane.id, title: "Build", body: "done" }), { settle: 1200 });
+}
+// A list's section folds and unfolds on the glide (list.tsx), the sections below with it.
+const heading = win.locator(".navigator .ui-list-heading.collapsible").first();
+if (await heading.count()) {
+  await scenario("list: fold a section", () => heading.click(), { settle: 600 });
+  await scenario("list: unfold it", () => heading.click(), { settle: 600 });
 }
 await scenario("workspace menu: open", () => win.locator(".workspace-trigger").first().click());
 await scenario("workspace menu: close", () => win.keyboard.press("Escape"));

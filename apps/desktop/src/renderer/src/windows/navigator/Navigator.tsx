@@ -4,7 +4,7 @@
 // Windows, Widgets, Recent: past sessions and closed windows). It reads App's rows and callbacks
 // through NavigatorContext, so every Navigator window shows the same.
 
-import { Button, EmptyState, List, ListSection, ToolbarSearchField, useFlip, View, WindowToolbar } from "@cmd/ui";
+import { Button, EmptyState, List, ListSection, ToolbarSearchField, View, WindowToolbar } from "@cmd/ui";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ClosedWindow, PaneId, SearchHit, SearchStatus, SessionInfo, WindowId, WorkspaceId } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -45,12 +45,6 @@ const TITLES: Record<Section, string> = { needs: "Needs you", agents: "Agents", 
 function Navigator(p: NavigatorData) {
   countRender("Navigator");
   const list = useRef<HTMLDivElement>(null);
-  // Rows that move (one inserted or gone above, a group they change to, a row above
-  // growing a detail line) glide there, section headings too; new ones fade in.
-  useFlip(list, {
-    selector: "[data-key], .sb-section > :first-child",
-    keyOf: (el) => el.dataset.key ?? [...(el.parentElement?.classList ?? [])].find((c) => c.startsWith("sb-") && c !== "sb-section"),
-  });
   const rows = useFrozenOrder(p.rows, list);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {

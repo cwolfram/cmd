@@ -3,6 +3,7 @@
 // filter, describing, AI not set up, a file it can't read, a run in another
 // checkout, nothing to run, no folder, loading, an error, and every size.
 
+import { useState } from "react";
 import type { ActionRun, ActionsList, PaneId, WorkspaceAction } from "@cmd/protocol";
 import { AllSizes, RefWindow, type SizeName } from "../../reference/RefWindow.tsx";
 import { Actions, type ActionsProps } from "./ActionsView.tsx";
@@ -62,9 +63,12 @@ const noop = () => {};
 const base: ActionsProps = { root: "/Users/jan/src/cmd", list: list(), error: null, now: NOW, toggled: new Set(), onToggle: noop, showWhere: false, offerAi: false, onSetUpAi: noop, onRun: noop, onStop: noop, onMenu: noop, onOpenUrl: noop, onShow: noop };
 
 function W({ size = "regular", ...p }: Partial<ActionsProps> & { size?: SizeName }) {
+  // Sections open and close, as in the app.
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const onToggle = (key: string) => setToggled((t) => (t.has(key) ? new Set([...t].filter((k) => k !== key)) : new Set([...t, key])));
   return (
     <RefWindow icon="play.rectangle" name="Workspace Actions · cmd" size={size}>
-      <Actions {...base} {...p} />
+      <Actions {...base} toggled={toggled} onToggle={onToggle} {...p} />
     </RefWindow>
   );
 }
