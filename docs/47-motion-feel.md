@@ -32,7 +32,7 @@ Ten long frames (100–170 ms of script) during the run pause the glides (the cl
 ## What to build, in order
 
 1. **The hand-off** (principle 2): pointer velocity into TileMotion on drop, from the painted rect. Fixes the flick and drag scenarios; add a "throw a window" scenario that checks the window keeps moving the way it was thrown.
-2. **Lists** (6). Built 2026-10-11: FLIP in `List` for rows, sections and a row's parts, rows that leave fade out where they were, sections fold and unfold on the glide; `list: fold a section` / `list: unfold it` in the harness, and `notification` passes. Not yet: the palette on `List`.
+2. **Lists** (6). Built 2026-10-11: FLIP in `List` for rows and sections (a row's highlight, icon and text as one; a row's height glides), measured before the commit and keeping its speed when turned (2026-10-11, the second pass: text slid off its highlight and rows jumped during folds), rows that leave fade out where they were, sections fold and unfold on the glide; `list: fold a section` / `list: unfold it` in the harness, and `notification` passes. Not yet: the palette on `List`.
 3. **Anchored overlays** (3) and **reversible presence** (2): `transform-origin` from the popover's placement, presence on Web Animations.
 4. **Distance-aware response** (4): one function in `motion.ts` (`responseFor(px)`), used by TileMotion and `glide()`; CSS keeps the fixed `--glide` for what it animates. Tried in the Workbench with Jan before it lands: it's a feel change everywhere.
 5. **Press feedback and stagger** (1, 5).

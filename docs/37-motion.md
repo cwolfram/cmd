@@ -49,10 +49,14 @@ How windows, sidebars and workspaces move, why, and how it's measured. The engin
    pickers fade out (`usePresence` in `@cmd/ui`; a sheet stays mounted through it in a
    `Presence`, then runs none of its hooks) and the palette glides between
    sizes. Find bars open and close. A `List` (list.tsx; every list) moves as one:
-   rows and sections that a render moved glide there, a row's icon and text with it when
-   it grows to two lines, new rows fade in, removed ones fade out where they were, and a
+   rows and sections that a render moved glide there, a row is one piece (its highlight,
+   icon and text; growing to two lines, its height glides and the rows below follow by
+   layout), new rows fade in, removed ones fade out where they were shown, and a
    section's rows fold and unfold on the glide (its gap with them; toggled halfway, it
-   turns back from where it is), the sections below following by layout. Toasts glide the same way (`useFlip`).
+   turns back from where it is), the sections below following by layout. `useFlip` reads
+   where rows are shown as the render runs, before React changes the page, so a glide
+   under way, a parent's or a fold by layout is where it starts from, and a row turned by
+   another render carries on at the speed it had. Toasts glide the same way.
    The selection ring changes with the dimming. Browser windows fade in over the
    well instead of flashing white.
 10. **Content is laid out once, at its final size, as a move starts**, so moves end

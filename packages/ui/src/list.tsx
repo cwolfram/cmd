@@ -4,7 +4,7 @@
 // the Panel frame of the file browser's sidebar (a PanelHeader: a name that opens
 // a menu, a summary, actions shown on hover). Chip is the coloured project label.
 
-import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type MouseEvent, type ReactNode } from "react";
 import { timing, useFlip } from "./motion.ts";
 import { ICON, iconNode } from "./icon.tsx";
 import { StatusDot, type DotState } from "./status.tsx";
@@ -104,23 +104,14 @@ export function ListHeading({ title, count, open, onToggle, tone }: { title: Rea
  */
 export function List({ nav, children }: { nav?: boolean; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  // Rows and sections, and a row's icon and text (a row growing to two lines recentres them).
-  // While a section folds, the layout itself glides what's below it: measure, don't move;
-  // and when it's done, take where things are as the new start.
-  const settle = useFlip(ref, { selector: PARTS, keyOf: partKey, leave: true, still: () => !!ref.current?.getAnimations({ subtree: true }).some((a) => a.id === "fold") });
+  // Rows and sections; a row's icon and text move with it.
+  useFlip(ref, { selector: "[data-key]", leave: true });
   return (
     <div ref={ref} className="ui-list" data-nav={nav || undefined}>
-      <Settle.Provider value={settle}>{children}</Settle.Provider>
+      {children}
     </div>
   );
 }
-
-const PARTS = "[data-key], [data-key] > .ui-mark, [data-key] > .ui-list-row-content";
-/** A row's or section's key; a row's icon and text are keyed by their row's. */
-const partKey = (el: HTMLElement) => el.dataset.key ?? (el.parentElement?.dataset.key && `${el.parentElement.dataset.key}/${el.classList[0]}`);
-
-/** A List's "rows are where they are now", for a section that moved them itself (folding). */
-const Settle = createContext<(() => void) | null>(null);
 
 /**
  * A heading and its rows; collapsed (open false), only the heading. Opening and closing
@@ -133,7 +124,6 @@ export function ListSection({ title, count, open, onToggle, tone, flipKey, class
   const [present, setPresent] = useState(shown);
   if (shown && !present) setPresent(true);
   const rows = useRef<HTMLDivElement>(null);
-  const settle = useContext(Settle);
   /** Rows were on screen at the last toggle (else they unfold from nothing). */
   const had = useRef(present);
   const first = useRef(true);
@@ -157,13 +147,10 @@ export function ListSection({ title, count, open, onToggle, tone, flipKey, class
         if (!shown) return void ((had.current = false), setPresent(false));
         fold.cancel();
         el.style.overflow = "";
-        settle?.();
       },
       () => {},
     );
   }, [shown]);
-  // Its rows came or went without the List rendering: tell it where things are.
-  useLayoutEffect(() => settle?.(), [settle, present]);
   return (
     <section className={cls("ui-list-section", className)} data-key={flipKey ?? (typeof title === "string" ? `section:${title}` : undefined)} {...rest}>
       <ListHeading title={title} count={count} open={open} onToggle={onToggle} tone={tone} />

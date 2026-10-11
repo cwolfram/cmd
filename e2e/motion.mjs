@@ -160,6 +160,21 @@ await win.evaluate(() => {
         o: cs.visibility === "hidden" ? 0 : +cs.opacity,
       };
     }
+    // The Navigator's rows (List, useFlip), as windows of their own: the row's box is its
+    // highlight, its content is its text. The content is read from the row's middle (rows
+    // centre it), so a row growing to two lines with its text keeps one offset, and text
+    // sliding away from its highlight is drift.
+    for (const el of document.querySelectorAll(".navigator .ui-list-row[data-key]")) {
+      // Short, keeping a prefix ("c-<window>", a closed window's row, isn't its open row).
+      const key = el.dataset.key.length > 36 ? el.dataset.key.slice(0, -36) + el.dataset.key.slice(-6) : el.dataset.key.slice(-6);
+      const r = el.getBoundingClientRect();
+      const c = el.querySelector(":scope > .ui-list-row-content")?.getBoundingClientRect();
+      frame.tiles[`row:${key}`] = {
+        x: null, r: [r.left, r.top, r.width, r.height], k: 1, dock: false,
+        c: c ? [c.left, c.top + c.height / 2 - r.height / 2, c.width, c.height] : null,
+        o: opacityOf(el),
+      };
+    }
     frame.chrome = {};
     for (const sel of CHROME)
       document.querySelectorAll(sel).forEach((el, i) => {
@@ -209,6 +224,9 @@ await win.evaluate(() => {
           // resize around the workspace's name while their content stays put.
           if (el.matches(".main, .windows-scroller, .windows-track, .topbar-center, .topbar-trail, .topbar-lead")) continue;
           if (el.closest(".dock")?.getAnimations().length) continue;
+          // A list row laid out somewhere new and drawn where it was, gliding there (useFlip):
+          // the API reports its layout's move, but what's seen is the row's frames, probed above.
+          if (el.closest(".ui-list [data-key]")?.getAnimations().some((a) => a.id?.startsWith("flip"))) continue;
           const a = src.previousRect;
           const b = src.currentRect;
           const d = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.width - b.width), Math.abs(a.height - b.height));
@@ -604,6 +622,40 @@ const pane = (await call("pane.list"))[0];
 if (pane) {
   await scenario("terminal: a command runs", () => call("pane.write", { paneId: pane.id, data: "sleep 0.3; echo done\r" }), { settle: 1200 });
   await scenario("notification", () => call("notify.send", { paneId: pane.id, title: "Build", body: "done" }), { settle: 1200 });
+}
+// The Navigator's rows move (List, useFlip): a window that changes goes to the top of its
+// section, the selected one too, its highlight and text as one. The pointer stays off the
+// list (hovering it holds the order).
+await win.mouse.move(900, 500);
+const rowKeys = () => win.evaluate(() => [...document.querySelectorAll(".navigator .sb-windows .ui-list-row[data-key]")].map((el) => el.dataset.key));
+const textWins = new Set((await call("window.list")).filter((w) => w.kind !== "terminal" && w.kind !== "navigator").map((w) => w.id));
+const movable = async () => (await rowKeys()).filter((k) => textWins.has(k));
+const bump = (id) => call("window.update", { id, title: `moved ${Date.now() % 1000}` });
+if ((await movable()).length >= 3) {
+  const last = (await movable()).at(-1);
+  await win.evaluate((id) => window.__cmdSelect(id), last);
+  await sleep(500);
+  await scenario("list: the selected row moves to the top", () => bump(last), { settle: 800 });
+  await scenario("list: a row moves above the selected one", async () => bump((await movable()).at(-1)), { settle: 800 });
+  // Retargeted while gliding: each row carries on from where it is (it may turn once or twice).
+  await scenario("list: rows reorder three times quickly", async () => {
+    for (let i = 0; i < 3; i++) await bump((await movable()).at(-1)), await sleep(110);
+  }, { settle: 900, reversals: 2 });
+}
+// A row growing to two lines (a status under its name), selected: its highlight grows with its text.
+if (pane) {
+  await win.evaluate((id) => window.__cmdSelect(id), pane.id);
+  await sleep(400);
+  await scenario("list: the selected row grows to two lines", () => call("notify.send", { paneId: pane.id, title: "Build", body: "done" }), { settle: 900 });
+}
+// A section folding while rows elsewhere move: they still glide.
+await call("window.open", { kind: "timer" }).catch(() => {});
+await sleep(600);
+const widgets = win.locator(".navigator .sb-widgets .ui-list-heading.collapsible");
+if ((await widgets.count()) && (await movable()).length >= 2) {
+  await scenario("list: a row moves while a section folds", async () => (await widgets.dispatchEvent("click"), await sleep(60), await bump((await movable()).at(-1))), { settle: 900, reversals: 1 });
+  await widgets.dispatchEvent("click");
+  await sleep(700);
 }
 // A list's section folds and unfolds on the glide (list.tsx), the sections below with it.
 const heading = win.locator(".navigator .ui-list-heading.collapsible").first();
