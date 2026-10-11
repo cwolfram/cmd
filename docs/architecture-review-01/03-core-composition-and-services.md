@@ -266,7 +266,7 @@ Lambdas stay only where they adapt (the `onCall` recorder, `transcript: (a) => c
 
 ### AR1-03-09 · Test `Store` and `TimerAlarms` directly
 
-- **Status:** open
+- **Status:** in progress (data-cleanups)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/store.ts`, `packages/core/src/timers.ts`, `packages/core/test/`
