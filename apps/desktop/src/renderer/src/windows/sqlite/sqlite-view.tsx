@@ -213,7 +213,7 @@ interface TabBar {
 function Overview({ schema, onBar }: { schema: SqliteSchema; onBar: (b: TabBar) => void }) {
   useEffect(() => onBar({}), [onBar]);
   return (
-    <Stack pad="inset" gap="xl">
+    <Stack pad="inset" gap={4}>
       <Panes>
         <Pane title="Database">
           <KeyValue
@@ -333,7 +333,7 @@ function StructureTab({ schema, table, onBar }: { schema: SqliteSchema; table: S
     [table, indexes.length, triggers.length, onBar],
   );
   return (
-    <Stack gap="none">
+    <Stack gap={0}>
       <DataGrid
         mono
         columns={[
@@ -344,7 +344,7 @@ function StructureTab({ schema, table, onBar }: { schema: SqliteSchema; table: S
         rows={rows}
       />
       {(indexes.length > 0 || triggers.length > 0 || table.sql) && (
-        <Stack pad="inset" gap="xl">
+        <Stack pad="inset" gap={4}>
           {indexes.length > 0 && (
             <Pane title="Indexes">
               <KeyValue mono items={indexes.map((i) => [i.name, `${i.unique ? "unique · " : ""}${i.columns.join(", ")}`])} />
@@ -430,7 +430,7 @@ function QueryTab({ win, file, version, onBar, update }: { win: WindowViewProps[
 
   return (
     <>
-      <Stack pad="md">
+      <Stack pad={2}>
         <TextArea ref={area} value={sql} onChange={setSql} onSubmit={() => void run()} code rows={4} placeholder="SELECT name, count(*) FROM … GROUP BY name" spellCheck={false} aria-label="SQL" />
       </Stack>
       {error && (

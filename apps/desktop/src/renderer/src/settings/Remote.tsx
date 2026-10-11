@@ -105,7 +105,7 @@ export function Remote({ status, settings, pair, row }: { status: RemoteStatus |
 
       {request ? (
         <FormSection title="Pair a Device">
-          <Stack pad="xl">
+          <Stack pad={4}>
             <PairPrompt request={request} autoFocus={false} />
           </Stack>
         </FormSection>
@@ -214,7 +214,7 @@ function useChecks(access: string | null, state: RemoteStatus["state"] | undefin
 /** Where the pairing code goes while a mode isn't set up yet. */
 export function SetupWait() {
   return (
-    <Stack pad="xl">
+    <Stack pad={4}>
       <Text tone="dim">Finish the setup below to get a pairing code.</Text>
     </Stack>
   );
@@ -233,7 +233,7 @@ export function Setup({ title, checks, error, busy, again }: { title: string } &
     <FormSection title={`Set Up ${title}`} plain>
       {error && !checks ? (
         <>
-          <Stack pad="xl">
+          <Stack pad={4}>
             <Callout tone="danger">Couldn't check the setup: {error}</Callout>
           </Stack>
           <FormActions>
@@ -243,8 +243,8 @@ export function Setup({ title, checks, error, busy, again }: { title: string } &
           </FormActions>
         </>
       ) : !checks ? (
-        <Stack pad="xl">
-          <Inline gap="md">
+        <Stack pad={4}>
+          <Inline gap={2}>
             <Spinner />
             <Text tone="dim">Checking…</Text>
           </Inline>
@@ -298,17 +298,17 @@ function PairCode({ status, line, onDone }: { status: RemoteStatus | null; line:
   const svg = useMemo(() => (code ? renderSVG(code.url, { ecc: "L", border: 2, pixelSize: 6 }) : null), [code]);
   if (!online)
     return (
-      <Stack pad="xl">
+      <Stack pad={4}>
         <Text tone="dim">{line}</Text>
       </Stack>
     );
   if (error) return <Callout tone="danger">{error}</Callout>;
   const left = code ? Math.max(0, Math.round((code.expiresAt - 60_000 - now) / 1000)) : 0;
   return (
-    <Stack pad="xl">
-      <Inline gap="xl">
+    <Stack pad={4}>
+      <Inline gap={4}>
         <QrCode svg={svg ?? ""} />
-        <Stack gap="md" grow>
+        <Stack gap={2} grow>
           <Prose>
             <ol>
               <li>Point your phone's camera at the code.</li>
@@ -316,7 +316,7 @@ function PairCode({ status, line, onDone }: { status: RemoteStatus | null; line:
               <li>Allow it here, with view-only access or control.</li>
             </ol>
           </Prose>
-          <Inline gap="md">
+          <Inline gap={2}>
             <Button
               disabled={!code}
               onClick={() => code && void navigator.clipboard.writeText(code.url).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1500)))}

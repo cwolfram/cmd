@@ -139,7 +139,7 @@ export function AgentActivityView({ lines, scope, listRef, onNew }: { lines: Act
             tone={l.needs ? "needs" : undefined}
             detail={l.status}
             end={
-              <Stack gap="none" align="end">
+              <Stack gap={0} align="end">
                 <span data-tip={l.placeTip}>
                   <Text size="xs" tone="dim" truncate>
                     {l.place}

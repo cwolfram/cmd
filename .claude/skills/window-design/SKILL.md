@@ -33,7 +33,7 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
   - `Text` alone on a line in a `Stack` is a paragraph (line height 1.45, even wrapping); in an `Inline` it is a run of text.
   - `Stack`, `Inline`, `Tiles`, `Text`, `Measure` (a reading column), `MediaStage`, `Filmstrip`.
   - `Hide below | above="narrow" | "regular"`: what gives way as a window narrows, or what only shows when it's narrow. A window's sizes are narrow (< 360px), regular (< 600px) and wide; everything that follows the width uses these two breakpoints. Works in the toolbar too (a `View` is a size container).
-  - Gaps and paddings take only the spacing scale's names (`gap="md"`), checked by the types.
+  - Gaps and paddings take only steps of the spacing scale, multiples of 4px (`gap={2}` is 8px, `pad={1.5}` 6px; docs/46-spacing.md), checked by the types. A pane's padding at a window's edge is `pad="inset"`.
 - **Reference windows** (`apps/desktop/src/renderer/src/reference/*.story.tsx`, `pnpm workbench <story>`): the spec for each kind of window, every state and size included. Start from the closest one:
 
   | Story | For | Example windows |

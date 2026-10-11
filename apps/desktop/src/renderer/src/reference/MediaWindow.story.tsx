@@ -42,8 +42,8 @@ function Viewer({ size = "wide", empty }: { size?: SizeName; empty?: boolean }) 
           open={info}
           width={{ min: 200, ideal: 230, max: 320 }}
           pane={
-            <Stack gap="xl" pad="inset">
-              <Stack gap="2xs">
+            <Stack gap={4} pad="inset">
+              <Stack gap={0.5}>
                 <Text strong truncate>
                   {pic.label}
                 </Text>
@@ -69,7 +69,7 @@ function Viewer({ size = "wide", empty }: { size?: SizeName; empty?: boolean }) 
                   ]}
                 />
               </Pane>
-              <Inline gap="sm" wrap>
+              <Inline gap={1.5} wrap>
                 <Button icon="folder">Show in Files</Button>
               </Inline>
             </Stack>

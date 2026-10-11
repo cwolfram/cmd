@@ -231,7 +231,7 @@ export function Ask(p: { text: string; onText: (t: string) => void; onAsk: (prom
         title: "New Widget",
         text: "Ask for something to keep an eye on: a question, a URL, some JSON, a command.",
         action: (
-          <Stack gap="md">
+          <Stack gap={2}>
             <AiField
               size="lg"
               value={p.text}
@@ -285,12 +285,12 @@ function messagesOf(live: MagicLive): string[] {
 export function Building({ live, showSteps, onStop }: { live: MagicLive; showSteps: boolean; onStop?: () => void }) {
   const current = messagesOf(live).at(-1)!;
   return (
-    <Stack gap="none" grow>
+    <Stack gap={0} grow>
       <ViewState
         state={{
           kind: "loading",
           title: (
-            <Stack gap="md" align="center">
+            <Stack gap={2} align="center">
               <span aria-live="polite">{current}</span>
               {onStop && (
                 <Button size="sm" data-tip-key="⌘." onClick={onStop}>
@@ -318,7 +318,7 @@ function BuildingLine({ live, onStop }: { live: MagicLive; onStop?: () => void }
         )
       }
     >
-      <Inline gap="sm">
+      <Inline gap={1.5}>
         <Spinner size={10} />
         <span aria-live="polite">{messagesOf(live).at(-1)}</span>
       </Inline>
@@ -358,7 +358,7 @@ function StepRow({ step }: { step: MagicStep }) {
         onClick={step.output ? () => setOpen(!open) : undefined}
       />
       {open && step.output && (
-        <Stack pad="sm">
+        <Stack pad={1.5}>
           <CodeBlock>{step.output}</CodeBlock>
         </Stack>
       )}
@@ -534,9 +534,9 @@ export function TerminalOffer({ win, command }: { win: AppWindow; command: strin
         title: "A command to run",
         text: "Opens a terminal with it typed in; press Return to run it.",
         action: (
-          <Stack gap="md">
+          <Stack gap={2}>
             <CodeBlock>{command}</CodeBlock>
-            <Inline gap="sm">
+            <Inline gap={1.5}>
               <Button variant="primary" onClick={() => void runIt()}>
                 Open in Terminal
               </Button>

@@ -99,8 +99,8 @@ function Details(p: { summary: Summary; health: CoreHealth; connected: boolean; 
       ]
     : [];
   return (
-    <Stack gap="md" pad="lg">
-      <Inline gap="sm">
+    <Stack gap={2} pad={3}>
+      <Inline gap={1.5}>
         <StatusDot state={p.summary.led === "ok" ? "success" : p.summary.led} />
         <Text>{p.summary.detail}</Text>
       </Inline>
@@ -110,7 +110,7 @@ function Details(p: { summary: Summary; health: CoreHealth; connected: boolean; 
           items={rows.map(([k, v, sub]) => [
             k,
             sub ? (
-              <Inline justify="between" gap="md">
+              <Inline justify="between" gap={2}>
                 <span>{v}</span>
                 <Text tone="dim">{sub}</Text>
               </Inline>
@@ -120,7 +120,7 @@ function Details(p: { summary: Summary; health: CoreHealth; connected: boolean; 
           ])}
         />
       )}
-      <Inline gap="sm">
+      <Inline gap={1.5}>
         <Button variant={p.health.outdated || p.health.unresponsive || !p.connected ? "primary" : "default"} disabled={p.restart.restarting} onClick={() => void restartCore()}>
           {p.restart.restarting ? "Restarting…" : "Restart Core"}
         </Button>

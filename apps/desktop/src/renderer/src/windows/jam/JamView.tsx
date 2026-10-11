@@ -409,8 +409,8 @@ export function JamView({ win }: WindowViewProps) {
         />
       </WindowToolbar>
       <Popover anchor={renderButton} open={renderOpen} onClose={() => setRenderOpen(false)} align="end" width={260} label="Render to Audio">
-        <Stack gap="md" pad="lg">
-          <Inline justify="between" gap="md">
+        <Stack gap={2} pad={3}>
+          <Inline justify="between" gap={2}>
             <Text>Length</Text>
             <NumberField label="Length" value={cycles} min={1} max={256} unit="cycles" onChange={setCycles} />
           </Inline>

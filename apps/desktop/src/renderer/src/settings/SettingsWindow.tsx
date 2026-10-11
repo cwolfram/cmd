@@ -219,12 +219,12 @@ export function SettingsWindow() {
       <Split
         width={{ min: 180, ideal: 220, max: 300 }}
         pane={
-          <Stack gap="none" grow>
+          <Stack gap={0} grow>
             <TitleBand />
             <Stack pad="inset">
               <SearchField ref={input} size="lg" value={query} placeholder="Search settings" onChange={(v) => (setQuery(v), setScrolled(false))} />
             </Stack>
-            <Stack gap="none" grow>
+            <Stack gap={0} grow>
               <List variant="nav">
                 {NAV.map((n) => (
                   <ListRow key={n.id} icon={n.icon} title={n.title} selected={!q && n.id === page} dim={!!q && !hitPages.has(n.id)} onClick={() => (setQuery(""), setPage(n.id), setScrolled(false))} />
@@ -248,7 +248,7 @@ export function SettingsWindow() {
           footer={
             !connected && (
               <StatusLine>
-                <Inline gap="sm">
+                <Inline gap={1.5}>
                   <Spinner size={11} />
                   Connecting to cmd…
                 </Inline>
@@ -257,7 +257,7 @@ export function SettingsWindow() {
           }
         >
           <Page>
-            <Stack gap="lg">
+            <Stack gap={3}>
               {errors.map((e) => (
                 <Callout key={e} tone="danger">
                   {e}
@@ -366,7 +366,7 @@ function ModelRow(p: { k: SettingKey; provider: AiProvider; tier: AiTier; value:
   const note = st?.state === "rejected" ? null : s.loading && !s.models ? "Loading models…" : s.error;
   return (
     <FormRow {...settingText(p.k, p.ctx)} note={note} noteTone={!!s.error ? "danger" : "accent"}>
-      <Inline gap="sm">
+      <Inline gap={1.5}>
         <span data-tip={current?.id}>
           <Select value={value} options={options} labels={labels} onChange={(v) => p.ctx.save(p.k, v)} />
         </span>
@@ -538,7 +538,7 @@ function IndexStatusRow(p: { status: SearchStatus | null; enabled: boolean }) {
     <FormRow
       title="Index"
       description={
-        <Inline gap="sm">
+        <Inline gap={1.5}>
           <IndexRing status={s} />
           {text}
         </Inline>

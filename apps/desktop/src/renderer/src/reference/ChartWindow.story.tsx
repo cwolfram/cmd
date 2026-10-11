@@ -45,8 +45,8 @@ function Dashboard({ size = "wide" }: { size?: SizeName }) {
           </WindowToolbar>
         }
       >
-        <Stack gap="2xl">
-          <Inline gap="sm">
+        <Stack gap={6}>
+          <Inline gap={1.5}>
             <StatusDot state="done" />
             <Text>Healthy</Text>
             <Text tone="dim" truncate>
@@ -55,7 +55,7 @@ function Dashboard({ size = "wide" }: { size?: SizeName }) {
           </Inline>
           <Panes>
             <Pane wide>
-              <Tiles min={120} gap="xl">
+              <Tiles min={120} gap={4}>
                 <Stat label="CPU" value={CPU.at(-1)} unit="%" delta="▲ 4%" deltaTone="warning">
                   <Sparkline values={CPU} series={0} />
                 </Stat>
@@ -81,10 +81,10 @@ function Dashboard({ size = "wide" }: { size?: SizeName }) {
               />
             </Pane>
             <Pane title="Memory by Process" aside="MB">
-              <Stack gap="sm">
+              <Stack gap={1.5}>
                 {PROCS.map((p) => (
-                  <Stack key={p.name} gap="2xs">
-                    <Inline justify="between" gap="md">
+                  <Stack key={p.name} gap={0.5}>
+                    <Inline justify="between" gap={2}>
                       <Text truncate>{p.name}</Text>
                       <Text mono size="sm" tone="dim">
                         {p.mem}

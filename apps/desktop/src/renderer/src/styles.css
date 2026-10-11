@@ -89,9 +89,9 @@ kbd {
 /* The columns stay drag regions; only the controls in them aren't (.workspace-bar is no-drag itself). */
 .topbar-center { display: flex; justify-content: center; min-width: 0; }
 /* At the right end, plain buttons like the footer's. */
-.topbar-trail { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2xs); }
+.topbar-trail { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-0-5); }
 .topbar-trail > :not(.bar-sep) { -webkit-app-region: no-drag; }
-.topbar-modes { display: flex; align-items: center; gap: var(--space-2xs); }
+.topbar-modes { display: flex; align-items: center; gap: var(--space-0-5); }
 
 /* ── stage: sidebars and the board ──────────────── */
 
@@ -140,9 +140,9 @@ kbd {
 .statusbar {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-3);
   min-height: var(--statusbar-h);
-  padding: var(--space-2xs) var(--space-sm) var(--space-2xs) var(--space-xl);
+  padding: var(--space-0-5) var(--space-1-5) var(--space-0-5) var(--space-4);
   background: var(--bg-sidebar);
   /* separator as an inset shadow: no layout space, so content centres exactly */
   box-shadow: inset 0 1px 0 var(--separator);
@@ -174,9 +174,9 @@ kbd {
 .statusbar-usage { font-variant-numeric: tabular-nums; cursor: default; }
 /* Holds the usage's tooltip; out of the drag region, which would swallow the hover. */
 .statusbar-usage-tip { display: flex; min-width: 0; -webkit-app-region: no-drag; }
-.statusbar-actions { display: flex; align-items: center; gap: var(--space-2xs); }
+.statusbar-actions { display: flex; align-items: center; gap: var(--space-0-5); }
 /* A divider between groups of bar buttons. */
-.bar-sep { flex: none; width: 1px; height: 14px; margin: 0 var(--space-sm); background: var(--separator); }
+.bar-sep { flex: none; width: 1px; height: 14px; margin: 0 var(--space-1-5); background: var(--separator); }
 
 /* Controls (buttons, segmented, fields…) are @cmd/ui's: packages/ui. */
 
@@ -229,7 +229,7 @@ kbd {
   /* Even, fixed height (the footer's icon buttons'), not the text's fractional line:
      the light centres on whole pixels. */
   height: 22px;
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-2);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -241,7 +241,7 @@ kbd {
 }
 .core-status-button:hover, .core-status-button.open { background: var(--bg-hover); color: var(--text); }
 .core-status-button { gap: 0; }
-.core-status-button .ui-dot { margin-right: var(--space-md); }
+.core-status-button .ui-dot { margin-right: var(--space-2); }
 .core-status-usage .slot-v { --gap: 15px; }
 .core-status-usage { flex-shrink: 10; }
 
@@ -260,7 +260,7 @@ kbd {
   min-height: 0;
   height: 100%;
   background: var(--well);
-  padding: var(--space-md) var(--space-sm) var(--space-xs) var(--space-lg);
+  padding: var(--space-2) var(--space-1-5) var(--space-1) var(--space-3);
   overflow: hidden;
 }
 .xterm-host { width: 100%; height: 100%; }
@@ -312,8 +312,8 @@ kbd {
 .dock-tile.sel.needs { --ring-color: var(--state-needs); border-color: var(--ring-color); }
 .dock-tile.sel.needs > .tile-frame { box-shadow: var(--ring), var(--drop); }
 .app .tile.dock-tile.sel .tile-title { background: var(--window-bar-bg); }
-.tile .term-well { padding-top: var(--space-sm); }
-.tile-name.editing { flex: 1 1 auto; margin-right: var(--space-md); }
+.tile .term-well { padding-top: var(--space-1-5); }
+.tile-name.editing { flex: 1 1 auto; margin-right: var(--space-2); }
 .tile-title-input {
   flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent;
   font: inherit; font-weight: 400; color: var(--text); cursor: text;
@@ -359,7 +359,7 @@ kbd {
   animation: shortcut-tip ease-in-out both;
 }
 /* A plain filled key, roomier than the kit's outlined one. */
-.shortcut-tip .ui-kbd { padding: var(--space-xs) var(--space-sm); background: var(--bg-selected); box-shadow: none; }
+.shortcut-tip .ui-kbd { padding: var(--space-1) var(--space-1-5); background: var(--bg-selected); box-shadow: none; }
 @keyframes shortcut-tip { 0%, 100% { opacity: 0; } 11.25%, 88.75% { opacity: 0.6; } }
 @media (prefers-reduced-motion: reduce) { .shortcut-tip { animation: none; } }
 
@@ -385,7 +385,7 @@ kbd {
   overflow: hidden;
 }
 .palette-input {
-  padding: var(--space-lg) var(--space-xl);
+  padding: var(--space-3) var(--space-4);
   font: var(--text-lg) var(--font-ui);
   color: var(--text);
   background: transparent;
@@ -395,13 +395,13 @@ kbd {
 }
 /* The list takes whatever height the palette has while it glides to a new size (Palette),
    so the footer rides its bottom edge instead of jumping ahead of it. */
-.palette-list { flex: 1 1 auto; min-height: 0; list-style: none; margin: 0; padding: var(--space-sm); max-height: 50vh; overflow-y: auto; }
+.palette-list { flex: 1 1 auto; min-height: 0; list-style: none; margin: 0; padding: var(--space-1-5); max-height: 50vh; overflow-y: auto; }
 .palette > :not(.palette-list) { flex: none; }
 .palette-list li {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-2);
   border-radius: var(--radius);
 }
 .palette-list li.on { background: var(--accent); color: var(--on-accent); }
@@ -414,8 +414,8 @@ kbd {
 .palette-empty { color: var(--text-dim); }
 .palette-foot {
   display: flex;
-  gap: var(--space-lg);
-  padding: var(--space-sm) var(--space-lg);
+  gap: var(--space-3);
+  padding: var(--space-1-5) var(--space-3);
   font-size: var(--text-xs);
   color: var(--text-dim);
   border-top: 1px solid var(--separator);
@@ -617,16 +617,16 @@ kbd {
 /* Session search results in the palette */
 .palette.searching { width: min(760px, calc(100vw - 32px)); }
 /* A kind's name over its results in a search (Files, Commands…), like the Navigator's section names. */
-.palette-heading { padding: var(--space-md) var(--space-md) var(--space-2xs); font: 600 var(--text-xs) var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); }
-.palette-heading:first-child { padding-top: var(--space-2xs); }
+.palette-heading { padding: var(--space-2) var(--space-2) var(--space-0-5); font: 600 var(--text-xs) var(--font-ui); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); }
+.palette-heading:first-child { padding-top: var(--space-0-5); }
 .palette-list li.rich .palette-icon { margin-top: 1px; }
-.palette-list li.rich { align-items: flex-start; padding: var(--space-md) var(--space-md); }
+.palette-list li.rich { align-items: flex-start; padding: var(--space-2) var(--space-2); }
 .palette-hit { flex: 1; min-width: 0; }
-.palette-hit-top { display: flex; align-items: baseline; gap: var(--space-md); }
+.palette-hit-top { display: flex; align-items: baseline; gap: var(--space-2); }
 .palette-hit-top .palette-label { font-weight: 500; }
 .palette-meta { flex: none; margin-left: auto; font-size: var(--text-xs); color: var(--text-dim); white-space: nowrap; }
 .palette-snippet {
-  margin-top: var(--space-2xs);
+  margin-top: var(--space-0-5);
   font-size: var(--text-sm);
   color: var(--text-dim);
   white-space: nowrap;
@@ -635,7 +635,7 @@ kbd {
 }
 .palette-list li.on .palette-meta, .palette-list li.on .palette-snippet { color: color-mix(in srgb, var(--on-accent) 80%, transparent); }
 .palette-list li.on .palette-snippet mark { background: color-mix(in srgb, var(--on-accent) 30%, transparent); color: var(--on-accent); }
-.palette-status { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-sm); }
+.palette-status { margin-left: auto; display: inline-flex; align-items: center; gap: var(--space-1-5); }
 
 /* ── embedded pages ─────────────────────────────────── */
 
@@ -657,7 +657,7 @@ kbd {
   transform: scale(0);
   transition: width var(--dur) var(--ease), margin var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-.dirty-dot.on { width: 6px; margin-left: var(--space-sm); transform: none; }
+.dirty-dot.on { width: 6px; margin-left: var(--space-1-5); transform: none; }
 
 /* Canvas: windows on a pan/zoom plane (see WindowsView, canvas.ts). */
 .mode-canvas .windows-track { transform-origin: 0 0; }
@@ -727,16 +727,16 @@ kbd {
 
 /* ── JSON windows (windows/json/json-view.tsx) ───────────── */
 
-.json-scroll { flex: 1; min-height: 0; overflow: auto; background: var(--well); outline: none; padding: var(--space-sm) 0; }
+.json-scroll { flex: 1; min-height: 0; overflow: auto; background: var(--well); outline: none; padding: var(--space-1-5) 0; }
 .json-rows { position: relative; min-width: 100%; }
 /* Fixed height: the view draws only the rows on screen (ROW in json-view.tsx). */
 .json-row {
   --depth: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-1-5);
   height: 22px;
-  padding: 0 var(--space-lg) 0 calc(var(--space-md) + var(--depth) * var(--space-xl));
+  padding: 0 var(--space-3) 0 calc(var(--space-2) + var(--depth) * var(--space-4));
   font: var(--text-base)/22px var(--font-code);
   white-space: nowrap;
   cursor: default;
@@ -848,9 +848,9 @@ kbd {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-1-5);
   height: 26px;
-  padding: 0 var(--space-md);
+  padding: 0 var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
@@ -897,8 +897,8 @@ kbd {
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: var(--space-2xs);
-  padding: var(--space-md);
+  gap: var(--space-0-5);
+  padding: var(--space-2);
   max-height: 40vh;
   overflow-x: hidden;
   overflow-y: auto;

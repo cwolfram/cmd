@@ -54,11 +54,11 @@ function PairText({ request, onEscape, autoFocus, children }: { request: RemoteP
   useEffect(() => void (autoFocus && box.current?.focus()), [autoFocus]);
   return (
     <div className="pair-prompt" tabIndex={-1} ref={box} style={{ outline: "none" }} onKeyDown={(e) => e.key === "Escape" && onEscape()}>
-      <Stack gap="md">
+      <Stack gap={2}>
         <Text strong>Allow “{request.name}” to use cmd?</Text>
-        <Stack gap="sm">
+        <Stack gap={1.5}>
           <Text tone="dim">Check that its screen shows these words:</Text>
-          <Inline gap="xs" wrap>
+          <Inline gap={1} wrap>
             {request.words.map((w, i) => (
               <Badge key={i} tone="accent">
                 {w}
@@ -90,7 +90,7 @@ export function PairPrompt({ request, autoFocus = true }: { request: RemotePairR
   const p = usePair(request);
   return (
     <PairText request={request} onEscape={() => p.answer(false)} autoFocus={autoFocus}>
-      <Inline gap="sm" wrap>
+      <Inline gap={1.5} wrap>
         {p.expiry}
         <Spacer />
         {p.buttons}

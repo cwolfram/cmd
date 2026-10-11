@@ -12,77 +12,77 @@ body { background: var(--bg); color: var(--text); font: var(--text-base) / 1.35 
 .app { position: fixed; left: 0; right: 0; top: var(--app-top, 0); height: var(--app-h, 100%); display: flex; flex-direction: column; }
 
 /* The top bar, under the status bar: a large title (Now) or a terminal's name. */
-.bar { flex: none; display: flex; align-items: center; gap: var(--space-md); padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-md) var(--space-md) var(--inset); background: var(--bg-sidebar); border-bottom: 1px solid var(--separator); }
+.bar { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: calc(env(safe-area-inset-top) + var(--space-2)) var(--space-2) var(--space-2) var(--inset); background: var(--bg-sidebar); border-bottom: 1px solid var(--separator); }
 .bar-title { flex: 1; min-width: 0; }
 .bar-title h1 { margin: 0; font-size: var(--text-display); font-weight: 700; letter-spacing: -0.01em; }
-.status { display: flex; align-items: center; gap: var(--space-sm); max-width: 100%; font-size: var(--text-sm); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.floating { position: absolute; left: var(--space-lg); right: var(--space-lg); top: calc(env(safe-area-inset-top) + var(--control-h-lg) + var(--space-xl)); z-index: 5; }
+.status { display: flex; align-items: center; gap: var(--space-1-5); max-width: 100%; font-size: var(--text-sm); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.floating { position: absolute; left: var(--space-3); right: var(--space-3); top: calc(env(safe-area-inset-top) + var(--control-h-lg) + var(--space-4)); z-index: 5; }
 
 /* Pairing, offline, not paired: one message in the middle. */
-.center { height: 100%; display: flex; align-items: center; justify-content: center; padding: var(--space-2xl); }
-.words { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-md); margin-top: var(--space-lg); }
-.words span { padding: var(--space-md) var(--space-lg); border-radius: var(--radius-md); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); font-weight: 600; font-size: var(--text-lg); }
+.center { height: 100%; display: flex; align-items: center; justify-content: center; padding: var(--space-6); }
+.words { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); margin-top: var(--space-3); }
+.words span { padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--text); font-weight: 600; font-size: var(--text-lg); }
 .note { margin: 0; font-size: var(--text-sm); color: var(--text-dim); }
-.note.padded { padding: var(--space-lg) var(--inset) var(--space-xl); }
+.note.padded { padding: var(--space-3) var(--inset) var(--space-4); }
 
 /* Pairing (Pairing.tsx): Add a Mac's buttons and paste field in a column; a
    pairing link's choices (this browser, or the app) as cards. */
-.pair-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-md); width: min(100%, calc(var(--control-h-lg) * 8)); }
-.paste { display: flex; gap: var(--space-sm); }
+.pair-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-2); width: min(100%, calc(var(--control-h-lg) * 8)); }
+.paste { display: flex; gap: var(--space-1-5); }
 .paste > .ui-field { flex: 1; min-width: 0; }
-.choices { display: flex; flex-direction: column; gap: var(--space-lg); width: min(100%, calc(var(--control-h-lg) * 9)); text-align: left; }
-.choice { display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--bg-sidebar); }
+.choices { display: flex; flex-direction: column; gap: var(--space-3); width: min(100%, calc(var(--control-h-lg) * 9)); text-align: left; }
+.choice { display: flex; flex-direction: column; gap: var(--space-1-5); padding: var(--space-3); border-radius: var(--radius-lg); background: var(--bg-sidebar); }
 .choice h2 { margin: 0; font-size: var(--text-md); font-weight: 600; color: var(--text); }
 .choice p { margin: 0; color: var(--text-dim); }
-.choice > .ui-button { margin-top: var(--space-xs); }
-.steps { margin: 0; padding-left: var(--space-xl); display: flex; flex-direction: column; gap: var(--space-xs); color: var(--text); }
+.choice > .ui-button { margin-top: var(--space-1); }
+.steps { margin: 0; padding-left: var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); color: var(--text); }
 .steps .sf { vertical-align: text-bottom; color: var(--accent); }
 
 /* The camera, full screen, with a square to aim at and the hint under it. */
 .scanner { position: fixed; inset: 0; z-index: 30; background: var(--bg); }
 .scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .scanner-frame { position: absolute; left: 50%; top: 42%; width: 68vw; max-width: calc(var(--control-h-lg) * 7); aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: var(--radius-xl); box-shadow: 0 0 0 100vmax var(--scrim); outline: 2px solid var(--on-accent); }
-.scanner-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); padding: var(--space-lg) var(--space-2xl) calc(env(safe-area-inset-bottom) + var(--space-xl)); text-align: center; }
+.scanner-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-6) calc(env(safe-area-inset-bottom) + var(--space-4)); text-align: center; }
 .scanner-hint { color: var(--on-accent); font-size: var(--text-md); }
 .scanner-hint.wrong { color: var(--warning); }
 
 /* ── Now ─────────────────────────────────────────── */
 
-.filters { flex: none; display: flex; gap: var(--space-md); padding: var(--space-md) var(--inset) var(--space-2xs); overflow-x: auto; scrollbar-width: none; }
+.filters { flex: none; display: flex; gap: var(--space-2); padding: var(--space-2) var(--inset) var(--space-0-5); overflow-x: auto; scrollbar-width: none; }
 .filters::-webkit-scrollbar { display: none; }
 .filters > .ui-button { flex: none; border-radius: var(--radius-pill); }
 
 /* Room at the end for the actions floating over it. */
-.now { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-xs) 0 calc(env(safe-area-inset-bottom) + var(--control-h-lg) * 2); -webkit-overflow-scrolling: touch; }
-.now .ui-list-section { margin-top: var(--space-md); }
-.now .ui-empty { padding-top: var(--space-3xl); }
+.now { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-1) 0 calc(env(safe-area-inset-bottom) + var(--control-h-lg) * 2); -webkit-overflow-scrolling: touch; }
+.now .ui-list-section { margin-top: var(--space-2); }
+.now .ui-empty { padding-top: var(--space-8); }
 .when { color: var(--text-dim); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
-.actions { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: var(--space-md); padding: var(--space-lg) var(--inset) calc(env(safe-area-inset-bottom) + var(--space-lg)); background: linear-gradient(transparent, var(--bg) 30%); }
+.actions { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: var(--space-2); padding: var(--space-3) var(--inset) calc(env(safe-area-inset-bottom) + var(--space-3)); background: linear-gradient(transparent, var(--bg) 30%); }
 .actions > .ui-button { flex: 1; }
 
 /* ── terminal ────────────────────────────────────── */
 
 /* Its background is the theme's terminal background (Terminal.tsx). */
 .term-screen { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.term-bar { padding-left: var(--space-xs); gap: var(--space-2xs); }
+.term-bar { padding-left: var(--space-1); gap: var(--space-0-5); }
 .term-head { flex: 1; min-width: 0; }
-.term-name { display: flex; align-items: center; gap: var(--space-sm); font-weight: 600; font-size: var(--text-md); }
+.term-name { display: flex; align-items: center; gap: var(--space-1-5); font-weight: 600; font-size: var(--text-md); }
 .term-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .term-state { font-size: var(--text-sm); color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Fills the rest; only the terminal's own scrollback scrolls. */
-.term { flex: 1; min-height: 0; overflow: hidden; padding: var(--space-xs) 0 0 var(--space-sm); }
+.term { flex: 1; min-height: 0; overflow: hidden; padding: var(--space-1) 0 0 var(--space-1-5); }
 .term .xterm { height: 100%; }
 .term .xterm-viewport { background: transparent !important; }
 
 .term-input { flex: none; background: var(--bg-sidebar); border-top: 1px solid var(--separator); padding-bottom: env(safe-area-inset-bottom); }
-.keys { display: flex; gap: var(--space-sm); padding: var(--space-md); overflow-x: auto; scrollbar-width: none; }
+.keys { display: flex; gap: var(--space-1-5); padding: var(--space-2); overflow-x: auto; scrollbar-width: none; }
 .keys::-webkit-scrollbar { display: none; }
 .key { flex: none; min-width: var(--control-h); font-family: var(--font-mono); }
-.compose { display: flex; align-items: center; gap: var(--space-sm); padding: 0 var(--space-md) var(--space-md) var(--space-xs); }
+.compose { display: flex; align-items: center; gap: var(--space-1-5); padding: 0 var(--space-2) var(--space-2) var(--space-1); }
 .compose > .ui-field { flex: 1; min-width: 0; border-radius: var(--radius-pill); }
 .compose > .ui-button { border-radius: var(--radius-pill); }
-.viewonly { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-lg) var(--inset) calc(env(safe-area-inset-bottom) + var(--space-lg)); font-size: var(--text-sm); color: var(--text-dim); background: var(--bg-sidebar); }
+.viewonly { display: flex; align-items: center; gap: var(--space-1-5); padding: var(--space-3) var(--inset) calc(env(safe-area-inset-bottom) + var(--space-3)); font-size: var(--text-sm); color: var(--text-dim); background: var(--bg-sidebar); }
 
 /* The terminal's menu: its rows edge to edge in the sheet. */
-.menu-rows { padding: var(--space-xs) 0 var(--space-lg); }
+.menu-rows { padding: var(--space-1) 0 var(--space-3); }

@@ -134,7 +134,7 @@ function Changes({ win, info, working, onRun }: { win: AppWindow; info: MagicWid
           onSubmit={submit}
           submitOnEnter
         />
-        <Inline gap="md">
+        <Inline gap={2}>
           <Text size="sm" tone="dim">
             ⏎ to send · the widget stays as it is until the change works
           </Text>
@@ -160,7 +160,7 @@ function Changes({ win, info, working, onRun }: { win: AppWindow; info: MagicWid
                 title={current ? <Text strong>{r.prompt}</Text> : r.prompt}
                 tip={r.prompt}
                 detail={
-                  <Inline gap="xs">
+                  <Inline gap={1}>
                     <StatusDot size="sm" state={r.ok ? "success" : "warning"} />
                     {r.ok ? "checks passed" : `${r.problems?.length ?? "some"} problem${r.problems?.length === 1 ? "" : "s"} left`} · {ago(r.at, Date.now())}
                     {r.model ? ` · ${r.model}` : ""} · v{r.n}
@@ -182,7 +182,7 @@ function Changes({ win, info, working, onRun }: { win: AppWindow; info: MagicWid
       </FormSection>
       {(s.history?.length ?? 0) > 0 && (
         <FormSection title="Asked so far" plain>
-          <Stack gap="2xs">
+          <Stack gap={0.5}>
             {s.history!.map((h, i) => (
               <Text key={i} tone="dim">
                 › {h}
@@ -376,7 +376,7 @@ function Health({ win, live }: { win: AppWindow; live: MagicLive }) {
       </FormSection>
       {(s.problems?.length || s.error) && (
         <FormSection title="Problems" aside={h?.ok !== false && broken && fix} plain>
-          <Stack gap="sm">
+          <Stack gap={1.5}>
             {s.error && <CodeBlock tone="danger">{s.error}</CodeBlock>}
             {s.problems?.map((p, i) => (
               <CodeBlock key={i}>{p}</CodeBlock>

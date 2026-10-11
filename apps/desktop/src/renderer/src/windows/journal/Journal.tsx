@@ -95,8 +95,8 @@ function Entry({ e, picked, showProject }: { e: JournalEntry; picked: boolean; s
   const o = e.outcome && OUTCOME[e.outcome];
   return (
     <TimelineEntry id={`journal-${e.id}`} time={time(e.start)} hue={k.hue} label={k.label} picked={picked}>
-      <Stack gap="xs">
-        <Inline gap="sm">
+      <Stack gap={1}>
+        <Inline gap={1.5}>
           <Text strong size="base">
             {e.title}
           </Text>
@@ -107,7 +107,7 @@ function Entry({ e, picked, showProject }: { e: JournalEntry; picked: boolean; s
           )}
         </Inline>
         <Text tone="dim">{e.summary}</Text>
-        <Inline gap="md" wrap>
+        <Inline gap={2} wrap>
           {showProject && e.repo && <Chip hue={projectHue(base(e.repo))}>{base(e.repo)}</Chip>}
           <Text tone="dim" size="xs">
             {[spanText(e.end - e.start), countsText(e.counts)].join(" · ")}
@@ -121,8 +121,8 @@ function Entry({ e, picked, showProject }: { e: JournalEntry; picked: boolean; s
 /** A day's or the week's heading: its name large, a note beside it, an action at the end. */
 function Heading({ title, note, action }: { title: string; note?: string; action?: ReactNode }) {
   return (
-    <Inline gap="md" align="baseline" justify="between">
-      <Inline gap="md" align="baseline">
+    <Inline gap={2} align="baseline" justify="between">
+      <Inline gap={2} align="baseline">
         <Text size="lg" strong>
           {title}
         </Text>
@@ -183,14 +183,14 @@ export function Journal({
         ) : undefined
       }
     >
-      <Stack gap="2xl">
+      <Stack gap={6}>
         {week && week.themes.length > 0 && days.length > 0 && (
-          <Stack gap="md">
+          <Stack gap={2}>
             <Heading title="This week" />
             <Text>{week.headline}</Text>
-            <Stack gap="sm">
+            <Stack gap={1.5}>
               {week.themes.map((t) => (
-                <Stack key={t.title} gap="2xs">
+                <Stack key={t.title} gap={0.5}>
                   <Text strong>{t.title}</Text>
                   <Text tone="dim">{t.summary}</Text>
                 </Stack>
@@ -199,7 +199,7 @@ export function Journal({
           </Stack>
         )}
         {days.map((d) => (
-          <Stack key={d.date} gap="md">
+          <Stack key={d.date} gap={2}>
             <Heading title={dayName(d.date, now)} note={d.entries.length > 0 ? `${time(Math.min(...d.entries.map((e) => e.start)))}–${time(Math.max(...d.entries.map((e) => e.end)))}` : undefined} action={onRefresh && d === days[0] ? <IconButton size="sm" icon="arrow.clockwise" label="Write Again" onClick={onRefresh} /> : undefined} />
             <Text>{d.headline}</Text>
             {d.entries.length > 0 && <DayRibbon day={d} picked={picked} onPick={pick} />}

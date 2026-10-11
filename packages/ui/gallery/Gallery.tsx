@@ -270,7 +270,7 @@ function TokensPage() {
           {SPACE.map((s) => (
             <Fragment key={s}>
               <code>--space-{s}</code>
-              <span style={{ display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
                 <span style={{ width: `var(--space-${s})`, height: 12, background: "var(--accent)", borderRadius: 2 }} />
                 <span className="g-dim">{TOKENS.find((t) => t.name === `--space-${s}`)?.description}</span>
               </span>
@@ -335,7 +335,7 @@ function Fragile({ broken }: { broken: boolean }): ReactNode {
 function BoundarySpecimen() {
   const [broken, setBroken] = useState(true);
   return (
-    <div style={{ display: "flex", gap: "var(--space-xl)", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", gap: "var(--space-4)", flexWrap: "wrap" }}>
       <Win name="Widget" w={320} h={240}>
         <ErrorBoundary text="Your other windows keep running." onError={() => setBroken(false)}>
           <Fragile broken={broken} />
@@ -381,8 +381,8 @@ function WindowsPage() {
               }
               footer={<StatusLine end="Updated 12s ago">4 runs · 1 failed</StatusLine>}
             >
-              <Stack gap="xs">
-                <Inline gap="sm">
+              <Stack gap={1}>
+                <Inline gap={1.5}>
                   <StatusDot state="done" />
                   <Text>Healthy</Text>
                   <Text tone="dim">· 4 runs today</Text>
@@ -409,7 +409,7 @@ function WindowsPage() {
       <Spec title="DataGrid and Split" code="columns: grow, align, hide, icon · <Split side=&quot;end&quot;>" note="Edge columns on the inset; the least important columns drop as the window narrows; an inspector beside it." plain>
         <Win name="CI Runs" w={640} h={240}>
           <View scroll={false}>
-            <Split side="end" open={sel !== null} pane={sel !== null && <Stack pad="lg" gap="xs"><Text strong>{ROWS[sel]!.name}</Text><Text tone="dim" mono size="sm">{ROWS[sel]!.branch}</Text></Stack>} width={{ min: 160, ideal: 200, max: 280 }}>
+            <Split side="end" open={sel !== null} pane={sel !== null && <Stack pad={3} gap={1}><Text strong>{ROWS[sel]!.name}</Text><Text tone="dim" mono size="sm">{ROWS[sel]!.branch}</Text></Stack>} width={{ min: 160, ideal: 200, max: 280 }}>
               <DataGrid
                 columns={[
                   { key: "s", label: "", icon: true },
@@ -449,7 +449,7 @@ function WindowsPage() {
           <View inset>
             <Panes>
               <Pane wide>
-                <Tiles min={120} gap="xl">
+                <Tiles min={120} gap={4}>
                   <Stat label="CPU" value="24.1" unit="%" delta="▲ 4%" deltaTone="warning">
                     <Sparkline values={WAVE} />
                   </Stat>

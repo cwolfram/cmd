@@ -37,8 +37,8 @@ describe("kits", () => {
 
   it("each kit loads its own CSS: kit 1 its old names, the current kit the app's tokens", () => {
     expect(kitCss(1)).toContain("--line: color-mix");
-    expect(kitCss(1)).not.toContain("--space-md");
-    expect(kitCss(CURRENT_KIT)).toContain("--space-md:");
+    expect(kitCss(1)).not.toContain("--space-2");
+    expect(kitCss(CURRENT_KIT)).toContain("--space-2:");
     expect(kitCss(CURRENT_KIT)).toContain(".k-toolbar");
     expect(kitCss(CURRENT_KIT)).not.toMatch(/--line:/);
   });

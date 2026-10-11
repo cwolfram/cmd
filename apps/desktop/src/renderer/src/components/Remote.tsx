@@ -101,7 +101,7 @@ function RemoteTip({ status }: { status: RemoteStatus }) {
       <div className="tip-head">Remote Access · {sessions.length && status.state === "online" ? "Connected" : STATE_TEXT[status.state]}</div>
       {status.state === "error" && status.error && <div className="tip-dim">{status.error}</div>}
       {requests.map((r) => (
-        <Inline key={r.requestId} gap="md" align="start">
+        <Inline key={r.requestId} gap={2} align="start">
           <Symbol name="iphone" size={ICON.small} />
           <span>
             <b>{r.name}</b> is waiting for you to allow it
@@ -109,7 +109,7 @@ function RemoteTip({ status }: { status: RemoteStatus }) {
         </Inline>
       ))}
       {sessions.map((s) => (
-        <Inline key={s.id} gap="md" align="start">
+        <Inline key={s.id} gap={2} align="start">
           <Symbol name="iphone.radiowaves.left.and.right" size={ICON.small} />
           <span>
             <b>{s.name}</b> <Badge tone={s.scope === "control" ? "accent" : "neutral"}>{scopeLabel(s.scope)}</Badge>
@@ -132,8 +132,8 @@ function RemotePopover({ anchor, status, onClose }: { anchor: RefObject<HTMLElem
   return (
     // Opens upward from the status bar, its right edge at the button's.
     <Popover anchor={anchor} open onClose={onClose} placement="above" align="end" width={420} className="remote-popover" label="Remote Access">
-      <Stack gap="sm" pad="sm">
-        <Stack gap="2xs" pad="xs">
+      <Stack gap={1.5} pad={1.5}>
+        <Stack gap={0.5} pad={1}>
           <Text size="sm" tone="dim" strong>
             Remote Access · {sessions.length && status.state === "online" ? "Connected" : STATE_TEXT[status.state]}
           </Text>
@@ -163,7 +163,7 @@ function RemotePopover({ anchor, status, onClose }: { anchor: RefObject<HTMLElem
           {!sessions.length && !status.requests.length && <ListRow title={<Text tone="dim">{paired ? `No device connected. ${paired} paired.` : "No devices paired yet."}</Text>} />}
         </div>
         <Separator />
-        <Inline gap="sm">
+        <Inline gap={1.5}>
           {sessions.length > 0 && <Button onClick={act(() => cmd.call("remote.disconnect", {}))}>Disconnect All</Button>}
           <Button onClick={act(() => cmd.call("remote.disable", {}))}>Turn Off</Button>
           <Spacer />

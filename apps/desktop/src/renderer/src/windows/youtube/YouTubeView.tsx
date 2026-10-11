@@ -127,7 +127,7 @@ function Ask({ id, focused }: { id: string; focused: boolean }) {
         icon: "play.rectangle",
         title: "YouTube",
         action: (
-          <Stack gap="xs">
+          <Stack gap={1}>
             <TextField
               ref={input}
               fill

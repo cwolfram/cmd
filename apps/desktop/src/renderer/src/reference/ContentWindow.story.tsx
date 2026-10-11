@@ -41,7 +41,7 @@ function Doc({ size = "wide", loading }: { size?: SizeName; loading?: boolean })
           open={outline}
           width={{ min: 160, ideal: 200, max: 300 }}
           pane={
-            <Stack gap="none" pad="xs">
+            <Stack gap={0} pad={1}>
               {OUTLINE.map((h) => (
                 <ListRow key={h.id} title={h.title} depth={h.depth} selected={h.id === at} onClick={() => setAt(h.id)} />
               ))}
@@ -49,9 +49,9 @@ function Doc({ size = "wide", loading }: { size?: SizeName; loading?: boolean })
           }
         >
           <Measure>
-            <Stack gap="xl">
-              <Stack gap="xs">
-                <Inline gap="sm">
+            <Stack gap={4}>
+              <Stack gap={1}>
+                <Inline gap={1.5}>
                   <Badge tone="accent">Research</Badge>
                   <Text tone="dim" size="sm">
                     9 October 2026

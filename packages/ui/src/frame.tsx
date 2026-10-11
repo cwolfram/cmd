@@ -1,7 +1,7 @@
 // Laying out a window's content (docs/40-window-design.md, the window-design skill). Spacing
 // belongs to these and nothing else: Stack, Inline and Tiles space their
 // children, View pads a window's body, and kit components have no outer
-// margins. Gaps and paddings take only the names of the --space-* scale (pad also `inset`).
+// margins. Gaps and paddings take only steps of the --space-* scale (pad also `inset`).
 //
 // View is a window's content frame: toolbar, body, footer, and the state that
 // replaces the body (loading, empty, no results, error). Split puts a sidebar or
@@ -12,28 +12,28 @@ import type * as React from "react";
 import { forwardRef, useEffect, useRef, useState, type CSSProperties, type HTMLAttributes, type PointerEvent, type ReactNode, type Ref, type UIEvent } from "react";
 import { ICON, iconNode } from "./icon.tsx";
 import { Spinner, type Tone } from "./status.tsx";
-import type { SpaceName, TextSize } from "./tokens.gen.ts";
+import type { SpaceStep, TextSize } from "./tokens.gen.ts";
 
 const cls = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
-/** The spacing scale (--space-*, tokens/space.tokens.json), or none; a Stack's `pad` also takes the window inset. */
-export type Space = "none" | SpaceName;
+/** A step of the spacing scale (--space-*, tokens/space.tokens.json: multiples of 4px, `2` is 8px), or 0; a Stack's `pad` also takes the window inset. */
+export type Space = 0 | SpaceStep;
 type Pad = Space | "inset";
-const sp = (s: Pad | undefined) => (s === undefined ? undefined : s === "none" ? "0" : s === "inset" ? "var(--inset)" : `var(--space-${s})`);
+const sp = (s: Pad | undefined) => (s === undefined ? undefined : s === 0 ? "0" : s === "inset" ? "var(--inset)" : `var(--space-${String(s).replace(".", "-")})`);
 
 type Align = "start" | "center" | "end" | "stretch" | "baseline";
 
 /** Children in a column, `gap` apart. */
-export function Stack({ gap = "md", pad, align, grow, children }: { gap?: Space; pad?: Pad; align?: Align; grow?: boolean; children: ReactNode }) {
+export function Stack({ gap = 2, pad, align, grow, children }: { gap?: Space; pad?: Pad; align?: Align; grow?: boolean; children: ReactNode }) {
   return (
-    <div className="ui-stack" data-align={align} data-grow={grow || undefined} data-pad={pad && pad !== "none" ? pad : undefined} style={{ gap: sp(gap), padding: sp(pad) }}>
+    <div className="ui-stack" data-align={align} data-grow={grow || undefined} data-pad={pad ? pad : undefined} style={{ gap: sp(gap), padding: sp(pad) }}>
       {children}
     </div>
   );
 }
 
 /** Children in a row, `gap` apart; `justify="between"` puts the first and last at the ends. */
-export function Inline({ gap = "sm", align = "center", justify, wrap, grow, children }: { gap?: Space; align?: Align; justify?: "start" | "between" | "end"; wrap?: boolean; grow?: boolean; children: ReactNode }) {
+export function Inline({ gap = 1.5, align = "center", justify, wrap, grow, children }: { gap?: Space; align?: Align; justify?: "start" | "between" | "end"; wrap?: boolean; grow?: boolean; children: ReactNode }) {
   return (
     <div className="ui-inline" data-align={align} data-justify={justify} data-wrap={wrap || undefined} data-grow={grow || undefined} style={{ gap: sp(gap) }}>
       {children}
@@ -42,7 +42,7 @@ export function Inline({ gap = "sm", align = "center", justify, wrap, grow, chil
 }
 
 /** Equal tiles, as many to a row as fit at `min` wide. */
-export function Tiles({ min = 160, gap = "md", children }: { min?: 96 | 120 | 160 | 200 | 240 | 320; gap?: Space; children: ReactNode }) {
+export function Tiles({ min = 160, gap = 2, children }: { min?: 96 | 120 | 160 | 200 | 240 | 320; gap?: Space; children: ReactNode }) {
   return (
     <div className="ui-tiles" style={{ gap: sp(gap), "--tile-min": `${min}px` } as CSSProperties}>
       {children}

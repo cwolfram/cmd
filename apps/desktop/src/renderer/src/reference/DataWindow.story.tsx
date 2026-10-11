@@ -26,9 +26,9 @@ const dur = (s: number) => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(
 
 function Inspector({ run }: { run: Run }) {
   return (
-    <Stack gap="xl" pad="lg">
-      <Stack gap="xs">
-        <Inline gap="sm">
+    <Stack gap={4} pad={3}>
+      <Stack gap={1}>
+        <Inline gap={1.5}>
           <StatusDot state={LIGHT[run.status]} />
           <Text strong truncate>
             {run.name}
@@ -48,7 +48,7 @@ function Inspector({ run }: { run: Run }) {
           ]}
         />
       </Pane>
-      <Inline gap="sm" wrap>
+      <Inline gap={1.5} wrap>
         <Button icon="arrow.clockwise">Run Again</Button>
         <Button variant="ghost" icon="doc.text">Logs</Button>
       </Inline>

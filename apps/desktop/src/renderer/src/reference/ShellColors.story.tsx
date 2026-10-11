@@ -119,7 +119,7 @@ function Shell({ r, name, icon, selected, toolbar = true, width, height }: { r: 
             <ToolbarButton icon="sidebar.right" label="Inspector" />
           </WindowToolbar>
         )}
-        <div style={{ flex: 1, padding: "var(--space-sm) var(--inset)", font: "var(--text-sm) var(--font-mono)", color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre", overflow: "hidden" }}>
+        <div style={{ flex: 1, padding: "var(--space-1-5) var(--inset)", font: "var(--text-sm) var(--font-mono)", color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre", overflow: "hidden" }}>
           {LINES.map((l, i) => (
             <div key={i} style={{ color: l.startsWith(" ✓") ? "var(--state-done)" : l.startsWith("~") ? "var(--accent)" : undefined }}>
               {l}

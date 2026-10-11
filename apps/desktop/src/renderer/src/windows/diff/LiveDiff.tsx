@@ -185,7 +185,7 @@ export function LiveDiffView(p: { state: "loading" | "noRepo" | "ok"; dir: strin
                 place={f.rel.includes("/") ? f.rel.replace(/\/?[^/]+\/?$/, "") : undefined}
                 tip={`${f.rel}\nDouble-click to open`}
                 end={
-                  <Inline gap="sm">
+                  <Inline gap={1.5}>
                     {f.added > 0 && (
                       <Text size="xs" mono tone="success">
                         +{f.added}

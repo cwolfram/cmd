@@ -116,7 +116,7 @@ export function Resources(p: ResourcesProps) {
     >
       <Panes>
         <Pane wide>
-          <Tiles min={120} gap="xl">
+          <Tiles min={120} gap={4}>
             <Stat label="CPU" value={share(now.cpu)} unit="%">
               <Sparkline values={p.history.map((u) => u.cpu)} series={0} />
             </Stat>

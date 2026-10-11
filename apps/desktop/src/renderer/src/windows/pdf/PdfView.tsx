@@ -324,7 +324,7 @@ function PasswordPrompt({ wrong, onSubmit }: { wrong: boolean; onSubmit: (p: str
         title: "This PDF is locked",
         text: wrong ? "That password didn't work. Try again." : "Enter its password to open it.",
         action: (
-          <Inline gap="sm">
+          <Inline gap={1.5}>
             <TextField type="password" autoFocus value={text} onChange={setText} onKeyDown={(e) => e.key === "Enter" && text && onSubmit(text)} aria-label="Password" />
             <Button variant="primary" disabled={!text} onClick={() => onSubmit(text)}>
               Open

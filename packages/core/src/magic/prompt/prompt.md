@@ -109,7 +109,7 @@ Media: a view may play audio or video (`<audio>`, `<video>`, a web radio) and sh
 The view goes into a page that already has the theme, the kit below and a `cmd` object.
 
 - The page has cmd's own design tokens, the ones its windows are built with. Colours only through them: `--text`, `--text-dim`, `--text-faint`, `--well` (the window's background), `--bg-elevated`, `--separator`, `--bg-hover`, `--accent`, `--success`, `--warning`, `--danger`, and `--chart-1` … `--chart-6` for series. Never write a literal colour. Light and dark themes then just work.
-- Fonts: `--font-ui` (text) and `--font-mono`. Sizes from the scales, not literal px: text `--text-sm`, `--text-md`, `--text-base`, `--text-lg`; space `--space-xs` (4px), `--space-sm` (6), `--space-md` (8), `--space-lg` (12), `--space-xl` (16), `--space-2xl` (24); the window inset `--inset` (16px; bars `--bar-inset`, 12px); radii `--radius` (controls) and `--radius-md` (cards). The kit's classes already use them.
+- Fonts: `--font-ui` (text) and `--font-mono`. Sizes from the scales, not literal px: text `--text-sm`, `--text-md`, `--text-base`, `--text-lg`; space, multiples of 4px named by the multiple: `--space-1` (4px), `--space-1-5` (6), `--space-2` (8), `--space-3` (12), `--space-4` (16), `--space-6` (24); the window inset `--inset` (16px; bars `--bar-inset`, 12px); radii `--radius` (controls) and `--radius-md` (cards). The kit's classes already use them.
 - No gradients, shadows, blur or animations; at most a short transition.
 - Lay it out as in Layout: edge to edge, flexible at every size.
 - Render from data: `cmd.onData<Data>(d => …)` is called with the data now and after every refresh. Make it idempotent: set text and attributes on elements you created once, or rebuild a container's children. Build rows with `document.createElement` and `textContent` (or escape text you put into `innerHTML`): data is not HTML.
@@ -182,7 +182,7 @@ Sizes: everything flexible.
 
 Your widget sits inside a cmd window, next to terminals running Claude Code, htop and lazygit. It should read like a rich terminal window, not a small web page: compact text, aligned columns and predictable sections, the way a good TUI (lazygit, btop, `gh dash`) lays out its panes.
 
-- **Dense and quiet**: 12–13px text, tight but readable spacing (`--space-xs` to `--space-md` between rows, `--space-lg` to `--space-2xl` between sections), hairline 1px borders (`--separator`). No shadows, gradients, glows, emoji or decorative icons.
+- **Dense and quiet**: 12–13px text, tight but readable spacing (`--space-1` to `--space-2` between rows, `--space-3` to `--space-6` between sections), hairline 1px borders (`--separator`). No shadows, gradients, glows, emoji or decorative icons.
 - **One text size.** Hierarchy comes from weight, `--text` against `--text-dim`, and one colour, not from size. Big type (`k-big`, `k-huge`) is only for the hero of a value or instrument widget: a clock, a timer, one price, the temperature. Never for a status word ("Passed", "Clean", "Connected"), a count, or the headline of a section.
 - **One inset.** Content sits `--inset` from every edge of the window, top as well as sides; the body, `k-main` and the bars already have it. Don't add padding of your own around the widget or a section.
 - **Controls go in a bar.** A row that holds controls (a filter, a range, a few buttons) is a `k-toolbar` along the top or a `k-footer` along the bottom, as in cmd's own windows, not a line inside the content.

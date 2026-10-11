@@ -113,10 +113,10 @@
   },
   "inset": {
     "$description": "Phones' margin: 16px, as iOS lists.",
-    "$value": "{space.xl}"
+    "$value": "{space.4}"
   },
   "page-inset": {
     "$description": "A page on a phone: the same margin as everything else.",
-    "$value": "{space.xl}"
+    "$value": "{space.4}"
   }
 }

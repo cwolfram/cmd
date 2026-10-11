@@ -12,7 +12,7 @@ export const Sheet = () => <PairSheet request={request} />;
 export const Inline = () => (
   <div style={{ width: 560 }}>
     <FormSection title="Pair a Device">
-      <Stack pad="xl">
+      <Stack pad={4}>
         <PairPrompt request={request} autoFocus={false} />
       </Stack>
     </FormSection>
