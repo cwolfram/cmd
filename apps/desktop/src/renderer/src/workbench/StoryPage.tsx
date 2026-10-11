@@ -7,7 +7,7 @@ import type { ComponentType, ReactNode } from "react";
 import { ErrorBoundary, LinkButton, SectionHeading } from "@cmd/ui";
 import type { StoryInfo } from "./catalog/index.ts";
 import { Doc, Head } from "./ComponentPage.tsx";
-import { Layered, Sized } from "./Layered.tsx";
+import { Cell, Sized } from "./Layered.tsx";
 
 export type StoryModule = Record<string, unknown>;
 
@@ -46,6 +46,4 @@ export function StoryPage({ story, mod, width, onFocus }: { story: StoryInfo; mo
   );
 }
 
-/** A box for one variant on the story page. */
-export const Cell = ({ children }: { children: ReactNode }) => <Layered className="wb-cell wb-variant">{children}</Layered>;
 

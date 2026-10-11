@@ -263,12 +263,39 @@ const OLD_COMMAND = /\s*\(pnpm workbench [^)]*\)/g;
 function story(file: string, roots: CatalogRoots, byFile: Map<string, ComponentInfo[]>, kitByName: Map<string, ComponentInfo>): StoryInfo {
   const kit = file.startsWith(roots.kit);
   const inside = path.relative(kit ? roots.kit : roots.renderer, file).split(path.sep).join("/");
-  const title = path.basename(file, ".story.tsx");
+  const base = path.basename(file, ".story.tsx");
+  // Kit files are named in lower case (button.tsx): their stories' titles aren't.
+  const title = kit ? base.replace(/^./, (c) => c.toUpperCase()) : base;
   const folder = path.posix.dirname(inside);
   const group = kit ? (folder === "." ? "ui" : `ui/${folder}`) : folder === "." ? "app" : folder;
-  const id = `${group}/${title.toLowerCase()}`;
+  const id = `${group}/${base.toLowerCase()}`;
   const src = fs.readFileSync(file, "utf8");
   const sf = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  // Imported from the kit (@cmd/ui, or a kit file beside a kit story), not a local namesake.
+  const fromKit = new Set<string>();
+  for (const st of sf.statements)
+    if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier) && (st.moduleSpecifier.text === "@cmd/ui" || (kit && st.moduleSpecifier.text.startsWith("./"))) && st.importClause?.namedBindings && ts.isNamedImports(st.importClause.namedBindings))
+      for (const el of st.importClause.namedBindings.elements) fromKit.add((el.propertyName ?? el.name).text);
+  // What a story can show: the components of the file beside it and the kit's it imports, by name.
+  const besideFile = besideOf(file);
+  const candidates = new Map<string, ComponentInfo>([...(besideFile ? (byFile.get(path.relative(roots.repo, besideFile)) ?? []) : []), ...[...kitByName.values()].filter((c) => fromKit.has(c.name))].map((c) => [c.name, c]));
+
+  // Each top-level declaration's text, so a variant's helpers (a local Win around a FindBar) count as what it renders.
+  const decls = new Map<string, string>();
+  for (const st of sf.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name) decls.set(st.name.text, st.getText());
+    if (ts.isVariableStatement(st)) for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name)) decls.set(d.name.text, d.getText());
+  }
+  /** The component names rendered (<Name …>) in a declaration and in the local ones it refers to (a helper, a list of rows), transitively. */
+  const rendered = (name: string, seen = new Set<string>(), tags = new Set<string>()): Set<string> => {
+    if (seen.has(name)) return tags;
+    seen.add(name);
+    const text = decls.get(name) ?? "";
+    for (const m of text.matchAll(/<([A-Z][A-Za-z0-9]*)[\s/>]/g)) tags.add(m[1]!);
+    for (const local of decls.keys()) if (local !== name && new RegExp(`\\b${local}\\b`).test(text)) rendered(local, seen, tags);
+    return tags;
+  };
+
   const variants: VariantInfo[] = [];
   for (const st of sf.statements) {
     const exported = ts.canHaveModifiers(st) && ts.getModifiers(st)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
@@ -279,14 +306,17 @@ function story(file: string, roots: CatalogRoots, byFile: Map<string, ComponentI
         ? [st.name.text]
         : [];
     const doc = docAbove(src, st);
-    for (const name of names) if (name !== "args") variants.push(doc ? { name, doc } : { name });
+    for (const name of names) {
+      if (name === "args") continue;
+      const shows = [...rendered(name)].flatMap((n) => (candidates.has(n) ? [candidates.get(n)!.id] : []));
+      variants.push({ name, ...(doc ? { doc } : {}), components: shows });
+    }
   }
-  const besideFile = besideOf(file);
-  let components = besideFile ? (byFile.get(path.relative(roots.repo, besideFile)) ?? []).map((c) => c.id) : [];
-  if (!components.length) {
-    const named = kitByName.get(title.toLowerCase());
-    if (named) components = [named.id];
-  }
+  // What it shows: what its variants render; the file beside it's components first, then the one it is named after.
+  const own = new Set((besideFile ? (byFile.get(path.relative(roots.repo, besideFile)) ?? []) : []).map((c) => c.id));
+  const named = kitByName.get(base.toLowerCase())?.id;
+  const rank = (id: string) => (own.has(id) ? 0 : id === named ? 1 : 2);
+  const components = [...new Set(variants.flatMap((v) => v.components ?? []))].sort((a, b) => rank(a) - rank(b));
   const doc = headerOf(src)?.replace(OLD_PREFIX, "").replace(OLD_COMMAND, "").replace(/^./, (c) => c.toUpperCase());
   const info: StoryInfo = { id, title, group, file: path.relative(roots.repo, file), variants, components };
   if (doc) info.doc = doc;

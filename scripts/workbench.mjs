@@ -85,7 +85,10 @@ async function start(story = "") {
   const quit = async () => {
     child.kill("SIGTERM");
     await stopCore(home, { terminals: true });
-    fs.rmSync(stateFile, { force: true });
+    // Only ours: a Workbench started since (stop, then start) has written its own.
+    try {
+      if (JSON.parse(fs.readFileSync(stateFile, "utf8")).pid === child.pid) fs.rmSync(stateFile, { force: true });
+    } catch {}
     process.exit(0);
   };
   process.on("SIGINT", quit);

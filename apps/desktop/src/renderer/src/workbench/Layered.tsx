@@ -43,3 +43,6 @@ export function Layered({ className, children }: { className: string; children: 
 
 /** At a width (a window's), or as wide as it is. */
 export const Sized = ({ width, children }: { width?: number; children: ReactNode }) => (width ? <div className="wb-sized" style={{ width }}>{children}</div> : <>{children}</>);
+
+/** A box for one variant (a story's page, a component's). */
+export const Cell = ({ children }: { children: ReactNode }) => <Layered className="wb-cell wb-variant">{children}</Layered>;

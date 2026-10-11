@@ -34,6 +34,8 @@ export interface VariantInfo {
   name: string;
   /** The doc comment above its export. */
   doc?: string;
+  /** The ids of the components it renders: in its JSX, or in the story's local components it renders. */
+  components?: string[];
 }
 
 export interface StoryInfo {
@@ -49,7 +51,7 @@ export interface StoryInfo {
   doc?: string;
   /** Exported names, in file order (the page keeps those that are components). */
   variants: VariantInfo[];
-  /** The ids of the components it shows: those of the file beside it, else the one it is named after. */
+  /** The ids of the components its variants render, the file beside it's first. */
   components: string[];
 }
 

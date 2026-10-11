@@ -1,52 +1,106 @@
 // A component's page in the UI Workbench (docs/47), all of it from the catalog: its doc,
-// a matrix of its unions and booleans, a playground with a control per prop, its props
-// with types, defaults and docs, and the stories that show it. Kit components render
-// from @cmd/ui; the renderer's show through their stories (they need stand-ins).
+// a matrix of its unions and booleans, a playground with a control per prop, the story
+// variants that render it (live), and its props with types, defaults and docs. Kit
+// components render from @cmd/ui; the renderer's show through their stories (stand-ins).
 
-import { Component, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Component, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import * as Kit from "@cmd/ui";
-import { Callout, FormRow, FormSection, List, ListRow, NumberField, Prose, SectionHeading, Segmented, Select, Switch, TextField } from "@cmd/ui";
-import type { ComponentInfo, PropInfo, StoryInfo } from "./catalog/index.ts";
+import { Callout, ErrorBoundary, FormRow, FormSection, LinkButton, List, ListRow, NumberField, Prose, SectionHeading, Segmented, Select, Switch, TextField } from "@cmd/ui";
+import { loaders, type ComponentInfo, type PropInfo, type StoryInfo, type VariantInfo } from "./catalog/index.ts";
+import { Cell } from "./Layered.tsx";
 import { argsFor, controlledBy, matrixOf, valuesOf, type Args } from "./args.ts";
 import { Themes } from "./Themes.tsx";
 
 const KIT = Kit as unknown as Record<string, ComponentType<Args> | undefined>;
 
+/** How many of the variants that render it show live on its page; the rest are links. */
+const LIVE = 6;
+
 export function ComponentPage({ component: c, stories, themes, onOpen }: { component: ComponentInfo; stories: StoryInfo[]; themes?: boolean; onOpen: (story: string, variant?: string) => void }) {
   const C = c.kit ? KIT[c.name] : undefined;
   const { args, missing } = useMemo(() => argsFor(c), [c]);
-  const mine = stories.filter((s) => s.components.includes(c.id));
+  const renders = !!C && !missing.length;
+  // Every story variant that renders it: its own stories first (beside it or named after it), then the most focused.
+  const uses = stories
+    .flatMap((s) => s.variants.filter((v) => v.components?.includes(c.id)).map((v) => ({ story: s, variant: v, own: s.components[0] === c.id })))
+    .sort((a, b) => Number(b.own) - Number(a.own) || (a.variant.components?.length ?? 0) - (b.variant.components?.length ?? 0));
+  const inStories = (
+    <Section title="In stories">
+      {uses.length ? <Uses uses={uses} onOpen={onOpen} /> : <p className="wb-dim">None yet.</p>}
+    </Section>
+  );
   return (
     <article className="wb-page">
       <Head title={c.name} file={c.file} doc={c.doc} />
-      {C && !missing.length ? (
+      {renders ? (
         <>
           <Section title="Variants">{themes ? <Themes render={() => <MatrixView c={c} C={C} args={args} />} /> : <MatrixView c={c} C={C} args={args} />}</Section>
           <Section title="Playground">
             <Playground key={c.id} c={c} C={C} initial={args} />
           </Section>
+          {inStories}
         </>
+      ) : uses.length ? (
+        inStories
       ) : (
-        <Callout title={c.kit ? "This one needs a story" : "Shown through its stories"}>
-          {c.kit ? `The UI Workbench can't guess ${missing.map((m) => `\`${m}\``).join(", ")}. A story beside it shows it with real values.` : "Renderer components take stand-ins for the app (bridge calls, data), so their stories show them."}
+        <Callout title="This one needs a story">
+          {c.kit ? `The UI Workbench can't guess ${missing.map((m) => `\`${m}\``).join(", ")}, and no story renders it. A story beside it shows it with real values.` : "Renderer components take stand-ins for the app (bridge calls, data); a story beside it shows it."}
         </Callout>
       )}
       <Section title="Props">
         <Props props={c.props} />
       </Section>
-      <Section title="Stories">
-        {mine.length ? (
-          <List>
-            {mine.map((s) => (
-              <ListRow key={s.id} icon="rectangle.stack" title={s.title} place={s.group} detail={s.variants.map((v) => v.name).join(", ")} onClick={() => onOpen(s.id)} />
-            ))}
-          </List>
-        ) : (
-          <p className="wb-dim">None yet.</p>
-        )}
-      </Section>
     </article>
   );
+}
+
+type Use = { story: StoryInfo; variant: VariantInfo; own: boolean };
+
+/** The first few variants that render it, live, each with its story's name and note; links to the rest. */
+function Uses({ uses, onOpen }: { uses: Use[]; onOpen: (story: string, variant?: string) => void }) {
+  const live = uses.slice(0, LIVE);
+  const mods = useModules([...new Set(live.map((u) => u.story.id))]);
+  return (
+    <>
+      {live.map(({ story, variant }) => {
+        const View = mods[story.id]?.[variant.name] as ComponentType | undefined;
+        return (
+          <div key={`${story.id}/${variant.name}`} className="wb-section">
+            <SectionHeading variant="title" aside={<LinkButton onClick={() => onOpen(story.id, variant.name)}>Show alone</LinkButton>}>
+              {story.title} › {variant.name}
+            </SectionHeading>
+            {variant.doc && <Doc text={variant.doc} />}
+            <Cell>
+              {typeof View === "function" ? (
+                <ErrorBoundary title="This variant stopped working" reloadLabel="Reload">
+                  <View />
+                </ErrorBoundary>
+              ) : null}
+            </Cell>
+          </div>
+        );
+      })}
+      {uses.length > LIVE && (
+        <List>
+          {uses.slice(LIVE).map(({ story, variant }) => (
+            <ListRow key={`${story.id}/${variant.name}`} icon="rectangle.stack" title={`${story.title} › ${variant.name}`} place={story.group} onClick={() => onOpen(story.id, variant.name)} />
+          ))}
+        </List>
+      )}
+    </>
+  );
+}
+
+/** Story modules by id, loaded on demand. */
+function useModules(ids: string[]): Record<string, Record<string, unknown>> {
+  const [mods, setMods] = useState<Record<string, Record<string, unknown>>>({});
+  const key = ids.join();
+  useEffect(() => {
+    let live = true;
+    for (const id of ids) if (!mods[id]) void loaders[id]?.().then((m) => live && setMods((all) => ({ ...all, [id]: m })), () => {});
+    return () => void (live = false);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return mods;
 }
 
 export function Head({ title, file, doc, children }: { title: ReactNode; file: string; doc?: string; children?: ReactNode }) {

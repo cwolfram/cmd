@@ -42,18 +42,19 @@ function guess(c: ComponentInfo, p: PropInfo): unknown {
 export function argsFor(c: ComponentInfo, given: Args = {}): { args: Args; missing: string[] } {
   const args: Args = { ...given };
   const missing: string[] = [];
+  const fromOptions = c.props.some((o) => o.name === "options" && o.required);
   for (const p of c.props) {
     // Children are what most components show, required or not (a Button's come from the DOM's types).
     if (p.name in args || (!p.required && !(p.name === "children" && p.kind === "node"))) continue;
     // A choice's value is one of its options (below).
-    if (p.name === "value" && c.props.some((o) => o.name === "options" && o.required)) continue;
+    if (p.name === "value" && fromOptions) continue;
     const v = guess(c, p);
     if (v === undefined) missing.push(p.name);
     else args[p.name] = v;
   }
   // A choice's value is one of its options.
   const options = args.options;
-  if (!("value" in args) && c.props.some((p) => p.name === "value" && p.required)) {
+  if (fromOptions && !("value" in args) && c.props.some((p) => p.name === "value" && p.required)) {
     if (Array.isArray(options)) args.value = options[0];
     else missing.push("value");
   }

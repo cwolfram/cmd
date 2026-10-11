@@ -63,7 +63,10 @@ describe("stories", () => {
     const find = catalog.stories.find((s) => s.id === "components/findbar")!;
     expect(find.doc).toMatch(/^The kit's FindBar/);
     expect(find.variants.find((v) => v.name === "Docked")?.doc).toMatch(/toolbar/);
-    expect(find.components).toEqual(["ui/FindBar"]);
+    // What it renders from the kit, not its own Stage (a local namesake of the kit's).
+    expect(find.components[0]).toBe("ui/FindBar");
+    expect(find.components).toEqual(expect.arrayContaining(["ui/WindowToolbar", "ui/Window"]));
+    expect(find.components).not.toContain("ui/Stage");
     expect(catalog.stories.find((s) => s.id === "shell/feedback")!.components).toContain("shell/Feedback");
   });
 
@@ -80,6 +83,14 @@ describe("stories", () => {
   it("takes a file's header, not a doc comment on its first declaration", () => {
     expect(headerOf("// What this file is,\n// in two lines.\nimport x from 'y';")).toBe("What this file is, in two lines.");
     expect(headerOf("/** The first export's doc. */\nexport const A = 1;")).toBeUndefined();
+  });
+});
+
+describe("coverage", () => {
+  it("every kit component renders from its props, or a story shows it", () => {
+    const shown = new Set(catalog.stories.flatMap((s) => s.components));
+    const bare = catalog.components.filter((c) => c.kit && !shown.has(c.id) && argsFor(c).missing.length).map((c) => `${c.name} (needs ${argsFor(c).missing.join(", ")})`);
+    expect(bare, "Write a story beside it (packages/ui/src/<file>.story.tsx) that renders it").toEqual([]);
   });
 });
 
