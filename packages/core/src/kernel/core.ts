@@ -316,7 +316,7 @@ export class Core {
       });
     }
     // Views whose rules changed: from the log again (after the import, which they read).
-    if (this.agents.activity.needsRebuild) s.startup("turns", "Rebuilding agent turns", async () => void (await this.agents.activity.rebuild()));
+    if (this.agents.activity.needsRebuild) s.startup("turns", "Rebuilding agent turns", async () => void (await this.agents.activity.rebuild((done, total) => s.progress("turns", done, total))));
     if (this.sessions.needsRebuild) s.startup("sessions", "Indexing sessions", () => this.sessions.rebuild((done, total) => s.progress("sessions", done, total)).then(() => this.search.view.invalidate()));
     // Transcripts are read in a worker and recorded here in paced steps; the reading's own progress is search.status.
     if (o.transcripts || o.transcriptRoots) s.startup("transcripts", "Starting the transcript reader", () => void this.settings.bind(["data.record.transcripts", "search.archiveDirs"], () => this.search.restart()));

@@ -202,7 +202,8 @@ export class ActivityView {
 
   /** Turns from the events again, every agent's, with the current rules (TURN_FORMAT changed, or asked to). */
   /** The view from every agent's events again, an agent per step (readers see it fill; `#rebuilding` keeps listeners quiet). */
-  async rebuild(): Promise<{ agents: number; turns: number }> {
+  /** `progress`: agents replayed of all (the footer's count while it's a startup job). */
+  async rebuild(progress?: (done: number, total: number) => void): Promise<{ agents: number; turns: number }> {
     const t0 = Date.now();
     const agents = this.#data.store.db.prepare(`SELECT DISTINCT agent_id FROM events WHERE type = 'agent.hook' AND agent_id IS NOT NULL`).all() as { agent_id: string }[];
     let turns = 0;
@@ -210,8 +211,9 @@ export class ActivityView {
     const done = this.#pace.mark("turns rebuild");
     try {
       this.#views.db.exec(`DELETE FROM turns`);
-      for (const { agent_id } of agents) {
+      for (const [i, { agent_id }] of agents.entries()) {
         this.#views.transaction(() => this.replay(agent_id, (t, seq, cwd) => this.saveTurn(t, seq, cwd)));
+        progress?.(i + 1, agents.length);
         await this.#pace.yield();
       }
       turns = (this.#views.db.prepare(`SELECT COUNT(*) AS n FROM turns`).get() as { n: number }).n;

@@ -153,6 +153,16 @@ describe("stats service", () => {
     expect(core.stats.query({ stat: "commands.runs", range: "7d", by: "project" }).series.map((s) => s.label).sort()).toEqual(["app", "other"]);
   });
 
+  it("says how far a build is until every stat has its history (the startup job waits on it)", async () => {
+    const seen: [number, number][] = [];
+    core.stats.rebuild(); // every stat: the first step builds one, the rest wait their turn
+    await core.stats.built((done, total) => seen.push([done, total]));
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every(([d, t]) => t > 0 && d >= 0 && d <= t)).toBe(true);
+    expect(core.stats.query({ stat: "commands.runs", range: "7d" }).total).toBe(4); // built again, the same
+    await core.stats.built(() => expect.unreachable()); // nothing to build: at once, no progress
+  });
+
   it("keeps up as events arrive and change (a command that ends)", async () => {
     command(now, "make build", null, null, "dir:/src/app", "command:live");
     await core.stats.idle();

@@ -58,7 +58,7 @@ const STEP = { start: 50, min: 10, max: 2000 };
 const STEP_MS = 8;
 
 /** Fills in agent.usage for transcripts read before it was recorded; once (marked in the log's meta). */
-export async function backfillUsage(data: DataService, reread: (agent: AgentKind) => void, pace: Pacer): Promise<number> {
+export async function backfillUsage(data: DataService, reread: (agent: AgentKind) => void, pace: Pacer, progress?: (done: number, total: number) => void): Promise<number> {
   if (data.store.meta(BACKFILL)) return 0;
   // Codex: its token_count lines were dropped, so its files are read again (ids make that idempotent).
   reread("codex");
@@ -67,6 +67,8 @@ export async function backfillUsage(data: DataService, reread: (agent: AgentKind
   let seq = 0;
   let n = 0;
   let step = STEP.start;
+  let read = 0;
+  const total = progress ? (data.store.db.prepare(`SELECT COUNT(*) AS n FROM events WHERE type = 'transcript.message'`).get() as { n: number }).n : 0;
   const page = (limit: number) =>
     data.store.db.prepare(`SELECT seq, at, source, session_id AS sessionId, project_id AS projectId, json_extract(data, '$.role') AS role, json_extract(data, '$.messageId') AS mid, json_extract(data, '$.model') AS model, json(json_extract(data, '$.usage')) AS usage FROM events WHERE type = 'transcript.message' AND (at > ? OR (at = ? AND seq > ?)) ORDER BY at, seq LIMIT ${limit}`);
   for (;;) {
@@ -75,6 +77,7 @@ export async function backfillUsage(data: DataService, reread: (agent: AgentKind
     const rows = page(step).all(at, at, seq) as { seq: number; at: number; source: string; sessionId: string | null; projectId: string | null; role: string | null; mid: string | null; model: string | null; usage: string | null }[];
     const events = rows.flatMap((r) => (r.role === "assistant" && r.mid && r.usage ? [claudeUsage(r.mid, r.model, JSON.parse(r.usage) as Obj, { at: r.at, source: r.source, sessionId: r.sessionId, projectId: r.projectId })] : [])).filter((e): e is NewEvent => !!e);
     if (events.length) n += data.recordBatch(events).length;
+    progress?.((read += rows.length), total);
     done();
     const ms = performance.now() - t0;
     if (rows.length < step) break;
@@ -91,5 +94,5 @@ export async function backfillUsage(data: DataService, reread: (agent: AgentKind
 /** The backfill as a startup job (kernel/features.ts): after the core answers, before stats count tokens. */
 export const usageFeature = {
   id: "usage",
-  startup: { label: "Counting tokens", run: async (core: Pick<CoreContext, "data" | "search" | "scheduler">) => void (await backfillUsage(core.data, (agent) => core.search.reread(agent), core.scheduler)) },
+  startup: { label: "Counting tokens", run: async (core: Pick<CoreContext, "data" | "search" | "scheduler">) => void (await backfillUsage(core.data, (agent) => core.search.reread(agent), core.scheduler, (done, total) => core.scheduler.progress("usage", done, total))) },
 };

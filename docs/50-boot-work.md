@@ -36,7 +36,7 @@ The fixed ten minutes are gone: the app waits as long as the file changes, and g
 
 ### Progress on startup jobs
 
-`scheduler.progress(id, done, total)` adds a count to a running startup job; `StartupStatus.tasks[i]` carries `done`/`total` and the footer says "Indexing sessions · 41%". The sessions rebuild and the full-text rebuild report it. A search while the index builds says so in place (`search.status`, already there).
+`scheduler.progress(id, done, total)` adds a count to a running startup job; `StartupStatus.tasks[i]` carries `done`/`total` and the footer says "Indexing sessions · 41%". Reporting: the sessions rebuild, the full-text rebuild, the turns rebuild (agents replayed), the token backfill ("Counting tokens", transcript messages read) and the stats build ("Counting stats", hours built). A job is shown only while it runs, so work a job merely starts was invisible: the stats job now waits for every stat to have its history (`StatsService.built`), and the full-text job for its rebuild. The transcript reader's passes have their own progress (`search.status`: the ring in search fields, Settings → Search), so its job only starts it. Not counted, being short or bounded: the legacy import, the command-output index, the journal's git sync, agent home discovery.
 
 ### No space, said up front
 

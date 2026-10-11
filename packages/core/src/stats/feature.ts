@@ -28,9 +28,11 @@ export const statsFeature = {
   }),
   startup: {
     label: "Counting stats",
-    run: (core: CoreContext) => {
+    run: async (core: CoreContext) => {
       core.stats.start();
       core.scheduler.on("stall", (s) => core.stats.sample("core.stalls", [s.in], s.ms, s.at));
+      // A new stat's history fills in behind the socket: shown with its progress until it's done.
+      await core.stats.built((done, total) => core.scheduler.progress("stats", done, total));
     },
   },
   dispose: (core: CoreContext) => core.stats.dispose(),

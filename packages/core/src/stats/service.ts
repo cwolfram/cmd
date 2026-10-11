@@ -192,6 +192,20 @@ export class StatsService {
     return ds.map((d) => d.id);
   }
 
+  /**
+   * Resolves once every stat is built down to its oldest hour (the startup job
+   * waits on it, so the footer says so while a new stat fills in its history);
+   * `progress`: hours built of those there were to build. Live updates don't count.
+   */
+  async built(progress?: (done: number, total: number) => void): Promise<void> {
+    const left = () => [...this.#builds.values()].reduce((n, b) => n + Math.max(0, b.next - b.floor), 0);
+    const total = left();
+    while (!this.#disposed && this.#builds.size) {
+      progress?.(total - left(), total);
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+
   /** Resolves when nothing is dirty or building (tests, `cmd stats rebuild --wait`). */
   async idle(): Promise<void> {
     if (this.#flushTimer) {
