@@ -19,6 +19,7 @@ export const POLICY: Record<ClientKind, Record<DataClass, Rule>> = {
     git: "allow",
     notes: "allow",
     actions: "allow",
+    operator: "declare", // what was asked and done, with results
     // The command line, exit code and folder; what it printed (the blob, the body) only when declared.
     output: { fields: ["command", "exitCode", "cwd", "git", "output", "turn", "chars", "cut"] },
     agents: "declare", // prompts, tool calls, hook payloads

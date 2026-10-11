@@ -49,8 +49,7 @@ ${STATS_HELP}
                                       --types lists window types
   actions [PATH] [--all] [--json]     how to run the project here: its scripts, make targets, …
                                       (Workspace Actions; --all: hidden ones and history too)
-  actions run NAME [PATH] [--restart] [--yes]
-                                      run one in a terminal of the folder's workspace (--yes: a risky one)
+  actions run NAME [PATH] [--restart] [--yes] run one in a terminal of the folder's workspace (--yes: a risky one)
   search <query…> [--json] [--limit N]  search past agent sessions
   resume <session-id> [--agent claude|codex|…] [--fork]
   magic <request…> [--help]          build a widget (or a terminal command) from a request
@@ -115,8 +114,7 @@ const { values: opt, positionals: pos } = parseArgs({
     all: { type: "boolean" },
     "new-window": { type: "boolean", short: "n" },
     "git-root": { type: "boolean" },
-    clear: { type: "boolean" },
-    yes: { type: "boolean" },
+    clear: { type: "boolean" }, yes: { type: "boolean" },
     scope: { type: "string" },
     raw: { type: "boolean" },
     follow: { type: "boolean", short: "f" },
@@ -321,8 +319,7 @@ async function run({ client, closed }: Connection): Promise<number> {
         const hits = all.filter((a) => a.id === name).length ? all.filter((a) => a.id === name) : all.filter((a) => a.name === name);
         const a = hits.find((h) => !h.package) ?? (hits.length === 1 ? hits[0] : undefined);
         if (!a) return fail(hits.length ? `"${name}" is in several packages: ${hits.map((h) => h.id).join(", ")}` : `no action "${name}" in ${tilde(dir)} (cmd actions ${tilde(dir)} lists them)`);
-        if (a.risky && !opt.yes) return fail(`"${a.name}" is risky (${a.command}): run it with --yes to go ahead`);
-        const r = await client.call("actions.run", { root: list.root, actionId: a.id, restart: !!opt.restart, confirmed: true });
+        const r = await client.call("actions.run", { root: list.root, actionId: a.id, restart: !!opt.restart, confirmed: !!opt.yes });
         if (opt.json) return out({ ...r, action: a });
         console.log(r.started ? `${a.command}  (pane ${r.paneId})` : `already running in pane ${r.paneId} (--restart to run it again)`);
         return 0;

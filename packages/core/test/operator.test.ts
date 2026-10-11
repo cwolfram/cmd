@@ -121,6 +121,7 @@ describe("the service", () => {
       },
       selfIn: () => null,
       broadcast,
+      record: (e) => core.data.record(e),
       db: null,
     });
   });
@@ -266,7 +267,7 @@ describe("the service", () => {
     expect(outs[0]).toContain("command 25 (5 failed)");
     expect(outs[0]).toContain("+30 focus, activity and other quiet events not shown");
     expect(outs[0]).not.toContain("user.focus");
-    expect(outs[1].match(/exit 1/g)).toHaveLength(5);
+    expect(outs[1]!.match(/exit 1/g)).toHaveLength(5);
     expect(outs[2]).toContain("Showing 10 of 25");
   });
 
@@ -294,6 +295,26 @@ describe("the service", () => {
     const sent = runs[1]!.messages;
     expect(sent.find((m) => m.role === "assistant" && String(m.content).startsWith("(The person stopped me."))).toBeTruthy();
     expect(String(sent.at(-1)!.content)).toContain("third");
+  });
+
+  it("records each turn and its tool calls in the event log, linked, with what the person allowed", async () => {
+    turns.push(async (r) => {
+      r.onStep();
+      r.onText("Running them now.");
+      const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "terminal" })).output)![1]!;
+      await exec(r, "type", { ref, text: "ls" }, "a1");
+    });
+    op.send(ws.id, "list the files please");
+    await vi.waitFor(() => expect(tool(op.get(ws.id).items, "type")?.state).toBe("waiting"));
+    op.answer(ws.id, "a1", false, "use the files window");
+    await idle();
+    const [turn] = core.data.query({ types: ["operator.turn"], workspaceId: ws.id });
+    expect(turn).toMatchObject({ text: "list the files please", data: { steps: 2, denied: 1, stopped: false, error: null, model: "test", answer: "Running them now." } });
+    expect(turn!.until).not.toBeNull();
+    const tools = core.data.query({ types: ["operator.tool"], parentId: turn!.id, by: "time", order: "asc" });
+    expect(tools.map((t) => [t.text, (t.data as { state: string }).state])).toEqual([["doing open", "done"], ["doing type", "denied"]]);
+    expect(tools[1]).toMatchObject({ data: { allowed: false, reason: "use the files window", ask: expect.stringMatching(/^Type in w\d+: ls$/) } });
+    expect(tools[1]!.windowId).toBeTruthy();
   });
 
   it("keeps refs for the whole conversation and starts over on reset", async () => {

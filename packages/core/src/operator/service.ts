@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { Method, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { Method, NewDataEvent, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { AgentCall, AgentResult, AgentRun } from "../ai/backends.ts";
 import type { ToolOutput } from "../magic/tools.ts";
@@ -43,6 +43,8 @@ export interface OperatorDeps {
   broadcast(e: OperatorEvent): void;
   /** A turn waits for the person, ended or failed while nobody looked (a notification). */
   notify?(workspaceId: WorkspaceId, title: string, body: string): void;
+  /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
+  record?(e: NewDataEvent): void;
   /** Where conversations are kept (cmd's database); null: in memory only (tests). */
   db: DatabaseSync | null;
 }
@@ -139,6 +141,13 @@ export class OperatorService {
     c.denials = 0;
     this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, busy: true });
     const done: OperatorItem[] = [];
+    const request = asked.map((a) => a.text).join("\n\n");
+    const turn = { id: `operator:${randomUUID()}`, at: t0, type: "operator.turn" as const, source: "cmd", workspaceId: c.workspaceId, text: request.split("\n")[0]!.slice(0, 200) };
+    const firstItem = c.items.length;
+    let error: string | null = null;
+    let stopped = false;
+    let tokens = { in: 0, out: 0 };
+    this.#d.record?.({ ...turn, data: { steps: 0, denied: 0, stopped: false, error: null, model: null, tokens, firstStepMs: null, ms: null, answer: null }, content: request });
     try {
       const bench = this.#bench(c, abort.signal);
       if (!c.system) c.system = systemPrompt({ root: ws.root, brief: await this.#brief(bench) }).text;
@@ -179,8 +188,8 @@ export class OperatorService {
           const tool = OPERATOR_TOOLS.find((t) => t.spec.name === call.name);
           if (!tool) return { output: `no tool ${call.name}`, isError: true };
           // Acts go one at a time, in the order the model asked; reads run beside them.
-          if (!tool.acts) return this.#exec(c, tool, call, bench, done, abort);
-          const run = acting.then(() => this.#exec(c, tool, call, bench, done, abort));
+          if (!tool.acts) return this.#exec(c, tool, call, bench, done, abort, turn.id);
+          const run = acting.then(() => this.#exec(c, tool, call, bench, done, abort, turn.id));
           acting = run.then(() => undefined, () => undefined);
           return run;
         },
@@ -188,9 +197,11 @@ export class OperatorService {
       if (flush) clearTimeout(flush), emitText();
       c.messages.push(...r.messages);
       c.model = r.model;
+      tokens = { in: r.usage.input, out: r.usage.output };
       c.usage = { input: c.usage.input + r.usage.input, output: c.usage.output + r.usage.output, cacheRead: c.usage.cacheRead + r.usage.cacheRead };
     } catch (e) {
-      const stopped = abort.signal.aborted;
+      stopped = abort.signal.aborted;
+      if (!stopped) error = (e as Error).message;
       // The model's own messages for this turn are lost with the stream: what was done goes back as a note.
       const steps = done.filter((i) => i.kind === "tool").map((i) => `- ${(i as { why: string }).why}: ${(i as { state: string }).state}`);
       c.messages.push({ role: "assistant", content: `(${stopped ? "The person stopped me" : `I failed: ${(e as Error).message}`}.${steps.length ? ` Done before that:\n${steps.join("\n")}` : ""})` });
@@ -201,6 +212,9 @@ export class OperatorService {
       c.busy = false;
       c.abort = null;
       c.latency = { firstStepMs: firstStep, totalMs: Date.now() - t0 };
+      const answer = c.items.slice(firstItem).flatMap((i) => (i.kind === "text" ? [i.text] : [])).join("\n\n").trim() || null;
+      const denied = done.filter((i) => i.kind === "tool" && i.state === "denied").length;
+      this.#d.record?.({ ...turn, until: Date.now(), data: { steps: done.length, denied, stopped, error, model: c.model, tokens, firstStepMs: firstStep, ms: Date.now() - t0, answer: answer?.slice(0, 2000) ?? null }, content: `${request}${answer ? `\n\n=== answer ===\n\n${answer}` : ""}` });
       this.#save(c);
       this.#d.broadcast({ type: "operator.changed", workspaceId: c.workspaceId, busy: false, usage: c.usage, model: c.model, latency: c.latency });
     }
@@ -208,7 +222,7 @@ export class OperatorService {
   }
 
   /** One tool call: its card, the person's approval when it needs one, the call, the result. */
-  async #exec(c: Conversation, tool: OperatorTool, call: AgentCall, bench: Bench, done: OperatorItem[], abort: AbortController): Promise<ToolOutput> {
+  async #exec(c: Conversation, tool: OperatorTool, call: AgentCall, bench: Bench, done: OperatorItem[], abort: AbortController, turnId: string): Promise<ToolOutput> {
     const { why, ...input } = call.input;
     let target: WindowId | null = null;
     try {
@@ -219,11 +233,14 @@ export class OperatorService {
     const item: Extract<OperatorItem, { kind: "tool" }> = { kind: "tool", id: call.id, at: Date.now(), tool: tool.spec.name, why: typeof why === "string" && why.trim() ? why.trim() : tool.spec.name, acts: tool.acts, target, state: "running", input };
     this.#add(c, item);
     const t0 = Date.now();
-    const end = (state: Extract<OperatorItem, { kind: "tool" }>["state"], output: string, isError: boolean): ToolOutput => {
-      const next = { ...item, state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
+    let approval: { ask: string; allowed: boolean | null; reason: string | null } | null = null;
+    const end = (state: "done" | "failed" | "denied", output: string, isError: boolean): ToolOutput => {
+      const next = { ...item, ...(approval ? { ask: approval.ask } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
       this.#update(c, next);
       done.push(next);
-      return { output: clip(output, OUTPUT_MAX), isError };
+      const sent = clip(output, OUTPUT_MAX);
+      this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, ms: next.ms }, content: sent });
+      return { output: sent, isError };
     };
     try {
       const ask = tool.confirm ? await tool.confirm(call.input, bench) : null;
@@ -232,6 +249,7 @@ export class OperatorService {
         if (!this.#d.selfIn(c.workspaceId)) this.#d.notify?.(c.workspaceId, "The Operator asks", ask);
         const a = await new Promise<{ allow: boolean; reason?: string }>((resolve) => c.approvals.set(item.id, resolve));
         c.approvals.delete(item.id);
+        approval = { ask, allowed: a.allow, reason: a.reason ?? null };
         if (!a.allow) {
           if (++c.denials >= DENIALS) queueMicrotask(() => abort.abort(new Error("denied")));
           return end("denied", `The person said no${a.reason ? `: ${a.reason}` : ""}. Don't do this another way; ask what they want instead.`, true);
