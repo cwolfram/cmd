@@ -97,7 +97,7 @@ export default defineConfig({
   // The app's version for What's New.
   renderer: {
     define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
-    // The UI Workbench's catalog (docs/47), dev server only.
+    // The UI Workbench's catalog (docs/48), dev server only.
     plugins: [react(), xtermScaledCoords(), pdfjsAssets(), workbenchCatalog(resolve(import.meta.dirname, "../.."))],
     optimizeDeps: { exclude: ["@xterm/xterm"] },
     build: {

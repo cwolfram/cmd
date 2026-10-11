@@ -1,9 +1,9 @@
-// The UI Workbench's sidebar (docs/47), from the catalog: the kit's components by the
+// The UI Workbench's sidebar (docs/48), from the catalog: the kit's components by the
 // file they live in (a dim icon: no story shows them yet), then the stories by folder,
 // a story's variants under it once it is open. Type to filter all of it.
 
 import { useEffect, useState } from "react";
-import { List, ListRow, ListSection, SearchField } from "@cmd/ui";
+import { List, ListRow, ListRowContent, ListRowIcon, ListSection, SearchField } from "@cmd/ui";
 import type { Catalog, ComponentInfo, StoryInfo } from "./catalog/index.ts";
 
 export type Selection = { kind: "component"; id: string } | { kind: "story"; id: string; variant?: string } | null;
@@ -61,25 +61,27 @@ export function Sidebar({ catalog, selection, onSelect }: { catalog: Catalog; se
           {shown.map((g) => (
             <ListSection key={g.key} title={g.title} count={g.components.length + g.stories.length} open={!!q || open.has(g.key)} onToggle={() => toggle(g.key)}>
               {g.components.map((c) => (
-                <ListRow
-                  key={c.id}
-                  icon="square.on.square"
-                  markTone={covered.has(c.id) ? undefined : "dim"}
-                  tip={covered.has(c.id) ? undefined : "No story shows it yet"}
-                  title={c.name}
-                  selected={selection?.kind === "component" && selection.id === c.id}
-                  onClick={() => onSelect({ kind: "component", id: c.id })}
-                />
+                <ListRow key={c.id} tip={covered.has(c.id) ? undefined : "No story shows it yet"} selected={selection?.kind === "component" && selection.id === c.id} onClick={() => onSelect({ kind: "component", id: c.id })}>
+                  <ListRowIcon icon="square.on.square" tone={covered.has(c.id) ? undefined : "dim"} />
+                  <ListRowContent title={c.name} />
+                </ListRow>
               ))}
               {g.stories.map((s) => {
                 const here = selection?.kind === "story" && selection.id === s.id;
                 const sub = s.group.split("/").slice(1).join("/");
                 return [
-                  <ListRow key={s.id} icon="rectangle.stack" title={s.title} place={sub || undefined} selected={here && !selection.variant} onClick={() => onSelect({ kind: "story", id: s.id })} />,
+                  <ListRow key={s.id} selected={here && !selection.variant} onClick={() => onSelect({ kind: "story", id: s.id })}>
+                    <ListRowIcon icon="rectangle.stack" />
+                    <ListRowContent title={s.title} place={sub || undefined} />
+                  </ListRow>,
                   ...(here || q
                     ? s.variants
                         .filter((v) => !q || here || hit(v.name, s.title))
-                        .map((v) => <ListRow key={`${s.id}/${v.name}`} depth={1} title={v.name} selected={here && selection.variant === v.name} onClick={() => onSelect({ kind: "story", id: s.id, variant: v.name })} />)
+                        .map((v) => (
+                          <ListRow key={`${s.id}/${v.name}`} depth={1} selected={here && selection.variant === v.name} onClick={() => onSelect({ kind: "story", id: s.id, variant: v.name })}>
+                            <ListRowContent title={v.name} />
+                          </ListRow>
+                        ))
                     : []),
                 ];
               })}

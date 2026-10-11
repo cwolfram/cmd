@@ -1,4 +1,4 @@
-// The UI Workbench (docs/47): a sidebar of every component and story over a page that
+// The UI Workbench (docs/48): a sidebar of every component and story over a page that
 // shows one. All of it comes from the catalog (virtual:workbench-catalog, read from the
 // sources): a component's page (matrix, playground, props, its stories), a story's page
 // (every variant), or one variant alone on the stage. The URL holds the choice
@@ -198,7 +198,7 @@ function Overview() {
     <article className="wb-page">
       <Head
         title="UI Workbench"
-        file="docs/47-workbench.md"
+        file="docs/48-workbench.md"
         doc={`${kit.length} kit components and ${catalog.stories.length} stories, read from the sources in ${catalog.ms} ms. ${bare} of the components have no story yet (a dim icon): their page shows what their props make. Pick one on the left.`}
       />
     </article>

@@ -15,7 +15,7 @@ export const Dashboard = () => (
     <View inset>
       <Panes>
         <Pane wide>
-          <Tiles min={120} gap="xl">
+          <Tiles min={120} gap={4}>
             <Stat label="CPU" value="24.1" unit="%" delta="▲ 4%" deltaTone="warning">
               <Sparkline values={WAVE} />
             </Stat>

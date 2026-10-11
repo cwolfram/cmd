@@ -1,4 +1,4 @@
-// The UI Workbench's catalog (docs/47), read from the real sources: the kit's components
+// The UI Workbench's catalog (docs/48), read from the real sources: the kit's components
 // with their props as written (union order, defaults, docs), the story files with ids from
 // their paths and notes from their comments, and the guesses that let a component render
 // without a story. Every story file must import only what exists (a dead import kept

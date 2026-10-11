@@ -1,11 +1,11 @@
-// A component's page in the UI Workbench (docs/47), all of it from the catalog: its doc,
+// A component's page in the UI Workbench (docs/48), all of it from the catalog: its doc,
 // a matrix of its unions and booleans, a playground with a control per prop, the story
 // variants that render it (live), and its props with types, defaults and docs. Kit
 // components render from @cmd/ui; the renderer's show through their stories (stand-ins).
 
 import { Component, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import * as Kit from "@cmd/ui";
-import { Callout, ErrorBoundary, FormRow, FormSection, LinkButton, List, ListRow, NumberField, Prose, SectionHeading, Segmented, Select, Switch, TextField } from "@cmd/ui";
+import { Callout, ErrorBoundary, FormRow, FormSection, LinkButton, List, ListRow, ListRowContent, ListRowIcon, NumberField, Prose, SectionHeading, Segmented, Select, Switch, TextField } from "@cmd/ui";
 import { loaders, type ComponentInfo, type PropInfo, type StoryInfo, type VariantInfo } from "./catalog/index.ts";
 import { Cell } from "./Layered.tsx";
 import { argsFor, controlledBy, matrixOf, valuesOf, type Args } from "./args.ts";
@@ -83,7 +83,10 @@ function Uses({ uses, onOpen }: { uses: Use[]; onOpen: (story: string, variant?:
       {uses.length > LIVE && (
         <List>
           {uses.slice(LIVE).map(({ story, variant }) => (
-            <ListRow key={`${story.id}/${variant.name}`} icon="rectangle.stack" title={`${story.title} › ${variant.name}`} place={story.group} onClick={() => onOpen(story.id, variant.name)} />
+            <ListRow key={`${story.id}/${variant.name}`} onClick={() => onOpen(story.id, variant.name)}>
+              <ListRowIcon icon="rectangle.stack" />
+              <ListRowContent title={`${story.title} › ${variant.name}`} place={story.group} />
+            </ListRow>
           ))}
         </List>
       )}

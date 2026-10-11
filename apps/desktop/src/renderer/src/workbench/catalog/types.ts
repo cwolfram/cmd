@@ -1,4 +1,4 @@
-// What the UI Workbench knows about the components and stories (docs/47): extracted
+// What the UI Workbench knows about the components and stories (docs/48): extracted
 // from the sources by extract.ts, served by plugin.ts as virtual:workbench-catalog.
 // Nothing here is written by hand.
 

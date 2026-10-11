@@ -1,4 +1,4 @@
-// The UI Workbench's catalog, read from the sources (docs/47): every component the kit
+// The UI Workbench's catalog, read from the sources (docs/48): every component the kit
 // exports (packages/ui/src/index.ts) and every component a renderer story sits beside,
 // with its props (kind, union values, required, default, doc) from the TypeScript
 // checker; every *.story.tsx with its header comment and its exports' doc comments,

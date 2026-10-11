@@ -1,4 +1,4 @@
-// The same thing in every built-in theme at once (docs/47): each a .ui-theme subtree with
+// The same thing in every built-in theme at once (docs/48): each a .ui-theme subtree with
 // the theme's tokens on it, and its own dialog layer inside it, so a sheet takes the theme too.
 
 import type { CSSProperties, ReactNode } from "react";

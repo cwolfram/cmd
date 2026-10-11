@@ -1,4 +1,4 @@
-// Boxes for live components in the UI Workbench (docs/47): Layered is its dialogs' layer
+// Boxes for live components in the UI Workbench (docs/48): Layered is its dialogs' layer
 // (DialogLayer), so a sheet covers the box, never the sidebar or the toolbar, and several
 // can be open at once; Sized puts its content at a window's width.
 

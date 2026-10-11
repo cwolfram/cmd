@@ -1,4 +1,4 @@
-// Props for a component the UI Workbench renders without a story (docs/47): values
+// Props for a component the UI Workbench renders without a story (docs/48): values
 // guessed from each prop's kind and name for what is required, `args` from a story for
 // what can't be guessed, and the axes of its matrix (its unions and booleans).
 

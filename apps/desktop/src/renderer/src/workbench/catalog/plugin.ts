@@ -1,4 +1,4 @@
-// virtual:workbench-catalog in the renderer's dev server (docs/47): the catalog that
+// virtual:workbench-catalog in the renderer's dev server (docs/48): the catalog that
 // extract.ts reads from the sources, and a loader per story file. Re-read when a
 // component or story file changes; the module (and the UI Workbench) updates only when
 // what it says changed, so editing a component's look stays a plain HMR update.

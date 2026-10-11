@@ -1,4 +1,4 @@
-// The UI Workbench (apps/desktop/src/renderer/workbench.html, docs/47): every component
+// The UI Workbench (apps/desktop/src/renderer/workbench.html, docs/48): every component
 // and story, read from the sources, in the real app (styles, SF Symbols, preload, core),
 // with HMR. It runs on its own instance (.cmd-dev/workbench, or $CMD_WORKBENCH_HOME)
 // and exposes the DevTools protocol, so these commands drive the open window. A target

@@ -1,4 +1,4 @@
-// A story's page in the UI Workbench (docs/47): every variant stacked, each with the doc
+// A story's page in the UI Workbench (docs/48): every variant stacked, each with the doc
 // comment above its export, in a cell of its own. A cell is its own dialog layer
 // (DialogLayer): a variant that is a sheet shows inside its box, so several can be open
 // at once; the cell grows to fit it.
