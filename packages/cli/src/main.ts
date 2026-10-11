@@ -9,6 +9,7 @@ import { connect, defaultSocketPath, type Connection } from "@cmd/protocol/node"
 import { AGENTS_HELP, agentsCommand, pickAgent } from "./agents.ts";
 import { JOURNAL_HELP, journalCommand } from "./journal.ts";
 import { DATA_HELP, dataCommand } from "./data.ts";
+import { STATS_HELP, statsCommand } from "./stats.ts";
 import { REMOTE_HELP, remoteCommand } from "./remote.ts";
 import { skewMessage } from "./skew.ts";
 import { exitCode } from "./exit.ts";
@@ -42,6 +43,7 @@ usage: cmd <command> [options]
 ${AGENTS_HELP}
 ${JOURNAL_HELP}
 ${DATA_HELP}
+${STATS_HELP}
   open <path|url> [--kind K] [--types] open in a cmd window (folder, text, browser, …);
                                       --types lists window types
   actions [PATH] [--all] [--json]     how to run the project here: its scripts, make targets, …
@@ -62,7 +64,7 @@ ${REMOTE_HELP}
 env: ${ENV.socket} (default ${defaultSocketPath()})
 exit: 0 done, 1 failed, 2 bad usage (or a core of another version), 3 not found, 4 turned off, 5 not allowed, 6 the core doesn't have it`;
 
-const COMMANDS = new Set(["ls", "identify", "new", "spawn", "send", "read", "wait", "kill", "notify", "events", "hook", "hooks", "agents", "journal", "data", "open", "actions", "search", "resume", "settings", "workspace", "remote", "help"]);
+const COMMANDS = new Set(["ls", "identify", "new", "spawn", "send", "read", "wait", "kill", "notify", "events", "hook", "hooks", "agents", "journal", "data", "stats", "open", "actions", "search", "resume", "settings", "workspace", "remote", "help"]);
 
 /**
  * `cmd .`, `cmd ~/src/x`, `cmd ../y`: a folder to open as a workspace. A command name
@@ -118,6 +120,7 @@ const { values: opt, positionals: pos } = parseArgs({
     days: { type: "string" },
     weeks: { type: "string" },
     view: { type: "string" },
+    range: { type: "string" }, by: { type: "string" }, top: { type: "string" }, grain: { type: "string" }, measure: { type: "string" }, // cmd stats
     // cmd data
     before: { type: "string" },
     rules: { type: "boolean" },
@@ -199,6 +202,8 @@ async function run({ client, closed }: Connection): Promise<number> {
       return journalCommand(client, pos, opt, callerPaneId);
     case "data":
       return dataCommand(client, pos, opt);
+    case "stats":
+      return statsCommand(client, pos, opt);
     case "identify": {
       const paneId = process.env[ENV.paneId];
       if (!paneId) return fail("not inside a cmd pane");

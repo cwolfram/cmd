@@ -147,6 +147,10 @@ export const REMOTE_ACCESS: { [M in Method]: Access } = {
   "actions.run": "never",
   "actions.stop": "never",
   "actions.pin": "never",
+  "stats.catalog": "never", // stats name commands and hosts; remote gets them with per-class filtering (docs/49)
+  "stats.query": "never",
+  "stats.queryMany": "never",
+  "stats.rebuild": "never",
   "sqlite.schema": "view",
   "sqlite.rows": "view",
   "sqlite.query": "view",
@@ -499,6 +503,7 @@ export function remoteEventVisible(e: CoreEvent, follows: ReadonlySet<string>, w
     case "widget.library":
     case "window.closedChanged": // window.closed and window.reopen aren't remote
     case "actions.changed":
+    case "stats.changed":
     case "data.changed": // to its subscriber only, and data.* is never remote
     case "view.changed":
     case "magic.previewRequest": // sent to the app's previewer only, never broadcast

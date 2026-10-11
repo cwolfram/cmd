@@ -36,6 +36,7 @@ import type { RemoteService } from "../remote/service.ts";
 import type { ProcessSampler, ResourceMonitor } from "../terminals/resources.ts";
 import type { WatchService } from "../lib/watch.ts";
 import type { SqliteService } from "../sqlite/service.ts";
+import type { StatsService } from "../stats/service.ts";
 import type { CoreServer } from "./server.ts";
 import type { Scheduler } from "./scheduler.ts";
 import type { SecretsService } from "./secrets.ts";
@@ -83,6 +84,7 @@ export interface Services {
   processes: ProcessSampler | null;
   watches: WatchService;
   sqlite: SqliteService;
+  stats: StatsService;
 }
 
 /** What only Core does. */
@@ -101,7 +103,7 @@ export interface CoreActions {
 
 export type CoreContext = Services & CoreActions;
 
-const SERVICES: (keyof Services)[] = ["settings", "store", "scheduler", "data", "views", "sessions", "usage", "secrets", "ai", "panes", "commands", "agents", "homes", "naming", "transcripts", "notifications", "workspaces", "windowTypes", "windows", "closed", "timers", "summaries", "journal", "magic", "actions", "widgetTokens", "server", "subscriptions", "agentSetup", "search", "library", "previews", "windowOps", "remote", "resources", "processes", "watches", "sqlite"];
+const SERVICES: (keyof Services)[] = ["settings", "store", "scheduler", "data", "views", "sessions", "usage", "secrets", "ai", "panes", "commands", "agents", "homes", "naming", "transcripts", "notifications", "workspaces", "windowTypes", "windows", "closed", "timers", "summaries", "journal", "magic", "actions", "widgetTokens", "server", "subscriptions", "agentSetup", "search", "library", "previews", "windowOps", "remote", "resources", "processes", "watches", "sqlite", "stats"];
 
 /** The context over `owner`'s services (read when used, so a service may take the context before the ones it calls exist). */
 export function contextOf(owner: Partial<Services>, actions: CoreActions): CoreContext {

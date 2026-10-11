@@ -51,7 +51,7 @@ import { createTimers, type TimerAlarms } from "../windows/timers.ts";
 import { createWorkspaces, type WorkspaceManager } from "../workspaces/manager.ts";
 import type { Connection, Served } from "./connection.ts";
 import { contextOf, type CoreContext } from "./context.ts";
-import { ALL, featureHandlers } from "./features.ts";
+import { ALL, createStats, featureHandlers } from "./features.ts";
 import { sliceHandlers } from "./slices.ts";
 import { IN_CORE, type Call, type Handlers } from "./handlers.ts";
 import { coreHello } from "./hello.ts";
@@ -64,7 +64,6 @@ import { createUsage, type UsageStats } from "./usage.ts";
 
 export { SOCKET_PATH_MAX, widgetsSocketPath } from "./server.ts";
 export type { Methods };
-
 
 const log = logger("core");
 
@@ -183,6 +182,7 @@ export class Core {
   /** SQLite windows' reads, a worker per open database. */
   readonly sqlite = new SqliteService();
   readonly widgetTokens = new WidgetTokens();
+  readonly stats = createStats(this.#ctx);
   #opts: CoreOptions;
   #paneOutput: PaneOutputRecorder;
   #workspacesTimer: NodeJS.Timeout | undefined;
