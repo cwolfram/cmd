@@ -26,6 +26,12 @@ export const statsFeature = {
     "stats.queryMany": (p) => core.stats.queryMany(p.queries),
     "stats.rebuild": (p) => ({ stats: core.stats.rebuild(p.stat) }),
   }),
-  startup: { label: "Counting stats", run: (core: CoreContext) => core.stats.start() },
+  startup: {
+    label: "Counting stats",
+    run: (core: CoreContext) => {
+      core.stats.start();
+      core.scheduler.on("stall", (s) => core.stats.sample("core.stalls", [s.in], s.ms, s.at));
+    },
+  },
   dispose: (core: CoreContext) => core.stats.dispose(),
 } satisfies Feature;

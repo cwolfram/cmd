@@ -274,7 +274,8 @@ export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, 
   /** The workspace a path belongs to (longest open root containing it, else Home), without creating one. */
   "workspace.match": { params: { path: string; cwd?: string }; result: Workspace };
   /** view: keys merged into the workspace's view (null deletes a key). active: it was just shown (recency for the picker). icon: an SF Symbol name, null for the default. */
-  "workspace.update": { params: { id: WorkspaceId; name?: string; icon?: string | null; order?: number; view?: Record<string, unknown>; active?: boolean }; result: Workspace };
+  /** `present`: whether its app window has the person's focus (focus time stops while it hasn't). */
+  "workspace.update": { params: { id: WorkspaceId; name?: string; icon?: string | null; order?: number; view?: Record<string, unknown>; active?: boolean; present?: boolean }; result: Workspace };
   /** Kill its terminals and agents, remove its windows; the workspace stays as a recent one. Home can't be closed. */
   "workspace.close": { params: { id: WorkspaceId }; result: null };
   /** Delete a closed workspace's record. */

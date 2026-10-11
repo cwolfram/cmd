@@ -14,6 +14,8 @@ export class WindowOps {
   #core: OpsCore;
   /** Per workspace, the pane or window selected there and the focus event that says so (its span ends when the selection moves). */
   #focus = new Map<string, { id: string; eventId: string; at: number }>();
+  /** Workspaces whose app window doesn't have focus: the selection to start a span on when it's back. */
+  #away = new Map<string, string | null>();
   /** Workspaces being closed: their windows go with them, not as closed windows to reopen. */
   #closing = new Set<WorkspaceId>();
 
@@ -70,13 +72,44 @@ export class WindowOps {
     this.#closing.delete(id);
   }
 
-  /** The selection in a workspace moved: the previous focus span ends, a new one starts (user.focus). */
+  /** The selection in a workspace moved: the previous focus span ends, a new one starts (user.focus). While the app is away, only remembered. */
   focused(workspaceId: string, id: string): void {
-    const { data, panes } = this.#core;
     const prev = this.#focus.get(workspaceId);
-    const now = Date.now();
     if (prev?.id === id) return;
-    if (prev) data.record({ id: prev.eventId, at: prev.at, until: now, type: "user.focus", source: "user", workspaceId, ...(panes.get(prev.id) ? { paneId: prev.id, data: { paneId: prev.id } } : { windowId: prev.id, data: { windowId: prev.id } }) });
+    if (this.#away.has(workspaceId)) return void this.#away.set(workspaceId, id);
+    this.#end(workspaceId);
+    this.#start(workspaceId, id);
+  }
+
+  /**
+   * Whether a workspace's app window has the person's focus (docs/49 "Gaps"): away, its focus
+   * span ends; back, the selection's span starts again and every other workspace's ends, so
+   * focus time is one span at a time and never runs while cmd is in the background.
+   */
+  present(workspaceId: string, present: boolean): void {
+    if (!present) {
+      const cur = this.#focus.get(workspaceId);
+      this.#end(workspaceId);
+      this.#away.set(workspaceId, cur?.id ?? this.#away.get(workspaceId) ?? null);
+      return;
+    }
+    for (const other of [...this.#focus.keys()]) if (other !== workspaceId) this.#away.set(other, this.#focus.get(other)!.id), this.#end(other);
+    const sel = this.#away.get(workspaceId);
+    this.#away.delete(workspaceId);
+    if (sel && !this.#focus.has(workspaceId)) this.#start(workspaceId, sel);
+  }
+
+  #end(workspaceId: string): void {
+    const prev = this.#focus.get(workspaceId);
+    if (!prev) return;
+    const { data, panes } = this.#core;
+    data.record({ id: prev.eventId, at: prev.at, until: Date.now(), type: "user.focus", source: "user", workspaceId, ...(panes.get(prev.id) ? { paneId: prev.id, data: { paneId: prev.id } } : { windowId: prev.id, data: { windowId: prev.id } }) });
+    this.#focus.delete(workspaceId);
+  }
+
+  #start(workspaceId: string, id: string): void {
+    const { data, panes } = this.#core;
+    const now = Date.now();
     const eventId = `focus:${workspaceId}:${id}:${now}`;
     const pane = panes.get(id);
     data.record({ id: eventId, at: now, type: "user.focus", source: "user", workspaceId, ...(pane ? { paneId: id, agentId: pane.agentId, data: { paneId: id } } : { windowId: id, data: { windowId: id } }) });

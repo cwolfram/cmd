@@ -7,6 +7,7 @@ import "@cmd/ui/ui.css";
 import "./styles.css";
 import "./windows/builtin.tsx"; // built-in window views (browser, files, text)
 import "./shell/commands/index.ts"; // the app's commands
+import "./lib/presence.ts"; // focus time stops while cmd is in the background (docs/49)
 import { App } from "./shell/App.tsx";
 import { TOPBAR_HEIGHT } from "../../shared/chrome.ts";
 import { cmd } from "./lib/bridge.ts";

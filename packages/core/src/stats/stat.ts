@@ -36,6 +36,12 @@ export interface ComputeCtx {
   now: number;
 }
 
+export interface SampleCtx {
+  /** events.sqlite's path, null in memory. */
+  eventsFile: string | null;
+  viewsFile: string | null;
+}
+
 export interface LabelCtx {
   workspaceName(id: string): string | null;
 }
@@ -65,6 +71,11 @@ export interface StatDef {
   span?: number;
   /** The open hour grows without events (spans still open): recomputed when asked. */
   live?: boolean;
+  /**
+   * A gauge with no events behind it (memory, the log's size): read every `every` ms and kept as
+   * samples in its buckets. The one kind a rebuild can't recover; rebuilds leave it alone.
+   */
+  sample?: { every: number; read(ctx: SampleCtx): { keys: string[]; value: number }[] };
   /** The events of [from, to) (hour-aligned) as rows. Pure: the same events give the same rows. */
   compute?(from: number, to: number, ctx: ComputeCtx): StatRow[];
   /** Derived, never stored: the share of `of`'s count where `where` holds, among the rows where `among` holds. */

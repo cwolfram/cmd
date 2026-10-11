@@ -75,6 +75,12 @@ export class StatsStore {
     });
   }
 
+  /** One sample of a sampled stat, added to its hour's bucket (count, sum, min, max). */
+  addSample(stat: string, hour: number, keys: string[], v: number): void {
+    const ks = KEYS.map((_, i) => keys[i] ?? "");
+    this.#stmt(`INSERT INTO stat_buckets (stat, hour, ${KEYS.join(", ")}, n, sum, min, max) VALUES (?, ?, ${KEYS.map(() => "?").join(", ")}, 1, ?, ?, ?) ON CONFLICT DO UPDATE SET n = n + 1, sum = sum + excluded.sum, min = MIN(ifnull(min, excluded.min), excluded.min), max = MAX(ifnull(max, excluded.max), excluded.max)`).run(stat, hour, ...ks, v, v, v);
+  }
+
   /** A stat's buckets in [fromHour, toHour) whose dimensions pass the filters. */
   read(stat: string, fromHour: number, toHour: number, filters: KeyFilter[] = []): StatRow[] {
     const where = filters.map((f) => `k${f.idx + 1} IN (${f.values.map(() => "?").join(", ")})`);

@@ -44,6 +44,9 @@ function week(range: StatsRange = "week", o: { empty?: boolean; partialDays?: nu
     tokens: result(info("agents.tokens", "Tokens", "tokens", "sum", ["token", "model", "project"]), { ...r, seed: 7, scale: 900_000, series: [["claude-opus-5-5", "claude-opus-5-5", 0.85], ["claude-haiku-5-5", "claude-haiku-5-5", 0.15]] }),
     projects: result(info("agents.time", "Agent time", "ms", "duration", ["agent", "project"]), { ...r, seed: 8, scale: 9 * HOUR, ranking: empty ? [] : [["dir:/src/cmd", 61 * HOUR], ["dir:/src/site", 9 * HOUR], ["dir:/src/notes", 2 * HOUR]] }),
     heat: range === "year" ? result(info("you.active", "Active time", "ms", "duration"), { seed: 9, scale: 6 * HOUR, grain: "day", n: 365, empty }) : range === "today" ? result(info("you.active", "Active time", "ms", "duration"), { range: "today", seed: 9, scale: 0.6 * HOUR, empty }) : result(info("you.active", "Active time", "ms", "duration"), { seed: 9, scale: 0.4 * HOUR, grain: "hour", n: 30 * 24, empty }),
+    memory: result({ ...info("core.memory", "Core memory", "bytes", "gauge"), measure: "mean" }, { ...r, seed: 11, scale: 380e6 }),
+    stalls: result(info("core.stalls", "Core stalls", "ms", "distribution"), { ...r, seed: 12, scale: 300 }),
+    size: { ...result(info("data.size", "Event log size", "bytes", "gauge"), { ...r, seed: 13, scale: 1 }), total: 2.9e9 },
     ai: result(info("ai.calls", "Model calls", "count", "count", ["purpose", "model"]), { ...r, seed: 10, scale: 30, ranking: empty ? [] : [["notify.done", 812], ["session.name", 410], ["journal.day", 64], ["summary", 12]] }),
   };
 }

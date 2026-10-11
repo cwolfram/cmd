@@ -16,6 +16,7 @@ export const workspaceHandlers = (core: CoreContext) =>
     "workspace.update": (p) => {
       const sel = p.view?.["selection.pane"];
       if (typeof sel === "string") core.windowOps.focused(p.id, sel);
+      if (typeof p.present === "boolean") core.windowOps.present(p.id, p.present);
       return core.workspaces.update(p.id, p);
     },
     "workspace.close": (p) => (core.windowOps.closeWorkspace(p.id), null),

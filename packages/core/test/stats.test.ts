@@ -199,6 +199,31 @@ describe("stats service", () => {
     expect(core.stats.query({ stat: "commands.runs", range: "7d" }).total).toBe(5);
   });
 
+  it("records focus one span at a time, and none while cmd is away", () => {
+    const spans = () => core.data.query({ types: ["user.focus"] }).map((e) => ({ win: (e.data as { windowId?: string }).windowId, open: e.until === null }));
+    const ops = core.windowOps;
+    ops.focused("wa", "x1");
+    ops.focused("wb", "y1");
+    ops.present("wa", true); // wa's app window has focus: wb's span ends
+    expect(spans().filter((s) => s.open).map((s) => s.win)).toEqual(["x1"]);
+    ops.present("wa", false);
+    expect(spans().filter((s) => s.open)).toEqual([]);
+    ops.focused("wa", "x2"); // selected while away: no span yet
+    expect(spans().filter((s) => s.open)).toEqual([]);
+    ops.present("wa", true);
+    expect(spans().filter((s) => s.open).map((s) => s.win)).toEqual(["x2"]);
+  });
+
+  it("keeps samples of what has no events: memory read at start, stalls as they happen", () => {
+    expect(core.stats.query({ stat: "core.memory", range: "today" }).total).toBeGreaterThan(1e6);
+    core.stats.sample("core.stalls", ["startup: stats"], 150);
+    core.stats.sample("core.stalls", ["startup: stats"], 400);
+    const stalls = core.stats.query({ stat: "core.stalls", range: "today", by: "activity", top: 3 });
+    expect(stalls.total).toBe(2);
+    expect(stalls.ranking).toEqual([{ key: "startup: stats", label: "startup: stats", value: 2 }]);
+    expect(core.stats.query({ stat: "core.stalls", range: "today", measure: "max" }).total).toBe(400);
+  });
+
   it("forgets a project everywhere", async () => {
     core.data.forget({ projectId: "dir:/src/app" });
     await core.stats.idle();

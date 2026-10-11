@@ -19,7 +19,7 @@ export const RANGES: { value: StatsRange; label: string }[] = [
 const PERIOD: Record<StatsRange, [string, string]> = { today: ["Today", "yesterday"], week: ["This week", "last week"], month: ["This month", "last month"], year: ["This year", "last year"] };
 
 /** The page's results by name (StatsView's queries). */
-export type StatsData = Partial<Record<"time" | "active" | "turns" | "waiting" | "runs" | "fail" | "tokens" | "projects" | "heat" | "ai", StatResult>>;
+export type StatsData = Partial<Record<"time" | "active" | "turns" | "waiting" | "runs" | "fail" | "tokens" | "projects" | "heat" | "ai" | "memory" | "stalls" | "size", StatResult>>;
 
 const fmt = (r: StatResult) => (v: number) => formatValue(v, r.stat.unit);
 const short = (r: StatResult) => (v: number) => formatValue(v, r.stat.unit, true);
@@ -91,7 +91,7 @@ export function Stats({ range, data, error, onRange, onOpen, onRetry, now = Date
         <Sparkline values={totals(r)} color={key === "time" ? "current" : "neutral"} />
       </Stat>
     );
-  const { time, turns, waiting, runs, fail, tokens, projects, heat, ai } = data;
+  const { time, turns, waiting, runs, fail, tokens, projects, heat, ai, memory, stalls, size } = data;
   const failBy = new Map((fail?.ranking ?? []).map((x) => [x.key, x.value]));
   return (
     <View inset toolbar={toolbar} footer={footer}>
@@ -145,6 +145,17 @@ export function Stats({ range, data, error, onRange, onOpen, onRetry, now = Date
           {ai && (
             <Pane title="cmd's model calls" aside="by feature">
               <Ranking format={fmt(ai)} rows={(ai.ranking ?? []).map((x) => ({ key: x.key, label: x.label || "Other", value: x.value }))} onSelect={() => onOpen(ai.stat.id)} empty="No model calls yet" />
+            </Pane>
+          )}
+          {memory && (
+            <Pane title="cmd" aside="core memory">
+              <Stack gap={2}>
+                <TimeSeries {...bucketLabels(memory, range)} buckets={memory.buckets} series={memory.series} current={currentIndex(memory, now)} format={short(memory)} label="Core memory" summary={`${fmt(memory)(memory.total)} on average`} height={90} onSelect={() => onOpen(memory.stat.id)} />
+                <Text tone="dim">
+                  {stalls?.total ? `${stalls.total} ${stalls.total === 1 ? "stall" : "stalls"} of the core, the worst ${formatValue(stalls.series[0]?.values.reduce<number>((a, v) => Math.max(a, v ?? 0), 0) ?? 0, "ms")}` : "No stalls of the core"}
+                  {size?.total ? ` · event log ${formatValue(size.total, "bytes")}` : ""}.
+                </Text>
+              </Stack>
             </Pane>
           )}
         </Panes>

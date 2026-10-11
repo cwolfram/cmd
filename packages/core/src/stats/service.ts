@@ -5,6 +5,7 @@
 // scheduler's budget. Queries read buckets (the open hour of a live stat is recomputed first).
 
 import { type DataEvent, type StatInfo, type StatQuery, type StatResult, type StatsEvent } from "@cmd/protocol";
+import path from "node:path";
 import { logger } from "@cmd/protocol/node";
 import type { CoreContext } from "../kernel/context.ts";
 import { projectIdOf } from "../data/project.ts";
@@ -51,6 +52,7 @@ export class StatsService {
   #changedTimer: ReturnType<typeof setTimeout> | null = null;
   #repairTimer: ReturnType<typeof setInterval> | null = null;
   #liveAt = new Map<string, number>();
+  #samplers: ReturnType<typeof setInterval>[] = [];
   #projects = new Map<string, string | null>();
   /** Tests: called after each step of the work loop. */
   now: () => number = Date.now;
@@ -64,7 +66,7 @@ export class StatsService {
   register(def: StatDef): void {
     if (this.#defs.has(def.id)) throw new Error(`stat ${def.id} is declared twice`);
     if (def.dims.length > 4) throw new Error(`stat ${def.id}: at most 4 dimensions`);
-    if (!def.compute && !def.ratio) throw new Error(`stat ${def.id}: compute or ratio`);
+    if (!def.compute && !def.ratio && !def.sample && def.kind !== "gauge" && def.kind !== "distribution") throw new Error(`stat ${def.id}: compute, ratio or sample`);
     this.#defs.set(def.id, def);
     if (this.#started && def.compute) this.#plan(def);
   }
@@ -89,6 +91,7 @@ export class StatsService {
       if (what.projectId) for (const d of this.#stored()) d.dims.forEach((dim, i) => dim.id === "project" && this.#db.deleteKey(d.id, i, what.projectId!));
       if (span) this.#markWhere(() => true, span.from, Math.min(span.to, span.from + MAX_MARK_HOURS * HOUR), true);
     });
+    for (const d of this.#defs.values()) if (d.sample) this.#sampleEvery(d);
     const known = new Set(this.#db.stats());
     for (const id of known) if (!this.#defs.get(id)?.compute) this.#db.drop(id);
     for (const d of this.#stored()) this.#plan(d);
@@ -99,6 +102,7 @@ export class StatsService {
 
   dispose(): void {
     this.#disposed = true;
+    for (const t of this.#samplers) clearInterval(t);
     if (this.#flushTimer) clearTimeout(this.#flushTimer);
     if (this.#changedTimer) clearTimeout(this.#changedTimer);
     if (this.#repairTimer) clearInterval(this.#repairTimer);
@@ -296,6 +300,28 @@ export class StatsService {
     };
   }
 
+  /** A sampled stat: read now, then every `every` ms. */
+  #sampleEvery(d: StatDef): void {
+    const read = () => {
+      try {
+        for (const s of d.sample!.read({ eventsFile: path.isAbsolute(this.#core.data.store.file) ? this.#core.data.store.file : null, viewsFile: this.#core.views.file })) this.sample(d.id, s.keys, s.value);
+      } catch (err) {
+        log.warn(`sampling ${d.id} failed: ${(err as Error).message}`);
+      }
+    };
+    read();
+    const t = setInterval(read, d.sample!.every);
+    t.unref?.();
+    this.#samplers.push(t);
+  }
+
+  /** One value of a stat that has no events behind it (a gauge read now, a stall as it happens). */
+  sample(id: string, keys: string[], value: number, at = this.now()): void {
+    if (this.#disposed || !this.#defs.has(id)) return;
+    this.#db.addSample(id, hourOf(at), keys, value);
+    this.#tell(id);
+  }
+
   /** Tells clients a stat changed, at most once a second. */
   #tell(id: string): void {
     this.#changed.add(id);
@@ -450,8 +476,8 @@ export class StatsService {
   #since(d: StatDef, from: number): number | null {
     const build = this.#builds.get(d.id);
     if (build) return build.next * HOUR;
-    const meta = this.#db.meta(d.id);
-    const oldest = meta?.floor ?? null;
+    // Built stats start at their oldest event; sampled ones at their first sample.
+    const oldest = this.#db.meta(d.id)?.floor ?? (d.sample || !d.compute ? this.#db.oldest(d.id) : null);
     if (oldest === null) return null;
     return oldest * HOUR > from ? oldest * HOUR : null;
   }

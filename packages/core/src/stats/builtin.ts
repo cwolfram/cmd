@@ -3,6 +3,7 @@
 // commands and looks, git, pages, files, windows and cmd's own model calls. Each is one
 // declaration; a feature with stats of its own declares them in its folder the same way.
 
+import fs from "node:fs";
 import { Acc, HOUR, hourOf, projectLabel, rows, spanHours, type DimDef, type StatDef } from "./stat.ts";
 
 const DAY = 24 * HOUR;
@@ -424,6 +425,56 @@ export const BUILTIN_STATS: StatDef[] = [
       const acc = new Acc();
       for (const r of rows<{ at: number; kind: string | null; w: string | null }>(c.events, `SELECT at, json_extract(data, '$.kind') AS kind, workspace_id AS w FROM events WHERE type = 'window.open' AND at >= ? AND at < ?`, from, to)) acc.count(hourOf(r.at), [r.kind, r.w]);
       return acc.rows();
+    },
+  },
+
+  // cmd itself: gauges sampled by the stats service, stalls as the scheduler's watchdog sees them
+  {
+    id: "core.memory",
+    version: 1,
+    title: "Core memory",
+    description: "How much memory cmd's core process used, sampled every minute.",
+    kind: "gauge",
+    unit: "bytes",
+    good: "down",
+    dims: [],
+    class: "system",
+    inputs: {},
+    sample: { every: 60_000, read: () => [{ keys: [], value: process.memoryUsage().rss }] },
+  },
+  {
+    id: "core.stalls",
+    version: 1,
+    title: "Core stalls",
+    description: "Times the core's thread was blocked for 100 ms or more, and what ran then.",
+    kind: "distribution",
+    unit: "ms",
+    measure: "n",
+    good: "down",
+    dims: [{ id: "activity", title: "What ran", many: true }],
+    class: "system",
+    inputs: {},
+  },
+  {
+    id: "data.size",
+    version: 1,
+    title: "Event log size",
+    description: "How much disk cmd's event log and its views take, sampled every six hours.",
+    kind: "gauge",
+    unit: "bytes",
+    measure: "max",
+    dims: [{ id: "file", title: "File", label: labels({ events: "Event log", views: "Views" }) }],
+    class: "system",
+    inputs: {},
+    sample: {
+      every: 6 * HOUR,
+      read: (c) =>
+        (
+          [
+            ["events", c.eventsFile],
+            ["views", c.viewsFile],
+          ] as const
+        ).flatMap(([k, f]) => (f && fs.existsSync(f) ? [{ keys: [k], value: fs.statSync(f).size + (fs.existsSync(`${f}-wal`) ? fs.statSync(`${f}-wal`).size : 0) }] : [])),
     },
   },
 
