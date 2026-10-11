@@ -1,8 +1,8 @@
 # UI Workbench: one place to see and work on every component
 
-**Status:** proposal
+**Status:** partly built: step 1 (the catalog and the pages built from it)
 
-> Status (2026-10-11): proposal, branch `workbench` (on top of `wb-dock`, which keeps the Workbench from opening app windows). Replaces the `@cmd/ui` gallery (`pnpm ui`) with the UI Workbench (today's Workbench, grown), driven from the component sources and the story files.
+> Status (2026-10-11): step 1 built on branch `workbench`: `renderer/src/workbench/catalog/` (extract.ts, plugin.ts), the sidebar, component and story pages, `DialogLayer` in the kit, `--headless`. Proposal before that, branch `workbench` (on top of `wb-dock`, which keeps the Workbench from opening app windows). Replaces the `@cmd/ui` gallery (`pnpm ui`) with the UI Workbench (today's Workbench, grown), driven from the component sources and the story files.
 
 There are two tools for looking at UI today, and they overlap:
 
@@ -119,6 +119,28 @@ Not changed: dated records, and the words where they mean something else. `docs/
 
 A test keeps it that way (`test/docs.test.ts`): CLAUDE.md, DEVELOPMENT.md, README.md, `.claude/skills/**` and the docs whose status is built, partly built or proposal must not mention the old tool: `pnpm ui`, `Gallery.tsx`, `packages/ui/gallery`, `@cmd/ui gallery`, "gallery specimen" or "the gallery's". Exact phrases, so the Widget Library's "gallery" doesn't trip it. This doc is excepted while it is a proposal (it describes what is replaced).
 
+### 8. More from the source (research, 2026-10-11)
+
+What other design-system teams derive or check, kept to what fits "derived from source, nothing written by hand". Ranked by value for the effort, given what steps 1–5 build:
+
+| Idea | Derived from | Who does it | Effort |
+|---|---|---|---|
+| **axe on every story × theme**, against a baseline: new violations fail, existing ones are listed | The rendered DOM and computed styles (contrast included) | Storybook's a11y checks per story ([docs](https://storybook.js.org/docs/writing-tests/accessibility-testing)); Chromatic's per-story baseline in every mode ([docs](https://www.chromatic.com/docs/accessibility/)) | S–M, on the smoke test (step 3) |
+| **Contrast of token pairs per theme**: pairs found in kit CSS rules that set both `color` and a background, resolved per theme (alpha blended over the backdrop) | Tokens and kit CSS | GitHub Primer checks 100+ pairs across themes on every PR ([post](https://github.blog/engineering/unlocking-inclusive-design-how-primers-color-system-is-making-github-com-more-inclusive/)); a hand-made pair list wouldn't fit | S–M |
+| **Tokens per component**: the `var(--x)` its CSS reads, shown on its page; "used by" on the tokens story; unused tokens | Kit CSS and the token JSON | Nobody found deriving it (storybook-design-token needs comment annotations) | S |
+| **Usage across the app**: per component, prop and union value, a count and file:line links; dead props, values nobody passes, unused components | The TypeScript checker over the renderer (not names: aliased imports) | react-scanner ([repo](https://github.com/moroshko/react-scanner)); Optimizely planned with Omlet's usage counts ([post](https://blog.zeplin.io/optimizely-harmony-session-2023)) | M |
+| **Media and direction toggles**: forced-colors, prefers-contrast, reduced-motion, color-scheme, `dir=rtl`, offered only for the `@media` queries a component's CSS has | Kit CSS; emulated with CDP `Emulation.setEmulatedMedia` | Playwright `emulateMedia` ([docs](https://playwright.dev/docs/api/class-page#page-emulate-media)); Chromatic modes ([docs](https://www.chromatic.com/docs/modes/)) | S |
+| **Interaction states from selectors**: `:hover`, `:focus-visible`, `:active`, `:disabled`, `[aria-*]` in a component's CSS, each forced on as a matrix row | Kit CSS | storybook-addon-pseudo-states ([addon](https://storybook.js.org/addons/storybook-addon-pseudo-states)) | M |
+| **Dependency graph**: uses / used by on each page, orphans, and which stories a change touches (the `review` step re-shoots only those) | Imports | dependency-cruiser ([repo](https://github.com/sverweij/dependency-cruiser)); Chromatic TurboSnap ([docs](https://www.chromatic.com/docs/turbosnap/)) | S–M |
+| **`@deprecated`** from JSDoc: a badge, the prop struck through, its remaining uses; a test that fails once nothing uses it (delete it) | JSDoc and usage | Primer's lifecycle: deprecation names a replacement ([guide](https://primer.style/guides/component-lifecycle)) | S |
+| **Health instead of a status field**: has a story, a11y clean, every prop documented, renders in every theme, used in the app, nothing deprecated | The checks above | Primer's statuses are set by hand ([status](https://primer.style/status)): that wouldn't fit | S |
+| **Keyboard contract from the role**: a rendered `tablist`, `menu`, `listbox`, `radiogroup` gets that pattern's keys tested (arrows, Home/End, roving focus); one table per ARIA pattern, not per component | The rendered roles | WAI-ARIA APG patterns ([tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)) | M–L |
+| **Render cost per story**: mount time and DOM nodes against master | Rendering | Atlassian's storybook-addon-performance ([repo](https://github.com/atlassian-labs/storybook-addon-performance)) | M |
+| **The catalog as JSON for agents** (and Magic's prompt): props, docs, story ids | The catalog | Storybook's components manifest ([docs](https://storybook.js.org/docs/ai/manifests)) | S (`pnpm workbench ls --json`, step 4) |
+| **A component's history**: `git log` over its files and the tokens it reads | Git | — | S |
+
+Not taken, because they need words or settings written by hand: do/don't sections, token docs from annotations, curated contrast pairs, modes chosen per story (every theme applies everywhere instead), a status field.
+
 ## Limits
 
 - **Composition can't be derived.** A `View` with toolbar, list and footer, or a dialog in the middle of a flow, is a story. Those are also the stories most worth reviewing.
@@ -132,6 +154,8 @@ A test keeps it that way (`test/docs.test.ts`): CLAUDE.md, DEVELOPMENT.md, READM
 3. **Port and delete the gallery:** notes into JSDoc, the composed specimens into kit stories, tokens and themes stories, the browser stage, the smoke, coverage and CSS tests, `dialog.test.ts` moved; remove `packages/ui/gallery` and update CLAUDE.md and the skills.
 4. **CLI:** `ls`, `shot --themes all`, `--headless`, the not-running error.
 5. **Documentation and skills** (section 7): every reference updated to the UI Workbench and its commands, the old names gone, and the test that keeps them out. Last, so the skills describe what was built, not what was planned; each earlier step updates the lines it makes wrong as it lands, so nothing points to a deleted tool in between.
+
+After step 5, from section 8: axe with a baseline and the token contrast check first (they ride on the smoke test and the themes), tokens per component, media toggles, then usage, `@deprecated` and health (usage feeds both).
 
 Later, not in this doc's scope: **`pnpm workbench review`**, which shoots every story on a branch and on `master` and lists those whose pixels changed (before and after side by side), for reviewing what an agent's branch changed visually. It needs a pixel-diff dependency and two builds.
 

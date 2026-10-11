@@ -67,7 +67,7 @@ Every doc says under its title what it is: **research**, a **proposal**, **partl
 | 45 | [Image viewer](45-image-viewer.md) | built | A window for images: fit or zoomed, the folder's other images a key away, live reload |
 | 46 | [Spacing system](46-spacing.md) | built | One 4px unit, a numeric scale, roles (inset, bar and page insets, row padding and gaps) that components read, size classes; the migration |
 | 47 | [Motion feel](47-motion-feel.md) | proposal | Snappy and smooth on top of docs/37: speed across hand-offs, things from their cause, distance-aware springs, lists that move as one |
-| 48 | [UI Workbench](48-workbench.md) | proposal | One place to see and work on every component: the UI Workbench replaces the `@cmd/ui` gallery, and its sidebar, variant matrices, playground, props tables, notes and tests are derived from the component sources and story files |
+| 48 | [UI Workbench](48-workbench.md) | partly built | One place to see and work on every component: the UI Workbench replaces the `@cmd/ui` gallery, and its sidebar, variant matrices, playground, props tables, notes and tests are derived from the component sources and story files |
 
 ## Key findings
 1. **Nothing has to be invented for agent awareness.** Every tool in this space combines three things:
