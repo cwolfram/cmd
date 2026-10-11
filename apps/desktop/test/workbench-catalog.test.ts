@@ -87,10 +87,23 @@ describe("stories", () => {
 });
 
 describe("coverage", () => {
-  it("every kit component renders from its props, or a story shows it", () => {
+  it("a story renders every kit component", () => {
     const shown = new Set(catalog.stories.flatMap((s) => s.components));
-    const bare = catalog.components.filter((c) => c.kit && !shown.has(c.id) && argsFor(c).missing.length).map((c) => `${c.name} (needs ${argsFor(c).missing.join(", ")})`);
-    expect(bare, "Write a story beside it (packages/ui/src/<file>.story.tsx) that renders it").toEqual([]);
+    const bare = catalog.components.filter((c) => c.kit && !shown.has(c.id)).map((c) => `${c.name} (${c.file})`);
+    expect(bare, "Show it in a story beside it (packages/ui/src/<file>.story.tsx), as it's used").toEqual([]);
+  });
+});
+
+describe("tokens", () => {
+  it("the UI Workbench and the stories read only spacing tokens that exist", () => {
+    // Renamed tokens leave var(--old) empty, and nothing else catches it in the renderer (the frame lost all its spacing once).
+    const defined = new Set([...fs.readFileSync(path.join(repo, "packages/ui/src/tokens.css"), "utf8").matchAll(/(--space-[\w-]+):/g)].map((m) => m[1]));
+    const files = [
+      ...fs.readdirSync(path.join(repo, "apps/desktop/src/renderer/src/workbench")).filter((f) => /\.(css|tsx)$/.test(f)).map((f) => `apps/desktop/src/renderer/src/workbench/${f}`),
+      ...catalog.stories.map((s) => s.file),
+    ];
+    const unknown = files.flatMap((f) => [...fs.readFileSync(path.join(repo, f), "utf8").matchAll(/var\((--space-[\w-]+)/g)].filter((m) => !defined.has(m[1]!)).map((m) => `${f}: ${m[1]}`));
+    expect(unknown).toEqual([]);
   });
 });
 

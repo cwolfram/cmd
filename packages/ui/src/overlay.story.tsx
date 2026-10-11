@@ -1,10 +1,10 @@
 // Overlays that need more than a native menu or confirm: a menu with icons, details and
-// shortcuts; a popover card; a sheet whose content works while it shows (Presence).
-// Each opens from its button; the menus and popover start open.
+// shortcuts; a popover card; a sheet whose content works while it shows (Presence); a
+// confirmation; toasts. The menus, popover and confirmation start open.
 import { useEffect, useRef, useState } from "react";
 import { Button, ButtonGroup } from "./button.tsx";
 import { KeyValue, SectionHeading } from "./layout.tsx";
-import { Dialog, Menu, Popover, Presence, toast } from "./overlay.tsx";
+import { ConfirmDialog, Dialog, Menu, Popover, Presence, Toast, Toaster, toast } from "./overlay.tsx";
 import { StatusDot } from "./status.tsx";
 
 const WORKSPACES = { work: "Work", home: "Home", side: "Side project", long: "fl-studio-canonical-store-migration" } as const;
@@ -80,7 +80,7 @@ export const Card = () => {
         Core details
       </Button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} width={280}>
-        <div style={{ padding: "var(--space-md) var(--space-lg)", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+        <div style={{ padding: "var(--space-2) var(--space-3)", display: "flex", flexDirection: "column", gap: "var(--space-1-5)" }}>
           <SectionHeading aside={<StatusDot state="unseen" size="sm" />}>Core</SectionHeading>
           <KeyValue
             items={[
@@ -122,3 +122,41 @@ export const Mounted = () => {
     </>
   );
 };
+
+/** Asking before something that can't be undone: the danger button is the confirm. */
+export const Confirm = () => {
+  const [open, setOpen] = useState(true);
+  return (
+    <>
+      <Button variant="danger" onClick={() => setOpen(true)}>
+        Delete Workspace…
+      </Button>
+      <ConfirmDialog open={open} danger title="Delete “Side project”?" confirm="Delete" onCancel={() => setOpen(false)} onConfirm={() => setOpen(false)}>
+        Its 3 windows close. Terminals in it are ended.
+      </ConfirmDialog>
+    </>
+  );
+};
+
+/** Toasts in place, each tone, one with an action. */
+export const Toasts = () => (
+  <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)", width: 360 }}>
+    <Toast onDismiss={() => {}}>Copied path</Toast>
+    <Toast tone="success" icon="checkmark.circle.fill" onDismiss={() => {}}>
+      Widget rebuilt
+    </Toast>
+    <Toast tone="warning" icon="exclamationmark.triangle.fill" action={{ label: "Undo", run: () => {} }} onDismiss={() => {}}>
+      Window closed
+    </Toast>
+  </div>
+);
+
+/** toast() from anywhere, shown by the window's Toaster at its corner (the UI Workbench has one; this is a second, so each shows twice in place). */
+export const Toasting = () => (
+  <div style={{ display: "flex", gap: "var(--space-2)" }}>
+    <Button onClick={() => toast("Copied path")}>Plain</Button>
+    <Button onClick={() => toast("Widget rebuilt", { tone: "success", icon: "checkmark.circle.fill" })}>Success</Button>
+    <Button onClick={() => toast("Window closed", { action: { label: "Undo", run: () => toast("Reopened") } })}>With action</Button>
+    <Toaster />
+  </div>
+);

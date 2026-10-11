@@ -1,8 +1,8 @@
 // Files and folders as the Files window lists them: column heads that sort (TreeHeader),
-// rows with a disclosure, an icon, a git mark and size and date columns; and the sidebar's
-// dense version. The caller sorts; here the rows follow the header.
+// rows with a disclosure, an icon, a git mark and size and date columns; the sidebar's
+// dense version; renaming in place. The caller sorts; here the rows follow the header.
 import { useState } from "react";
-import { Tree, TreeHeader, TreeRow, type TreeSort } from "./tree.tsx";
+import { Tree, TreeHeader, TreeRename, TreeRow, type TreeSort } from "./tree.tsx";
 
 const ROWS = [
   { name: "apps", folder: true, size: 0, date: 3 },
@@ -44,3 +44,18 @@ export const Dense = () => (
     </Tree>
   </div>
 );
+
+/** Renaming in place: the name a field, its extension left out of the selection; Enter keeps it, Escape puts it back. */
+export const Renaming = () => {
+  const [name, setName] = useState("notes.md");
+  const [editing, setEditing] = useState(true);
+  return (
+    <div style={{ width: 320, height: 120, display: "flex", flexDirection: "column" }}>
+      <Tree dense>
+        <TreeRow depth={0} icon="doc" name="README.md" />
+        <TreeRow depth={0} icon="doc" selected name={editing ? <TreeRename name={name} onDone={(n) => (setName(n), setEditing(false))} /> : name} onDoubleClick={() => setEditing(true)} />
+        <TreeRow depth={0} icon="folder.fill" folder name="src" />
+      </Tree>
+    </div>
+  );
+};

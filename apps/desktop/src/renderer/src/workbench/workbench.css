@@ -2,7 +2,7 @@
    dialog's scrim so it stays usable; under it the sidebar and a page (a component's,
    a story's) or the stage, on the app's backdrop. */
 .wb { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
-.wb-bar { position: relative; z-index: 100; flex: none; height: 44px; padding: 0 var(--space-md) 0 84px; -webkit-app-region: drag; background: var(--bg-raised, var(--bg)); }
+.wb-bar { position: relative; z-index: 100; flex: none; height: 44px; padding: 0 var(--space-2) 0 84px; -webkit-app-region: drag; background: var(--bg-raised, var(--bg)); }
 .wb-bar > * { -webkit-app-region: no-drag; }
 .wb-crumbs { font: 600 var(--text-md) var(--font-ui); -webkit-app-region: drag; }
 .wb-body { flex: 1; min-height: 0; display: flex; }
@@ -10,48 +10,48 @@
 
 /* Sidebar: the filter stays, the list scrolls. */
 .wb-side { display: flex; flex-direction: column; min-height: 0; height: 100%; }
-.wb-side-search { flex: none; padding: var(--space-sm) var(--inset); }
-.wb-side-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-lg); }
+.wb-side-search { flex: none; padding: var(--space-1-5) var(--inset); }
+.wb-side-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-3); }
 
 /* One variant alone. Centred by its margins, not justify/align: wider or taller than the stage, it scrolls from its start instead of overflowing off the left and top.
    It is its variant's dialog layer (Layered): a sheet's scrim covers the stage, not the sidebar or the toolbar. */
-.wb-stage { position: relative; flex: 1; min-height: 0; overflow: auto; display: flex; padding: var(--space-2xl); transform: translateZ(0); }
+.wb-stage { position: relative; flex: 1; min-height: 0; overflow: auto; display: flex; padding: var(--space-6); transform: translateZ(0); }
 .wb-stage > :not(.wb-layer) { margin: auto; flex: none; }
 
 /* A page: a component's or a story's. */
-.wb-page { display: flex; flex-direction: column; gap: var(--space-2xl); padding: var(--space-xl) var(--space-2xl) var(--space-3xl); }
-.wb-head { display: flex; flex-direction: column; gap: var(--space-sm); max-width: var(--page-w); }
-.wb-head-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-md); }
+.wb-page { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4) var(--space-6) var(--space-8); }
+.wb-head { display: flex; flex-direction: column; gap: var(--space-1-5); max-width: var(--page-w); }
+.wb-head-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); }
 .wb-head h1 { margin: 0; font: 600 var(--text-xl) var(--font-ui); }
 .wb-head code, .wb-page .ui-prose code { font: var(--text-sm) var(--font-mono); color: var(--text-dim); }
-.wb-section { display: flex; flex-direction: column; gap: var(--space-sm); }
+.wb-section { display: flex; flex-direction: column; gap: var(--space-1-5); }
 .wb-section > .ui-prose { color: var(--text-dim); max-width: var(--page-w); }
 
 /* A box for live components, on the well. A variant's box contains fixed positioning (the transform), so its sheets stay inside it. */
-.wb-cell { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); padding: var(--space-lg); overflow: auto; border-radius: var(--radius-md); background: var(--well); box-shadow: inset 0 0 0 1px var(--separator); }
+.wb-cell { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3); overflow: auto; border-radius: var(--radius-md); background: var(--well); box-shadow: inset 0 0 0 1px var(--separator); }
 .wb-variant { display: block; transform: translateZ(0); }
 .wb-variant > :not(.wb-layer) { margin: 0 auto; }
 .wb-layer { position: absolute; inset: 0; pointer-events: none; }
 .wb-layer > * { pointer-events: auto; }
 
 /* The matrix: unions crossed in a grid, other axes one row each. */
-.wb-matrix { display: flex; flex-direction: column; gap: var(--space-md); }
+.wb-matrix { display: flex; flex-direction: column; gap: var(--space-2); }
 .wb-cross { display: grid; align-items: center; justify-items: start; }
 .wb-axis { font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
 .wb-axis-row > .wb-axis { min-width: 80px; }
-.wb-slot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); margin: 0; }
+.wb-slot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); margin: 0; }
 .wb-slot figcaption { font: var(--text-2xs) var(--font-mono); color: var(--text-faint, var(--text-dim)); }
 .wb-error { font: var(--text-xs) var(--font-mono); color: var(--danger); }
 
 /* Playground: the component, what its callbacks were called with, a control per prop. */
-.wb-playground { display: flex; flex-direction: column; gap: var(--space-md); max-width: var(--page-w); }
+.wb-playground { display: flex; flex-direction: column; gap: var(--space-2); max-width: var(--page-w); }
 .wb-playground > .wb-cell { justify-content: center; min-height: 96px; }
 .wb-calls { margin: 0; padding: 0; list-style: none; font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
 
 /* Props: name, type, default on one line, the doc under it. */
 .wb-props { display: flex; flex-direction: column; margin: 0; max-width: var(--page-w); }
-.wb-prop { display: flex; flex-direction: column; gap: var(--space-2xs); padding: var(--space-sm) 0; box-shadow: inset 0 -1px 0 var(--separator); }
-.wb-prop dt { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.wb-prop { display: flex; flex-direction: column; gap: var(--space-0-5); padding: var(--space-1-5) 0; box-shadow: inset 0 -1px 0 var(--separator); }
+.wb-prop dt { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
 .wb-prop dd { margin: 0; color: var(--text-dim); font-size: var(--text-sm); }
 .wb-prop-name { font: 600 var(--text-sm) var(--font-mono); }
 .wb-prop-type, .wb-prop-default { font: var(--text-sm) var(--font-mono); color: var(--text-dim); }
@@ -64,8 +64,8 @@
 .wb[data-backdrop="window"] .wb-cell, .wb[data-backdrop="window"] .wb-stage { background: var(--bg); }
 
 /* Every theme: one box each, named, wrapping. A .ui-theme subtree re-derives the tokens, so its text takes them too. */
-.wb-themes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-lg); }
-.wb-theme { display: flex; flex-direction: column; gap: var(--space-xs); margin: 0; max-width: 100%; }
+.wb-themes { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
+.wb-theme { display: flex; flex-direction: column; gap: var(--space-1); margin: 0; max-width: 100%; }
 .wb-theme figcaption { font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
 .wb-themed { color: var(--text); font: var(--text-base) var(--font-ui); border-radius: var(--radius-md); }
 
@@ -75,4 +75,4 @@
 .wb-audit > div[data-bad] { --wb-audit: var(--danger); }
 .wb-audit-ink { position: fixed; outline: 1px dashed var(--wb-audit); }
 .wb-audit-gap { position: fixed; height: 0; border-top: 1px solid var(--wb-audit); }
-.wb-audit-tag { position: fixed; transform: translateY(-100%); padding: 0 var(--space-2xs); font: var(--text-2xs) var(--font-mono); white-space: nowrap; color: var(--on-accent); background: var(--wb-audit); border-radius: var(--radius-xs); }
+.wb-audit-tag { position: fixed; transform: translateY(-100%); padding: 0 var(--space-0-5); font: var(--text-2xs) var(--font-mono); white-space: nowrap; color: var(--on-accent); background: var(--wb-audit); border-radius: var(--radius-xs); }

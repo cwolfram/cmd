@@ -19,7 +19,9 @@ installScrollbars({ always: cmd.scrollBars === "always" });
 installTooltips();
 
 document.documentElement.classList.add(navigator.platform.startsWith("Mac") ? "platform-mac" : "platform-other");
-createRoot(document.getElementById("root")!, { onCaughtError: reportRenderError, onUncaughtError: reportRenderError }).render(
+// A story that breaks on purpose (the ErrorBoundary's) isn't a crash to report.
+const onCaughtError: typeof reportRenderError = (err, info) => void (String(err).includes("on purpose") || reportRenderError(err, info));
+createRoot(document.getElementById("root")!, { onCaughtError, onUncaughtError: reportRenderError }).render(
   <UIProvider icon={Symbol}>
     <ErrorBoundary onReload={() => location.reload()}>
       <Workbench />

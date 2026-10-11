@@ -1,7 +1,7 @@
 // A day as the Journal draws it: a ribbon of what happened (agents in parallel take lanes,
-// coloured by kind), hours under it; a click picks one.
+// coloured by kind), hours under it, a click picks one; and the entries down a rail.
 import { useState } from "react";
-import { Ribbon, type RibbonItem } from "./timeline.tsx";
+import { Ribbon, Timeline, TimelineEntry, type RibbonItem } from "./timeline.tsx";
 
 const H = 3_600_000;
 const DAY = Date.UTC(2026, 9, 10, 0, 0);
@@ -25,3 +25,17 @@ export const Day = () => {
     </div>
   );
 };
+
+/** The day's entries down a rail, the picked one's mark ringed. */
+export const Entries = () => (
+  <div style={{ width: 460 }}>
+    <Timeline>
+      {ITEMS.slice(0, 4).map((it, i) => (
+        <TimelineEntry key={it.id} time={it.label.split(" · ")[1]!.split("–")[0]} hue={it.hue} label={it.label} picked={i === 1}>
+          <strong>{it.label.split(" · ")[0]}</strong>
+          <div style={{ color: "var(--text-dim)" }}>Two agents, 14 files changed.</div>
+        </TimelineEntry>
+      ))}
+    </Timeline>
+  </div>
+);

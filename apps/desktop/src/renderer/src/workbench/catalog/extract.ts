@@ -127,6 +127,8 @@ function component(checker: ts.TypeChecker, exp: ts.Symbol, kit: boolean): Found
   const decl = sym.valueDeclaration;
   if (!decl || !(sym.flags & ts.SymbolFlags.Value)) return undefined;
   const type = checker.getTypeOfSymbolAtLocation(sym, decl);
+  // A React context (DialogLayer) renders nothing of its own: not a component to show.
+  if (type.getProperty("Provider") && type.getProperty("Consumer")) return undefined;
   const calls = type.getCallSignatures();
   const constructs = type.getConstructSignatures();
   let propsType: ts.Type | undefined;
