@@ -127,7 +127,7 @@ export interface Methods extends JournalMethods, ActionsMethods, RemoteMethods, 
   /** Plain-text tail of the pane, as displayed. */
   "pane.read": { params: { paneId: PaneId; lines?: number }; result: { text: string } };
   /**
-   * Wait until a terminal prints `text` (a substring of its output from now on), or, with `prompt`,
+   * Wait until a terminal shows `text` (on its screen now, or in what it prints next), or, with `prompt`,
    * until it is back at its prompt (OSC 133: the running command ended, or none started within a
    * second and a half). `timeoutMs` defaults to 60 s, at most 10 min. `tail`: the screen's last lines then.
    */

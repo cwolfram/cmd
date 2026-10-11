@@ -8,7 +8,7 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { ModelMessage } from "ai";
-import type { Agent, AgentId, AgentState, Method, NewDataEvent, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
+import type { Agent, AgentId, AgentState, Method, NewDataEvent, PaneId, OperatorConversation, OperatorEvent, OperatorItem, OperatorUsage, Params, Result, WindowId, Workspace, WorkspaceId } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
 import type { AgentCall, AgentResult, AgentRun } from "../ai/backends.ts";
 import type { ToolOutput } from "../magic/tools.ts";
@@ -43,6 +43,10 @@ export interface OperatorDeps {
   broadcast(e: OperatorEvent): void;
   /** Every change to an agent (AgentTracker's updated): the Operator hears about the ones it started. */
   onAgent?(fn: (a: Agent) => void): void;
+  /** A command ended in a terminal (OSC 133 D), with its exit status. */
+  onCommandEnd?(fn: (paneId: PaneId, exitCode: number | null) => void): void;
+  /** A Workspace Action's run printed its address (ActionsService's url). */
+  onServing?(fn: (paneId: PaneId, url: string) => void): void;
   /** A turn waits for the person, ended or failed while nobody looked (a notification). */
   notify?(workspaceId: WorkspaceId, title: string, body: string): void;
   /** Into the event log (docs/28): each turn (operator.turn) and each tool call in it (operator.tool). */
@@ -65,8 +69,10 @@ interface Conversation {
   busy: boolean;
   abort: AbortController | null;
   queue: { text: string; selected: WindowId | null }[];
-  /** Agents it started, and the state each was last reported in: it is told when one is done, fails or needs input. */
-  watching: Map<AgentId, AgentState>;
+  /** Agents it started, and the state each was last reported in. */
+  agents: Map<AgentId, AgentState>;
+  /** Terminals running a command it started: what it is (for the news) and the address it serves. */
+  commands: Map<PaneId, { label: string; url: string | null }>;
   /** News not yet told: with the next tool result while a turn runs, else in a turn of its own. */
   news: string[];
   approvals: Map<string, (a: { allow: boolean; reason?: string }) => void>;
@@ -79,7 +85,8 @@ interface Saved {
   refs: Record<string, WindowId>;
   system: string | null;
   rules?: string | null;
-  watching?: [AgentId, AgentState][];
+  agents?: [AgentId, AgentState][];
+  commands?: [PaneId, { label: string; url: string | null }][];
   usage: OperatorUsage;
   model: string | null;
 }
@@ -94,43 +101,78 @@ export class OperatorService {
     this.#d = d;
     d.db?.exec(`CREATE TABLE IF NOT EXISTS operator_conversations (workspace_id TEXT PRIMARY KEY, json TEXT NOT NULL, at INTEGER NOT NULL)`);
     d.onAgent?.((a) => this.#agentChanged(a));
+    d.onCommandEnd?.((paneId, exitCode) => this.#commandEnded(paneId, exitCode));
+    d.onServing?.((paneId, url) => this.#serving(paneId, url));
   }
 
-  /** Be told when this agent is done, fails or needs input (one the Operator started). */
-  watch(workspaceId: WorkspaceId, agentId: AgentId, state: AgentState = "starting"): void {
+  // ── what it started reports back ───────────────────────
+  // Agents (done, failed, needs input), commands it ran or typed (when they end, with their
+  // status) and servers (their address, once printed) are news: told with the next tool
+  // result while a turn runs, else in a turn of its own. Only what it started, so the person's
+  // own agents and commands never start a (paid) turn.
+
+  /** Be told when this agent is done, fails or needs input. */
+  watchAgent(workspaceId: WorkspaceId, agentId: AgentId, state: AgentState = "starting"): void {
     const c = this.#conv(workspaceId);
-    c.watching.set(agentId, state);
+    c.agents.set(agentId, state);
     this.#save(c);
   }
 
-  /** States worth telling the Operator about an agent it started. */
+  /** Be told when the command just started in this terminal ends, and a server's address once it prints one. */
+  watchCommand(workspaceId: WorkspaceId, paneId: PaneId, label: string): void {
+    const c = this.#conv(workspaceId);
+    c.commands.set(paneId, { label, url: null });
+    this.#save(c);
+  }
+
+  /** States worth telling about an agent it started. */
   static readonly NEWS: readonly AgentState[] = ["done", "needs_input", "failed", "exited"];
 
   #agentChanged(a: Agent): void {
     for (const c of this.#watchers()) {
-      const was = c.watching.get(a.id);
+      const was = c.agents.get(a.id);
       if (was === undefined || was === a.state) continue;
-      c.watching.set(a.id, a.state);
-      if (a.state === "exited") c.watching.delete(a.id);
-      if (!OperatorService.NEWS.includes(a.state)) continue;
-      const where = a.paneId ? c.refs.of(a.paneId) : "its terminal";
-      const text = `${where}: ${agentLine(a)}`;
-      this.#add(c, { kind: "event", id: randomUUID(), at: Date.now(), text: newsLine(a) });
-      c.news.push(text);
-      this.#save(c);
-      // Told with the next tool result while a turn runs; otherwise a turn of its own.
-      if (!c.busy) void this.#turn(c);
+      if (a.state === "exited") c.agents.delete(a.id);
+      else c.agents.set(a.id, a.state);
+      if (OperatorService.NEWS.includes(a.state)) this.#tell(c, newsLine(a), `${a.paneId ? c.refs.of(a.paneId) : "its terminal"}: ${agentLine(a)}`);
     }
   }
 
-  /** Conversations watching agents, the ones on disk included (an agent may finish before its workspace's Operator is opened again). */
+  #commandEnded(paneId: PaneId, exitCode: number | null): void {
+    for (const c of this.#watchers()) {
+      const cmd = c.commands.get(paneId);
+      if (!cmd) continue;
+      c.commands.delete(paneId);
+      const how = exitCode === null ? "ended" : exitCode === 0 ? "ended (status 0)" : `failed (status ${exitCode})`;
+      this.#tell(c, `${cmd.label} ${exitCode === 0 || exitCode === null ? "ended" : "failed"}.`, `${c.refs.of(paneId)}: ${cmd.label} ${how}. Read it for its output.`);
+    }
+  }
+
+  #serving(paneId: PaneId, url: string): void {
+    for (const c of this.#watchers()) {
+      const cmd = c.commands.get(paneId);
+      if (!cmd || cmd.url === url) continue;
+      cmd.url = url;
+      this.#tell(c, `${cmd.label} is up at ${url}.`, `${c.refs.of(paneId)}: ${cmd.label} serves ${url} (it keeps running).`);
+    }
+  }
+
+  /** News: a row in the chat (`line`, for people), the model's text, and a turn if none runs. */
+  #tell(c: Conversation, line: string, text: string): void {
+    this.#add(c, { kind: "event", id: randomUUID(), at: Date.now(), text: line });
+    c.news.push(text);
+    this.#save(c);
+    if (!c.busy) void this.#turn(c);
+  }
+
+  /** Conversations waiting on something they started, the ones on disk included (an agent may finish before its workspace's Operator is opened again). */
   #watchers(): Conversation[] {
     if (!this.#loaded) {
       this.#loaded = true;
       const rows = (this.#d.db?.prepare("SELECT workspace_id FROM operator_conversations").all() ?? []) as { workspace_id: string }[];
       for (const r of rows) this.#conv(r.workspace_id);
     }
-    return [...this.#all.values()].filter((c) => c.watching.size);
+    return [...this.#all.values()].filter((c) => c.agents.size || c.commands.size);
   }
 
   #loaded = false;
@@ -167,7 +209,7 @@ export class OperatorService {
   reset(workspaceId: WorkspaceId): void {
     this.stop(workspaceId);
     const c = this.#conv(workspaceId);
-    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, watching: new Map(), news: [], usage: zero(), model: null, latency: null, denials: 0 });
+    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, agents: new Map(), commands: new Map(), news: [], usage: zero(), model: null, latency: null, denials: 0 });
     this.#save(c);
     this.#d.broadcast({ type: "operator.changed", workspaceId, reset: true, items: [], usage: c.usage, model: null, latency: null });
   }
@@ -331,7 +373,7 @@ export class OperatorService {
       call: this.#gate(false, signal),
       refs: c.refs,
       self: this.#d.selfIn(c.workspaceId),
-      watch: (id) => this.watch(c.workspaceId, id),
+      started: { agent: (id) => this.watchAgent(c.workspaceId, id), command: (paneId, label) => this.watchCommand(c.workspaceId, paneId, label) },
       signal,
     };
   }
@@ -436,7 +478,8 @@ export class OperatorService {
       busy: false,
       abort: null,
       queue: [],
-      watching: new Map(saved?.watching ?? []),
+      agents: new Map(saved?.agents ?? []),
+      commands: new Map(saved?.commands ?? []),
       news: [],
       approvals: new Map(),
       denials: 0,
@@ -463,7 +506,7 @@ export class OperatorService {
         this.#d.db.prepare("DELETE FROM operator_conversations WHERE workspace_id = ?").run(c.workspaceId);
         return;
       }
-      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, watching: [...c.watching], usage: c.usage, model: c.model };
+      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, agents: [...c.agents], commands: [...c.commands], usage: c.usage, model: c.model };
       this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(saved), Date.now());
     } catch (e) {
       log.warn(`could not save the conversation: ${(e as Error).message}`);

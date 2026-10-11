@@ -1,4 +1,4 @@
-// pane.waitFor: until a terminal prints something, or is back at its prompt. For whoever
+// pane.waitFor: until a terminal shows something (on its screen now, or printed next), or is back at its prompt. For whoever
 // types into a terminal and needs to know when the command is done (the Operator, docs/51;
 // agents in panes through the CLI): the output and the shell integration's OSC 133 marks,
 // never a fixed wait.
@@ -11,6 +11,8 @@ const DEFAULT_MS = 60_000;
 const MAX_MS = 10 * 60_000;
 /** With `prompt`: a command that hasn't started by now (no C mark) means it was already back at its prompt. */
 const START_GRACE_MS = 1500;
+/** How much of the screen counts as already printed. */
+const SCREEN_LINES = 200;
 
 export interface WaitFor {
   text?: string;
@@ -36,7 +38,10 @@ export function waitForPane(panes: PaneManager, paneId: PaneId, o: WaitFor): Pro
     let started = false;
     let exitCode: number | null = null;
     const timers: NodeJS.Timeout[] = [];
+    let done = false;
     const finish = (matched: boolean, timedOut: boolean) => {
+      if (done) return;
+      done = true;
       panes.off("output", onOutput);
       panes.off("osc", onOsc);
       panes.off("removed", onRemoved);
@@ -69,5 +74,12 @@ export function waitForPane(panes: PaneManager, paneId: PaneId, o: WaitFor): Pro
     o.signal?.addEventListener("abort", onAbort);
     timers.push(setTimeout(() => finish(false, true), ms));
     if (o.prompt) timers.push(setTimeout(() => !started && finish(true, false), Math.min(START_GRACE_MS, ms)));
+    // Text already on the screen counts: it was printed before the wait began (a server's address).
+    if (o.text) {
+      const text = o.text;
+      void Promise.resolve()
+        .then(() => panes.read(paneId, SCREEN_LINES))
+        .then((screen) => !done && screen.includes(text) && finish(true, false), () => {});
+    }
   });
 }

@@ -34,6 +34,8 @@ export function operatorOf(core: CoreContext): OperatorService {
       selfIn: (id) => core.windows.others().find((w) => w.kind === "operator" && w.workspaceId === id)?.id ?? null,
       broadcast: (e) => core.broadcast(e),
       onAgent: (fn) => void core.agents.on("updated", fn),
+      onCommandEnd: (fn) => void core.panes.on("osc", (id, ev) => ev.type === "prompt" && ev.mark === "D" && fn(id, ev.exitCode ?? null)),
+      onServing: (fn) => void core.actions.on("url", fn),
       notify: (_id, title, body) => core.notifications.info(title, body),
       // A terminal's window is its pane: its tool calls are found with the terminal's other events too.
       record: (e) => core.data.record(e.windowId && core.panes.get(e.windowId) ? { ...e, paneId: e.windowId } : e),

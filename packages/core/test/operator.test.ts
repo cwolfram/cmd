@@ -124,6 +124,8 @@ describe("the service", () => {
       selfIn: () => null,
       broadcast,
       onAgent: (fn) => void agentFns.push(fn),
+      onCommandEnd: (fn) => void core.panes.on("osc", (id, ev) => ev.type === "prompt" && ev.mark === "D" && fn(id, ev.exitCode ?? null)),
+      onServing: (fn) => void core.actions.on("url", fn),
       record: (e) => core.data.record(e),
       db: null,
     });
@@ -169,7 +171,7 @@ describe("the service", () => {
     op.send(ws.id, "run the tests");
     await idle();
     expect(out[0]).toMatch(/^Opened terminal w\d+/);
-    expect(out[1]).toMatch(/^Started "test" \(npm run test\) in w\d+/);
+    expect(out[1]).toMatch(/^Started “test” \(npm run test\) in w\d+\. You'll be told when it ends\.$/);
     expect(out[2]).toContain("back at its prompt, exit status 1");
     expect(out[2]).toContain("<window w");
     expect(out[3]).toMatch(/w\d+ terminal/);
@@ -238,6 +240,31 @@ describe("the service", () => {
     expect(tool(op.get(ws.id).items, "type")!.state).toBe("failed");
   });
 
+  it("what it runs reports back: a server's address, then a command's end, each as news", async () => {
+    fs.writeFileSync(path.join(dir, "package.json"), JSON.stringify({ scripts: { dev: "vite", lint: "eslint ." } }));
+    let out = "";
+    turns.push(async (r) => void (out = (await exec(r, "run", { name: "dev" })).output));
+    op.send(ws.id, "start the dev server");
+    await idle();
+    expect(out).toMatch(/^Started “dev” \(npm run dev\) in w\d+\. You'll be told when it ends, and its address once it prints one/);
+    // The address, printed after the turn ended: a turn of its own.
+    turns.push(() => {});
+    ptys.at(-1)!.output("\x1b]133;C\x07  VITE ready\r\n  Local:   http://localhost:5180/\r\n");
+    await vi.waitFor(() => expect(runs).toHaveLength(2));
+    await idle();
+    expect(String(runs[1]!.messages.at(-1)!.content)).toMatch(/<news>\n- w\d+: “dev” \(npm run dev\) serves http:\/\/localhost:5180\/ \(it keeps running\)/);
+    expect(op.get(ws.id).items.filter((i) => i.kind === "event").map((i) => (i as { text: string }).text)).toEqual(["“dev” (npm run dev) is up at http://localhost:5180/."]);
+    // Its end: news again, once.
+    turns.push(() => {});
+    ptys.at(-1)!.output("\x1b]133;D;1\x07\x1b]133;A\x07");
+    await vi.waitFor(() => expect(runs).toHaveLength(3));
+    await idle();
+    expect(String(runs[2]!.messages.at(-1)!.content)).toMatch(/“dev” \(npm run dev\) failed \(status 1\)/);
+    ptys.at(-1)!.output("\x1b]133;C\x07\x1b]133;D;0\x07");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(runs).toHaveLength(3);
+  });
+
   it("a risky action asks first, and actions.run itself refuses it unconfirmed", async () => {
     const list = core.actions.list(dir);
     const deploy = list.actions.find((a) => a.name === "deploy")!;
@@ -249,7 +276,7 @@ describe("the service", () => {
     expect(tool(op.get(ws.id).items, "run")).toMatchObject({ ask: "Run “deploy”, which is risky", exact: "npm run deploy" });
     op.answer(ws.id, "r1", true);
     await idle();
-    expect(tool(op.get(ws.id).items, "run")!.output).toMatch(/^Started "deploy"/);
+    expect(tool(op.get(ws.id).items, "run")!.output).toMatch(/^Started “deploy”/);
   });
 
   it("selects a window to show it, and never reads outside the workspace's folder", async () => {
@@ -379,7 +406,7 @@ describe("the service", () => {
 
   it("is told when an agent it started is done: a turn of its own when idle, with the next tool result when busy", async () => {
     const pane = core.panes.create({ cwd: dir, workspaceId: ws.id });
-    op.watch(ws.id, "a1");
+    op.watchAgent(ws.id, "a1");
     for (const fn of agentFns) fn(agent("working", pane.id));
     expect(runs).toHaveLength(0);
     turns.push(() => {});
@@ -455,6 +482,9 @@ describe("pane.waitFor", () => {
       pty.output("server rea");
       pty.output("dy on :3000\r\n");
       expect(await text).toMatchObject({ matched: true });
+      // Already on the screen when the wait begins: matched at once.
+      pty.output("  Local:   http://localhost:5180/\r\n");
+      expect(await core.call("pane.waitFor", { paneId: pane.id, text: "http://localhost:5180", timeoutMs: 5000 })).toMatchObject({ matched: true, timedOut: false });
       // Nothing started within the grace: it was already at its prompt.
       expect(await core.call("pane.waitFor", { paneId: pane.id, prompt: true, timeoutMs: 5000 })).toMatchObject({ matched: true, exitCode: null });
       expect(await core.call("pane.waitFor", { paneId: pane.id, text: "never", timeoutMs: 50 })).toMatchObject({ matched: false, timedOut: true });
