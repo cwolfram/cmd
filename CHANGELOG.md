@@ -2,6 +2,29 @@
 
 What changed in each cmd release, newest first. cmd shows the releases since your last update in What's New. Written at release time by the changelog skill (`.claude/skills/changelog/SKILL.md`).
 
+## 0.26.0 — 2026-10-11
+
+Stats on how you and your agents work, notifications on your phone, and far less disk space used.
+
+### New
+
+- **Stats.** A widget shows how you and your agents used cmd: agent time, turns, commands and what failed, tokens and commits. Add it from the Widget Library.
+- **Notifications on your phone.** A paired phone gets cmd's notifications, by default only while you're away from the Mac. Choose when in `Settings → Remote Access`.
+- **Getting Ready.** When an update needs a moment to prepare your records, cmd shows what it's doing and how far along it is.
+
+### Improved
+
+- Your records take much less disk space: cmd keeps less of what tools printed, and slims older records once after this update.
+- Windows and lists have roomier, more even spacing.
+- List rows glide into place as they move, and sections fold smoothly.
+- Forgetting a session or project also removes the journal days, summaries and stats made from it.
+
+### Fixed
+
+- Timers ring on time after the Mac wakes from sleep.
+- A phone on a slow connection catches up instead of being disconnected during heavy terminal output.
+- Asking for a summary again keeps your edits to it.
+
 ## 0.25.0 — 2026-10-11
 
 Reopen closed windows, play and trim videos, and render a jam to audio.
