@@ -177,7 +177,7 @@ describe("PTY host", () => {
     a.onReplaced(() => lost.push("replaced"));
     const c = net.createConnection(sock);
     const reply = await new Promise<{ r: { minCore: number; methods: string[] } }>((resolve) => {
-      c.on("data", (d) => resolve(JSON.parse(String(d).split("\n")[0])));
+      c.on("data", (d) => resolve(JSON.parse(String(d).split("\n")[0]!)));
       c.write(JSON.stringify({ id: 0, m: "hello", p: { protocol: MIN_CORE - 1 } }) + "\n");
     });
     expect(reply.r).toMatchObject({ minCore: MIN_CORE, methods: [...HOST_METHODS] });
