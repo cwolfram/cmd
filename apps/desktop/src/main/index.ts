@@ -569,7 +569,8 @@ function openUtility(page: UtilityPage, o: { title: string; width: number; heigh
   });
   utility.set(page, win);
   win.on("closed", () => utility.get(page) === win && utility.delete(page));
-  win.once("ready-to-show", () => win.show());
+  // `pnpm workbench --headless`: an agent drives it without taking over the screen.
+  win.once("ready-to-show", () => (page !== "workbench" || !process.env.CMD_WORKBENCH_HIDDEN) && win.show());
   const search = at ? `?${page === "workbench" ? "story" : "page"}=${encodeURIComponent(at)}` : "";
   if (process.env.ELECTRON_RENDERER_URL) win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/${page}.html${search}`);
   else win.loadFile(path.join(here, `../renderer/${page}.html`), { search });

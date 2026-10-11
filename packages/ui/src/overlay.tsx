@@ -4,7 +4,7 @@
 // Native menus and confirms (cmd.contextMenu, cmd.confirm) stay native; these
 // are for what needs more than text.
 
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { ICON, iconNode } from "./icon.tsx";
 import { Button, IconButton } from "./button.tsx";
@@ -352,10 +352,17 @@ const LIVE = ".tip-layer, .ui-toaster";
 /** How many open dialogs hold each element inert: two can be open at once (one opened over the other) and close in any order. */
 const holds = new Map<HTMLElement, number>();
 
-/** Makes everything in <body> but `keep` (and the live overlays) inert; returns the undo. */
-function inertOthers(keep: Element): () => void {
+/**
+ * Where a Dialog goes: <body>, or a layer inside a box (the UI Workbench shows each story
+ * variant in its own box, several sheets at once). In a box whose CSS contains fixed
+ * positioning (a transform), the scrim covers the box, and only the box goes inert.
+ */
+export const DialogLayer = createContext<HTMLElement | null>(null);
+
+/** Makes everything in `within` (<body>) but `keep` (and the live overlays) inert; returns the undo. */
+function inertOthers(keep: Element, within: Element = document.body): () => void {
   const held: HTMLElement[] = [];
-  for (const el of document.body.children) {
+  for (const el of within.children) {
     // Inert for another reason (a closing overlay): not ours to undo.
     if (el === keep || !(el instanceof HTMLElement) || el.matches(LIVE) || (el.inert && !holds.has(el))) continue;
     holds.set(el, (holds.get(el) ?? 0) + 1);
@@ -443,6 +450,7 @@ export function Dialog({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const scrimRef = useRef<HTMLDivElement>(null);
+  const layer = useContext(DialogLayer);
   const escape = useRef<(() => void) | null>(null);
   escape.current = dismissable ? onClose : null;
   // Closed, the sheet and its scrim fade out (motion.ts).
@@ -458,7 +466,7 @@ export function Dialog({
     const before = opener.current;
     const el = ref.current;
     // Modal: the page behind can't be focused, clicked or read (a terminal can't be typed into).
-    const release = scrimRef.current ? inertOthers(scrimRef.current) : () => {};
+    const release = !scrimRef.current ? () => {} : layer?.parentElement ? inertOthers(layer, layer.parentElement) : inertOthers(scrimRef.current);
     // Unless its content already took focus (its own effects run first): its first field or
     // button that isn't ghost (and can take focus: not disabled), else the sheet itself.
     if (el && !el.contains(document.activeElement)) {
@@ -524,7 +532,7 @@ export function Dialog({
         )}
       </div>
     </div>,
-    document.body,
+    layer ?? document.body,
   );
 }
 

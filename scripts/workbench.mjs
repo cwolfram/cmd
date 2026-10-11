@@ -1,9 +1,10 @@
-// The Workbench (apps/desktop/src/renderer/workbench.html): one component from
-// a *.story.tsx file in the real app (styles, SF Symbols, preload, core), with
-// HMR. It runs on its own instance (.cmd-dev/workbench, or $CMD_WORKBENCH_HOME)
-// and exposes the DevTools protocol, so these commands drive the open window:
-//   pnpm workbench [story]                        start it (stays in the foreground)
-//   pnpm workbench goto <story> [variant] [--theme id]   show that in the window
+// The UI Workbench (apps/desktop/src/renderer/workbench.html, docs/47): every component
+// and story, read from the sources, in the real app (styles, SF Symbols, preload, core),
+// with HMR. It runs on its own instance (.cmd-dev/workbench, or $CMD_WORKBENCH_HOME)
+// and exposes the DevTools protocol, so these commands drive the open window. A target
+// is a story (shell/feedback, or its old id feedback) or a component (ui/Button).
+//   pnpm workbench [target] [--headless]          start it (stays in the foreground); headless: the window isn't shown
+//   pnpm workbench goto <target> [variant] [--theme id]   show that in the window
 //   pnpm workbench shot [story] [variant] [--theme id] [--out file.png] [--window]
 // Shots crop to the component (a dialog, else what the stage shows) with a margin:
 // the window is yours to size and move, so its size and display vary. They are
@@ -34,7 +35,7 @@ for (const argv = process.argv.slice(2); argv.length;) {
   if (!a.startsWith("--")) args.push(a);
   else
     flags[a.slice(2)] =
-      argv[0] && !argv[0].startsWith("--") && a !== "--window"
+      argv[0] && !argv[0].startsWith("--") && a !== "--window" && a !== "--headless"
         ? argv.shift()
         : true;
 }
@@ -73,6 +74,7 @@ async function start(story = "") {
         ...process.env,
         CMD_HOME: home,
         CMD_WORKBENCH: story,
+        ...(flag("headless") ? { CMD_WORKBENCH_HIDDEN: "1" } : {}),
         CMD_NO_SANDBOX: "1",
         CMD_USAGE_URL: "off",
       },
@@ -104,36 +106,41 @@ async function connect() {
   return { browser, page };
 }
 
-/** Show story/variant/theme (unset keeps what is there) and wait until it rendered. */
-async function show(page, { story, variant, theme }) {
+/**
+ * Show a story (its page, or one variant) or a component's page, and a theme (unset keeps
+ * what is there), then wait until it rendered: the page says what it was asked, for which
+ * mount, and what is on stage (data-asked, data-mount, data-ready).
+ */
+async function show(page, { story: target, variant, theme }) {
+  const mount = String(Date.now()); // fresh state, whatever was clicked before
   const want = await page.evaluate(
-    ({ story, variant, theme }) => {
+    ({ target, variant, theme, mount }) => {
       const q = new URLSearchParams(location.search);
-      if (story) (q.set("story", story), variant || q.delete("variant"));
+      if (target && globalThis.workbenchCatalog?.components.some((c) => c.id === target)) (q.set("component", target), q.delete("story"), q.delete("variant"));
+      else if (target) (q.set("story", target), q.delete("component"), variant || q.delete("variant"));
       if (variant) q.set("variant", variant);
       if (theme) q.set("theme", theme);
-    q.set("mount", String(Date.now())); // fresh state, whatever was clicked before
+      q.set("mount", mount);
       history.replaceState(null, "", `?${q}`);
       dispatchEvent(new Event("workbench:url"));
-      return q.get("story");
+      return q.get("component") ?? q.get("story") ?? "";
     },
-    { story, variant, theme },
+    { target, variant, theme, mount },
   );
   await page.waitForFunction(
-    (s) =>
-      document.body.dataset.ready?.startsWith(`${s}/`) &&
-      (!location.search.includes("variant=") ||
-        document.body.dataset.ready ===
-          `${s}/${new URLSearchParams(location.search).get("variant")}`),
-    want,
-    { timeout: 10000 },
+    ({ want, mount, variant }) => {
+      const d = document.body.dataset;
+      return d.asked === want && d.mount === mount && !!d.ready && (!variant || d.ready.endsWith(`/${variant}`));
+    },
+    { want, mount, variant },
+    { timeout: 15000 },
   );
   if (theme) await page.waitForFunction((t) => document.body.dataset.theme === t, theme, { timeout: 10000 });
   await page.waitForTimeout(400); // fonts, SF Symbols, entry animations
   return page.evaluate(() => document.body.dataset.ready);
 }
 
-/** The component's box plus a margin, or the whole window. */
+/** The component's box plus a margin (one variant alone), the page as far as it shows, or the whole window. */
 async function capture(page, file, whole) {
   const cdp = await page.context().newCDPSession(page);
   const [width, height, dpr] = await page.evaluate(() => [
@@ -162,9 +169,12 @@ async function capture(page, file, whole) {
 async function shoot(page, cdp, file, whole) {
   const clip = await page.evaluate((whole) => {
     if (whole) return { x: 0, y: 0, width: innerWidth, height: innerHeight };
-    const el =
-      document.querySelector(".ui-dialog, .ui-popover, .ui-menu") ??
-      document.querySelector(".wb-stage > *");
+    const stage = document.querySelector(".wb-stage");
+    if (!stage) {
+      const main = document.querySelector(".ui-split-main")?.getBoundingClientRect();
+      return main ? { x: main.left, y: main.top, width: main.width, height: main.height } : { x: 0, y: 0, width: innerWidth, height: innerHeight };
+    }
+    const el = document.querySelector("body > .ui-scrim .ui-dialog, body > .ui-popover, body > .ui-menu, .ui-popover, .ui-menu") ?? stage.firstElementChild;
     if (!el) return { x: 0, y: 0, width: innerWidth, height: innerHeight };
     const r = el.getBoundingClientRect();
     const m = 32;
@@ -361,7 +371,7 @@ async function shot(story, variant) {
     out ??
       path.join(
         shots,
-        `${on.replace("/", "-")}${theme ? `-${theme}` : ""}.png`,
+        `${on.replaceAll("/", "-").replace(/-\*$/, "")}${theme ? `-${theme}` : ""}.png`,
       ),
   );
   await capture(page, file, whole);
@@ -385,7 +395,7 @@ async function matrix(story) {
   for (const theme of themes)
     for (const variant of variants) {
       await show(page, { story, variant, theme });
-      const file = path.join(shots, `${story}-${variant}-${theme}.png`);
+      const file = path.join(shots, `${story.replaceAll("/", "-")}-${variant}-${theme}.png`);
       await capture(page, file);
       console.log(file);
     }

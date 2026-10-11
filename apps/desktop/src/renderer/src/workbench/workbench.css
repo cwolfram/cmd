@@ -1,10 +1,58 @@
-/* The Workbench (Workbench.tsx): a toolbar under the traffic lights, above any
-   dialog's scrim so it stays usable, and the stage on the app's backdrop. */
+/* The UI Workbench (Workbench.tsx): a toolbar under the traffic lights, above any
+   dialog's scrim so it stays usable; under it the sidebar and a page (a component's,
+   a story's) or the stage, on the app's backdrop. */
 .wb { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
-.wb-bar { position: relative; z-index: 100; flex: none; height: 44px; padding: 0 10px 0 84px; -webkit-app-region: drag; background: var(--bg-raised, var(--bg)); }
+.wb-bar { position: relative; z-index: 100; flex: none; height: 44px; padding: 0 var(--space-md) 0 84px; -webkit-app-region: drag; background: var(--bg-raised, var(--bg)); }
 .wb-bar > * { -webkit-app-region: no-drag; }
-.wb-stage { flex: 1; min-height: 0; overflow: auto; display: flex; padding: 24px; }
-/* Centred by its margins, not justify/align: wider or taller than the stage, it scrolls from its start instead of overflowing off the left and top. */
+.wb-crumbs { font: 600 var(--text-md) var(--font-ui); -webkit-app-region: drag; }
+.wb-body { flex: 1; min-height: 0; display: flex; }
+.wb-dim { color: var(--text-dim); }
+
+/* Sidebar: the filter stays, the list scrolls. */
+.wb-side { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.wb-side-search { flex: none; padding: var(--space-sm) var(--inset); }
+.wb-side-list { flex: 1; min-height: 0; overflow: auto; padding-bottom: var(--space-lg); }
+
+/* One variant alone. Centred by its margins, not justify/align: wider or taller than the stage, it scrolls from its start instead of overflowing off the left and top. */
+.wb-stage { flex: 1; min-height: 0; overflow: auto; display: flex; padding: var(--space-2xl); }
 .wb-stage > * { margin: auto; flex: none; }
 /* A dialog's scrim covers the stage, not the toolbar: a tall sheet fits under it instead of sliding behind it. */
 .wb ~ .ui-scrim, body:has(.wb) > .ui-scrim { top: 44px; }
+
+/* A page: a component's or a story's. */
+.wb-page { display: flex; flex-direction: column; gap: var(--space-2xl); padding: var(--space-xl) var(--space-2xl) var(--space-3xl); }
+.wb-head { display: flex; flex-direction: column; gap: var(--space-sm); max-width: var(--page-w); }
+.wb-head-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-md); }
+.wb-head h1 { margin: 0; font: 600 var(--text-xl) var(--font-ui); }
+.wb-head code, .wb-page .ui-prose code { font: var(--text-sm) var(--font-mono); color: var(--text-dim); }
+.wb-section { display: flex; flex-direction: column; gap: var(--space-sm); }
+.wb-section > .ui-prose { color: var(--text-dim); max-width: var(--page-w); }
+
+/* A box for live components, on the well. A variant's box contains fixed positioning (the transform), so its sheets stay inside it. */
+.wb-cell { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); padding: var(--space-lg); overflow: auto; border-radius: var(--radius-md); background: var(--well); box-shadow: inset 0 0 0 1px var(--separator); }
+.wb-variant { display: block; transform: translateZ(0); }
+.wb-variant > :not(.wb-layer) { margin: 0 auto; }
+.wb-layer { position: absolute; inset: 0; pointer-events: none; }
+.wb-layer > * { pointer-events: auto; }
+
+/* The matrix: unions crossed in a grid, other axes one row each. */
+.wb-matrix { display: flex; flex-direction: column; gap: var(--space-md); }
+.wb-cross { display: grid; align-items: center; justify-items: start; }
+.wb-axis { font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
+.wb-axis-row > .wb-axis { min-width: 80px; }
+.wb-slot { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); margin: 0; }
+.wb-slot figcaption { font: var(--text-2xs) var(--font-mono); color: var(--text-faint, var(--text-dim)); }
+.wb-error { font: var(--text-xs) var(--font-mono); color: var(--danger); }
+
+/* Playground: the component, what its callbacks were called with, a control per prop. */
+.wb-playground { display: flex; flex-direction: column; gap: var(--space-md); max-width: var(--page-w); }
+.wb-playground > .wb-cell { justify-content: center; min-height: 96px; }
+.wb-calls { margin: 0; padding: 0; list-style: none; font: var(--text-xs) var(--font-mono); color: var(--text-dim); }
+
+/* Props: name, type, default on one line, the doc under it. */
+.wb-props { display: flex; flex-direction: column; margin: 0; max-width: var(--page-w); }
+.wb-prop { display: flex; flex-direction: column; gap: var(--space-2xs); padding: var(--space-sm) 0; box-shadow: inset 0 -1px 0 var(--separator); }
+.wb-prop dt { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.wb-prop dd { margin: 0; color: var(--text-dim); font-size: var(--text-sm); }
+.wb-prop-name { font: 600 var(--text-sm) var(--font-mono); }
+.wb-prop-type, .wb-prop-default { font: var(--text-sm) var(--font-mono); color: var(--text-dim); }

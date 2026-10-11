@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { defineConfig } from "electron-vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
+import { workbenchCatalog } from "./src/renderer/src/workbench/catalog/plugin.ts";
 
 // xterm maps a mouse event to a cell from getBoundingClientRect() (screen px) and its
 // cell size (layout px), so under a CSS scale() (the canvas zoom) selection, links and
@@ -96,7 +97,8 @@ export default defineConfig({
   // The app's version for What's New.
   renderer: {
     define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
-    plugins: [react(), xtermScaledCoords(), pdfjsAssets()],
+    // The UI Workbench's catalog (docs/47), dev server only.
+    plugins: [react(), xtermScaledCoords(), pdfjsAssets(), workbenchCatalog(resolve(import.meta.dirname, "../.."))],
     optimizeDeps: { exclude: ["@xterm/xterm"] },
     build: {
       minify: true,
