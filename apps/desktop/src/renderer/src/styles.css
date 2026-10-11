@@ -473,7 +473,8 @@ kbd {
    content, a footer bar at its bottom), which keeps its colour: only the content
    recedes. Sidebars are always dimmed, selected or not, so they look like an
    unselected window. Amount: ui.unfocusedDim (--window-dim-amount, set in App) times
-   the theme's --window-dim. A window that needs you isn't dimmed. */
+   the theme's --window-dim. A window that needs you isn't dimmed, nor a browser
+   with ui.dimBrowsers off (.undim-browsers, set in App). */
 :is(.windows-track, .dock) > .tile > .tile-frame::after {
   content: "";
   position: absolute;
@@ -492,7 +493,8 @@ kbd {
 .windows-track > .tile.sel > .tile-frame::after,
 .windows-track > .tile.lifted > .tile-frame::after,
 :is(.windows-track, .dock) > .tile.needs > .tile-frame::after,
-.mode-focus .windows-track > .tile > .tile-frame::after { opacity: 0; }
+.mode-focus .windows-track > .tile > .tile-frame::after,
+.undim-browsers :is(.windows-track, .dock) > .tile.kind-browser > .tile-frame::after { opacity: 0; }
 
 /* Visual bell (notifications.visualBell): the outline flashes once, as wide as the
    selected one, in the attention colour. */
@@ -522,6 +524,7 @@ kbd {
 :is(.main.windows:not(.mode-canvas) .windows-track, .dock) > .tile { transition: border-color var(--dur) var(--ease); }
 :is(.main.windows:not(.mode-canvas) .windows-track, .dock) > .tile > .tile-frame { transition: box-shadow var(--dur) var(--ease); }
 .app.desaturate .windows-track > .tile:not(.sel, .lifted) .tile-body { filter: grayscale(var(--window-desaturate)); }
+.app.desaturate.undim-browsers .windows-track > .tile.kind-browser .tile-body { filter: none; }
 .app.desaturate .mode-focus .windows-track > .tile .tile-body { filter: none; }
 .main.windows.live-resize .windows-track > .ghost-slot { transition: none; }
 .main.windows.dragging, .main.windows.dragging .tile-title { cursor: grabbing; }

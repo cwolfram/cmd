@@ -114,7 +114,7 @@ export function App() {
 
   return (
     <div
-      className={`app ${cfg["ui.unfocusedDesaturation"] > 0 ? "desaturate" : ""} title-tint-${cfg["ui.focusTitleBar"]}`}
+      className={`app ${cfg["ui.unfocusedDesaturation"] > 0 ? "desaturate" : ""}${cfg["ui.dimBrowsers"] ? "" : " undim-browsers"} title-tint-${cfg["ui.focusTitleBar"]}`}
       style={{
         ["--dock-left-w" as string]: `${widths.left || DOCK_WIDTH.default}px`,
         ["--gutter" as string]: `${cfg["ui.gutter"]}px`,

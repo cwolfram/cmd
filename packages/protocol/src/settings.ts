@@ -223,6 +223,7 @@ export const SETTINGS_SCHEMA = {
     description: "The selected window's memory and CPU, in the status bar.",
   },
   "ui.unfocusedDim": { title: "Dim other windows", unit: "%", type: "number", default: 23, min: 0, max: 60, step: 1, description: "Darken windows other than the selected one." },
+  "ui.dimBrowsers": { title: "Dim browser windows", type: "boolean", default: true, description: "Off keeps web pages undimmed and in colour when not selected." },
   "ui.unfocusedDesaturation": { title: "Desaturate other windows", unit: "%", type: "number", default: 0, min: 0, max: 100, step: 10, description: "Drain the colour from other windows." },
   "ui.paddingX": { title: "Horizontal padding", unit: "px", type: "number", default: 14, min: 0, max: 48, step: 1, description: "Space at the left and right edges." },
   "ui.paddingY": { title: "Vertical padding", unit: "px", type: "number", default: 14, min: 0, max: 48, step: 1, description: "Space at the top and bottom edges." },

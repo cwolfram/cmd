@@ -103,6 +103,7 @@ theme.dockIcon
 theme.light
 ui.attentionOutline
 ui.defaultView
+ui.dimBrowsers
 ui.focusColor
 ui.focusGlow
 ui.focusOutline
