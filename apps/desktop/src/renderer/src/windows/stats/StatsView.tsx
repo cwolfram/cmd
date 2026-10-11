@@ -24,7 +24,8 @@ function pageQueries(range: StatsRange): [keyof StatsData, StatQuery][] {
     ["heat", range === "year" ? { stat: "you.active", range: "365d", grain: "day" } : range === "today" ? { stat: "you.active", range: "today" } : { stat: "you.active", range: "30d", grain: "hour" }],
     ["ai", { stat: "ai.calls", range, by: "purpose", top: 6 }],
     ["memory", { stat: "core.memory", range }],
-    ["stalls", { stat: "core.stalls", range, measure: "max" }],
+    ["stalls", { stat: "core.stalls", range }],
+    ["worst", { stat: "core.stalls", range, measure: "max" }],
     ["size", { stat: "data.size", range }],
   ];
 }
