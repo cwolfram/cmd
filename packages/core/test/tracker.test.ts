@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID, type Agent } from "@cmd/protocol";
+import { ActivityReducer } from "../src/agents/activity/reduce.ts";
 import { AgentTracker } from "../src/agents/tracker.ts";
 import { PaneManager } from "../src/terminals/panes.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
@@ -135,6 +136,41 @@ describe("hooks", () => {
     expect(agents.activity.events({ agentId: host.id }).some((e) => e.agent === "gemini")).toBe(false);
     agents.ingestHook(pane.id, "claude", "Stop", { session_id: "s1", last_assistant_message: "gemini agrees" });
     expect(agents.get(host.id)).toMatchObject({ state: "done", lastMessage: "gemini agrees", turn: { index: 0, outcome: "done" } });
+  });
+
+  it("skips an event the reducer can't take, once, and reduces the ones after it", async () => {
+    const pane = panes.create();
+    const host = agents.ingestHook(pane.id, "claude", "UserPromptSubmit", { session_id: "s1", prompt: "go" })!;
+    const apply = vi.spyOn(ActivityReducer.prototype, "apply").mockImplementationOnce(() => {
+      throw new Error("poisoned");
+    });
+    agents.ingestHook(pane.id, "claude", "PreToolUse", { session_id: "s1", tool_name: "Bash", tool_input: { command: "ls" } });
+    agents.ingestHook(pane.id, "claude", "PreToolUse", { session_id: "s1", tool_name: "Bash", tool_input: { command: "pwd" } });
+    agents.tick(Date.now() + 2000);
+    agents.tick(Date.now() + 4000);
+    apply.mockRestore();
+    expect(agents.get(host.id)).toMatchObject({ state: "working", detail: "pwd" });
+    const notes = agents.activity.events({ agentId: host.id }).filter((e) => e.kind === "anomaly");
+    expect(notes).toHaveLength(1);
+    expect(notes[0]!.text).toMatch(/poisoned/);
+    // The saved turn is past it: a restarted core doesn't take it again.
+    const skipped = Number(/event (\d+)/.exec(notes[0]!.text ?? "")![1]);
+    expect(agents.activity.lastTurn(host.id)!.lastEvent).toBeGreaterThan(skipped);
+  });
+
+  it("starts the next turn after a saved turn it can't read (another version's)", async () => {
+    const pane = panes.create();
+    const first = agents.ingestHook(pane.id, "claude", "UserPromptSubmit", { session_id: "s1", prompt: "one" })!;
+    agents.ingestHook(pane.id, "claude", "Stop", { session_id: "s1", last_assistant_message: "done" });
+    const saved = agents.activity.lastTurn(first.id)!;
+    // A newer cmd saved turn 3 in a shape this one rejects (its index isn't a number in the doc).
+    agents.activity.saveTurn({ ...saved.turn!, index: "3" } as never, saved.lastEvent);
+    expect(agents.activity.lastTurn(first.id)).toMatchObject({ turn: null, index: 3 });
+    agents.forget(); // a restart: no reducers in memory
+    const again = agents.restore({ ...first, state: "idle" }, true);
+    agents.ingestHook(pane.id, "claude", "UserPromptSubmit", { session_id: "s1", prompt: "two" });
+    expect(agents.get(again.id)).toMatchObject({ state: "working", lastPrompt: "two", turn: { index: 4 } });
+    expect(agents.activity.turns(again.id).map((t) => t.index)).toEqual([0, 4]); // turn 3 is kept as it was, unread
   });
 
   it("removes a subagent on request", async () => {

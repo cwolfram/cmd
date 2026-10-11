@@ -287,10 +287,12 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
       try {
         this.#applyReduction(agent, red, red.apply(ev), ev, live.has(ev.id));
       } catch (err) {
-        // One event the reducer can't take (or a turn saved by another version) costs this agent its turn, not the core.
+        // One event the reducer can't take costs this agent that event, not the core and not its later ones:
+        // noted in the log, and marked as reduced (the saved turn too), so neither the next tick nor a restart takes it again.
         log.error(`agent ${agent.id.slice(0, 8)}: could not apply ${ev.kind} event ${ev.id}`, err);
-        this.#reducers.delete(agent.id);
-        break;
+        this.emit("activity", this.activity.note("anomaly", `could not apply ${ev.kind} event ${ev.id}: ${(err as Error)?.message ?? err}`, ev.at, paneId, agent.id, agent.kind));
+        red.replayedTo = ev.id;
+        if (red.turn) this.activity.saveTurn(red.turn, ev.id, agent.cwd);
       }
       if (!this.#agents.has(agent.id)) break; // exited
     }
@@ -314,15 +316,18 @@ export class AgentTracker extends EventEmitter<TrackerEvents> {
     return true;
   }
 
-  /** A reducer for an agent, resumed from its last saved turn (a core restart) and the events after it. */
+  /**
+   * A reducer for an agent, resumed from its last saved turn (a core restart) and the events after it.
+   * A turn saved in a format this version can't read is left as it is: the reducer starts the next one.
+   */
   #reducerFor(agent: Agent): ActivityReducer {
     const saved = this.activity.lastTurn(agent.id);
-    const red = new ActivityReducer(agent.id, saved ? saved.turn.index + 1 : 0, { agentKind: agent.kind, agentVersion: agent.version ?? null, derivedBy: this.activity.recordedBy });
-    if (saved) {
+    const red = new ActivityReducer(agent.id, saved ? saved.index + 1 : 0, { agentKind: agent.kind, agentVersion: agent.version ?? null, derivedBy: this.activity.recordedBy });
+    if (saved) red.replayedTo = saved.lastEvent;
+    if (saved?.turn) {
       red.turn = saved.turn;
       red.sessionId = saved.turn.sessionId;
       red.lastEventAt = saved.turn.endedAt ?? saved.turn.startedAt;
-      red.replayedTo = saved.lastEvent;
     }
     this.#reducers.set(agent.id, red);
     return red;

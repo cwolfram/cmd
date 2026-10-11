@@ -731,7 +731,7 @@ describe("versions and provenance", () => {
     for (const [i, raw] of fixture("claude-2.1.289/edit-and-bash.jsonl").entries()) red.apply(normalize(raw, i));
     const { followUps: _f, notes: _n, ...v1 } = { ...red.turn!, format: 1 };
     log.saveTurn(v1 as typeof red.turn & {}, 1);
-    const saved = log.lastTurn("a1")!.turn;
+    const saved = log.lastTurn("a1")!.turn!;
     expect(saved).toMatchObject({ followUps: [], notes: [] });
     const resumed = new ActivityReducer("a1", saved.index + 1, { agentKind: "claude" });
     resumed.turn = saved;

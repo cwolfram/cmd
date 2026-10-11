@@ -178,10 +178,10 @@ export class ActivityView {
     }
   }
 
-  lastTurn(agentId: AgentId): { turn: AgentTurn; lastEvent: number } | null {
-    const r = this.#views.stmt(`SELECT doc, last_seq FROM turns WHERE agent_id = ? ORDER BY idx DESC LIMIT 1`).get(agentId) as { doc: string; last_seq: number } | undefined;
-    const t = r && decodeDoc("turn", r.doc, decodeTurn);
-    return r && t ? { turn: t, lastEvent: r.last_seq } : null;
+  /** The agent's newest turn; `turn` is null when its doc can't be read (saved by another version), `index` and `lastEvent` still say where it was. */
+  lastTurn(agentId: AgentId): { turn: AgentTurn | null; index: number; lastEvent: number } | null {
+    const r = this.#views.stmt(`SELECT idx, doc, last_seq FROM turns WHERE agent_id = ? ORDER BY idx DESC LIMIT 1`).get(agentId) as { idx: number; doc: string; last_seq: number } | undefined;
+    return r ? { turn: decodeDoc("turn", r.doc, decodeTurn), index: r.idx, lastEvent: r.last_seq } : null;
   }
 
   turns(agentId: AgentId, limit = 50): AgentTurn[] {
