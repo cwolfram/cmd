@@ -68,6 +68,20 @@ describe("data subscriptions", () => {
     expect(received.filter((e) => e.id === id).flatMap((e) => e.events.map((x: DataEvent) => x.id))).toEqual(["n3"]);
   });
 
+  it("sends the whole result again, with the removed seqs, when events are forgotten", async () => {
+    core.data.record({ id: "s-1", at: 50, type: "note", source: "cmd", sessionId: "claude:gone", text: "goes", data: { by: "user", agentSession: null } });
+    core.data.record({ id: "s-2", at: 51, type: "note", source: "cmd", sessionId: "claude:stays", text: "stays", data: { by: "user", agentSession: null } });
+    const { id, events } = await conn.client.call("data.subscribe", { query: { types: ["note"], at: [50, 52] } });
+    expect(events.map((e) => e.id)).toEqual(["s-1", "s-2"]);
+    const gone = events[0]!.seq;
+    await conn.client.call("data.forget", { sessionId: "claude:gone" });
+    await settle();
+    const reset = received.filter((e) => e.id === id && e.reset);
+    expect(reset).toHaveLength(1);
+    expect(reset[0]!.removed).toEqual([gone]);
+    expect(reset[0]!.events.map((e) => e.id)).toEqual(["s-2"]);
+  });
+
   it("forgets a connection's subscriptions when it closes", async () => {
     const other = await connect(socketPath);
     await other.client.call("events.subscribe", { types: ["data.changed"] });
