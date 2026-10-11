@@ -133,7 +133,7 @@ The renderer is React 19.3 (`apps/desktop/package.json`) on four HTML pages buil
 
 ### AR1-08-06 · Re-send pending UI and view writes after a reconnect
 
-- **Status:** open
+- **Status:** in progress (ar1-batch2)
 - **Severity:** medium
 - **Effort:** S (< ½ day)
 - **Where:** `apps/desktop/src/renderer/src/store.ts:214-234`, `store.ts:251-291`, `store.ts:567-576`

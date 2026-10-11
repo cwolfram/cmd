@@ -185,7 +185,7 @@ The proposal's other half, a snapshot "as parsed now" with no flush, is unsafe a
 
 ### AR1-04-09 · Give the procinfo helper request ids and a timeout
 
-- **Status:** open
+- **Status:** in progress (ar1-batch2)
 - **Severity:** low
 - **Effort:** S
 - **Where:** `packages/core/src/agents/procinfo.ts:132-226`, `packages/core/src/panes.ts:483-496`, `packages/core/native/procinfo.c:51-75`, `packages/core/native/procinfo.c:203-218`

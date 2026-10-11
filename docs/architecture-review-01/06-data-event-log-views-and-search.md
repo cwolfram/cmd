@@ -217,7 +217,7 @@ Disk, the WAL, retention and every full-log read (stats, rebuilds, FTS) pay for 
 
 ### AR1-06-09 · Make subscriptions say what changed, and stop emitting no-ops
 
-- **Status:** open
+- **Status:** in progress (ar1-batch2)
 - **Severity:** medium
 - **Effort:** S
 - **Where:** `packages/core/src/core.ts:1456-1484`, `packages/core/src/data/service.ts:135-168`
