@@ -1,6 +1,8 @@
-# Statistics
+# Stats
 
-**Status:** proposal: a stats registry in the core, a chart kit for it, and a Statistics widget; nothing built.
+**Status:** proposal: a stats registry in the core, a chart kit for it, and a Stats widget; nothing built.
+
+> Decided (2026-10-11, the user): tokens only, no cost; a fixed page to start; stats keep their buckets after raw events are pruned; the d3 modules are fine; the name is "Stats".
 
 > Status (2026-10-11): plan, not started. From a request by the user: "a statistics widget that presents data about use of cmd … a properly managed low level system that we can register new stats into that get cached/updated properly … extend/redesign the available chart types … apple-like design but still with a utilitarian terminal feeling, not kitschy: efficient, condensed, clear." Not to be confused with `kernel/usage.ts`, the anonymous telemetry: nothing here leaves the Mac.
 
@@ -8,13 +10,13 @@ How much cmd was used, by whom (you or your agents), on what and with what resul
 
 1. **Stats** (`packages/core/src/stats/`): features declare stats; the core computes them from the event log into time buckets, keeps them current as events arrive, rebuilds them when their rules change, and answers one query shape (`stats.query`, live with `stats.subscribe`, `cmd stats`).
 2. **Charts** (`packages/ui/src/charts/`): a small grammar of marks (bars, lines, areas, rules, cells) with shared scales, axes, a scrubbing cursor and formatting, and the presets dashboards need (time bars, calendar, punch card, ranking, meter, proportion, distribution). Today's `Chart` and `Sparkline` become presets of it.
-3. **The Statistics widget**: an overview, then a section per area (agents, terminals, you, projects, model calls, cmd itself), every number drillable to a chart and a table.
+3. **The Stats widget**: an overview, then a section per area (agents, terminals, you, projects, model calls, cmd itself), every number drillable to a chart and a table.
 
 Read first: docs/28-data-plan.md (events, views, cursors, subscriptions, retention), docs/30-data-capabilities.md (what the log knows; "Usage and cost" and "Time per project" are this doc's ancestors), docs/40-window-design.md §4 (charts), the window-design skill, docs/16-widgets.md (built-in widgets), docs/34-startup-scheduler.md (jobs and yielding).
 
 ## Why
 
-cmd records nearly everything you and your agents do (docs/30: agent turns, commands with exit codes and durations, git, focus, pages, model calls), but shows almost none of it as numbers. The questions people ask are simple and today need SQL: how many hours did agents work this week, and on what? How often do my tests fail? Where did my time go? How many tokens did that cost? Is the core getting slower? Screen Time, WakaTime and GitHub's contribution graph prove the appeal of the same shape: a headline number, a change against last period, a bar over time, a ranked list.
+cmd records nearly everything you and your agents do (docs/30: agent turns, commands with exit codes and durations, git, focus, pages, model calls), but shows almost none of it as numbers. The questions people ask are simple and today need SQL: how many hours did agents work this week, and on what? How often do my tests fail? Where did my time go? How many tokens went where? Is the core getting slower? Screen Time, WakaTime and GitHub's contribution graph prove the appeal of the same shape: a headline number, a change against last period, a bar over time, a ranked list.
 
 Today each feature that wants a number writes its own aggregation: `cmd data ai` loads 100k events into the CLI and sums them, Workspace Actions counts command runs on its own, `data.stats` scans every row in a worker. There is no aggregate query, no cache, no history for gauges (CPU, memory and stalls live in memory only), and the `counters.daily` view docs/28 planned was never built. A registry fixes that once.
 
@@ -54,7 +56,6 @@ What cmd records today (docs/30) and what each area can answer. "From" names the
 | `agents.tools` | Which tools, how often, how often they failed | `turns.tools` | count, failed; tool, agent kind |
 | `agents.files` | Files agents changed, the most-touched ones | `turns.files` | count; project, change kind; ranking by path |
 | `agents.tokens` | Tokens in, out, cached, by model | `transcript.message` `usage` (Claude); Codex `token_count` **needs** keeping | sum; model, agent kind, project |
-| `agents.cost` | What that would cost at list prices | `agents.tokens` × a price table, **needs** prices | sum (estimated); model, project |
 
 ### Terminals
 
@@ -96,7 +97,7 @@ What cmd records today (docs/30) and what each area can answer. "From" names the
 | Stat | Answers | From | Measure, dimensions |
 |---|---|---|---|
 | `ai.calls` | Calls by feature and model, failures, latency | `ai.call` | count, distribution of `ms`; purpose, model, ok |
-| `ai.tokens` / `ai.cost` | Tokens and estimated cost of cmd's own features | `ai.call.tokens` × prices | sum; purpose, model |
+| `ai.tokens` | Tokens used by cmd's own features | `ai.call.tokens` | sum; purpose, model |
 | `ai.cut` | How often input was cut to fit | `ai.call.context` | ratio; purpose |
 
 ### cmd itself
@@ -118,7 +119,7 @@ Three things worth leading with, because no other tool can show them: **agent ti
 
 - A **stat** is a named, versioned measure of the event log over time, declared once by the feature that owns the events. It has a **kind** (what is measured), a **unit**, the **dimensions** it can be split by, and a **compute** function from events in a time range to rows.
 - A **bucket** is one stat's value for one hour (and one dimension value). Hours are the base grain; days, weeks, months and years are sums of hours at query time. Buckets are derived: deleting them costs a rebuild.
-- A **derived stat** (rates, ratios, averages, cost) is computed from other stats' buckets when read, never stored.
+- A **derived stat** (rates, ratios, averages) is computed from other stats' buckets when read, never stored.
 
 Kinds, after Prometheus and OpenTelemetry, with what a bucket keeps so buckets merge exactly:
 
@@ -143,7 +144,7 @@ export interface StatDef {
   title: string;                      // "Commands" (copywriting skill)
   description: string;                // one line, shown in the catalogue and as the chart's summary
   kind: "count" | "sum" | "duration" | "gauge" | "distribution" | "ranking";
-  unit: "count" | "ms" | "bytes" | "tokens" | "usd" | "percent";
+  unit: "count" | "ms" | "bytes" | "tokens" | "percent";
   dims: DimDef[];                     // bounded: project, workspace, agentKind, model, result…; never an unbounded id
   class: DataClass;                   // the data class it reads: policy, retention and data.record.* follow it
   inputs: { types?: string[]; views?: ("turns" | "sessions")[] };   // what invalidates it
@@ -225,8 +226,7 @@ The widget asks for several stats in one call (`stats.queryMany`). Answers are s
 
 | Gap | Fix | For |
 |---|---|---|
-| Turns carry no tokens | Sum `transcript.message` `usage` per turn into `AgentTurn.tokens {in, out, cacheRead, cacheWrite}`; keep Codex's `token_count` lines as a counter instead of skipping them (docs/28 §11 said "map to counters") | `agents.tokens`, `agents.cost` |
-| No cost anywhere | A price table per model (`stats/prices.ts`, dated, overridable with `stats.prices`), applied at query time so a price change needs no rebuild; always labelled "est." | `agents.cost`, `ai.cost` |
+| Turns carry no tokens | Sum `transcript.message` `usage` per turn into `AgentTurn.tokens {in, out, cacheRead, cacheWrite}`; keep Codex's `token_count` lines as a counter instead of skipping them (docs/28 §11 said "map to counters") | `agents.tokens` |
 | `user.focus` spans stay open while the app is in the background, one per workspace | End the span on app blur and sleep, start it on focus (main → `ui.focus` RPC) | `you.focus`, `you.active`, `projects.time` |
 | Stalls, core memory, pane CPU and memory are in memory only | Gauge samples (above): core every minute, panes as CPU-ms and peak memory per minute while sampled | `core.*`, `panes.cpu` |
 | `user.command` is declared but never recorded | Record palette and menu commands (id, via) | "commands you use", shortcut hints later |
@@ -264,7 +264,7 @@ A small grammar, after Swift Charts and Observable Plot, so presets are composit
 
 - `Plot`: scales (linear, log, band, time with local-day ticks), axes, the plot area, sizing (width from ResizeObserver as today, height fixed or `fill`), the header slot and the cursor context. `PlotGroup` shares a cursor and an x domain across plots.
 - Marks: `Bars` (vertical or horizontal, stacked, grouped), `Line`, `Area` (stacked), `Points`, `Rule` (averages, targets, thresholds, the selection), `Cells` (heat grids), `Label`.
-- `format.ts`: one formatter per unit, shared with the CLI: counts compact (`1.2K`), durations `3h 12m` / `48s` / `120ms`, bytes `1.4 GB`, tokens `2.3M`, money `$4.20 est.`, percent; deltas `+18%` with `signDisplay: "exceptZero"`, "new" when the baseline is zero; ticks in a unit's own steps (15 min, 1 h, 1 d for durations). `Intl.NumberFormat` and `Intl.DateTimeFormat`, the system's locale.
+- `format.ts`: one formatter per unit, shared with the CLI: counts compact (`1.2K`), durations `3h 12m` / `48s` / `120ms`, bytes `1.4 GB`, tokens `2.3M`, percent; deltas `+18%` with `signDisplay: "exceptZero"`, "new" when the baseline is zero; ticks in a unit's own steps (15 min, 1 h, 1 d for durations). `Intl.NumberFormat` and `Intl.DateTimeFormat`, the system's locale.
 
 Presets, each a kit component with JSDoc and a story (the UI Workbench shows them):
 
@@ -292,17 +292,17 @@ Presets, each a kit component with JSDoc and a story (the UI Workbench shows the
 
 **Magic.** Kit 4 exposes the presets to Magic widgets as `cmd.chart(el, { type: "timebars" | "series" | "stacked" | "calendar" | "ranking" | "meter" | "proportion", … })` drawing with the same code, and `stats()` in `data.ts` reads `stats.query` under the widget's policy. Kits 1–3 stay frozen.
 
-## The Statistics widget
+## The Stats widget
 
-A built-in widget (`windows/stats/`, role `widget`, "Statistics"), React, scoped like the others (This Workspace / All Workspaces), built from the window-design pieces (`View`, `Panes`, `Tiles`, `Stat`, the presets, `DataGrid`). Read top to bottom like Screen Time:
+A built-in widget (`windows/stats/`, role `widget`, "Stats"), React, scoped like the others (This Workspace / All Workspaces), built from the window-design pieces (`View`, `Panes`, `Tiles`, `Stat`, the presets, `DataGrid`). Read top to bottom like Screen Time:
 
 ```
- Statistics                      [Today  Week  Month  Year]   This Workspace ▾
+ Stats                           [Today  Week  Month  Year]   This Workspace ▾
  ─────────────────────────────────────────────────────────────────────────────
  This week: agents worked 14 h 20 m across 3 projects, 18% more than last week.
 
- Agent time      Your focus     Commands       Failed       Tokens (est.)
- 14h 20m ▲18%   9h 05m ▼4%    1,284 ▲9%     6.1% ▼1.2    3.4M · $21
+ Agent time      Your focus     Commands       Failed       Tokens
+ 14h 20m ▲18%   9h 05m ▼4%    1,284 ▲9%     6.1% ▼1.2    3.4M ▲12%
  ▁▂▅▃▇▆▂        ▃▄▄▅▃▂▁        ▂▃▃▅▄▆▃        ▅▃▂▂▃▁▂      ▁▃▂▆▅▇▃
 
  Agents  ────────────────────────────────────────────── h · by kind
@@ -324,7 +324,7 @@ A built-in widget (`windows/stats/`, role `widget`, "Statistics"), React, scoped
 - **Overview first**: a sentence (generated from the numbers, no model), then five `Stat`s with deltas and sparklines. At narrow sizes only the overview and one chart; regular adds the sections; wide puts sections in two columns (`Panes`).
 - **Year** swaps the overview's bars for a `Calendar` of active hours.
 - **Every number drills**: clicking a stat or a bar opens its detail in the widget (back with ⌘[): a large `TimeBars` or `TimeSeries`, a `by` picker from the stat's dimensions, compare on/off, and the rows as a `DataGrid` (the buckets, or for rankings the keys). From a command or a project row, a context menu goes to the thing itself (run again, open the project's workspace, search its sessions).
-- **Arrangement**: the sections and their order live in the widget's state; "Add Stat…" lists the catalogue (`stats.catalog`), so a stat a feature registers is available without UI work. A **Stat** widget (one stat, one chart, small) docks in a sidebar for the one number someone wants always visible.
+- **A fixed page** to start: the sections above, in that order, designed as one page. Later, if wanted: sections in the widget's state and "Add Stat…" from the catalogue (`stats.catalog`), so a stat a feature registers shows without UI work. A **Stat** widget (one stat, one chart, small) docks in a sidebar for the one number someone wants always visible.
 - **States**: "Counting…" with the newest week shown while older weeks build; a stat whose class is off says so with a link to Settings → Data; a range longer than the log says "Since 3 Oct".
 - **Live**: `stats.subscribe` for what's on screen; the open hour moves as you work, the rest only when invalidated.
 
@@ -339,18 +339,20 @@ One worktree each, `pnpm typecheck && pnpm test` green, e2e once at the end of e
 | 0 | Measure | On a copy of a real `data/` (never `cmd.sqlite`): the SQL for ten stats, bucket build time for a year, recompute cost per hour, table size. Settle the budget above or change the design | 1 |
 | 1 | Stats core | `stats/` feature (registry, buckets, dirty marks, recompute job, build and rebuild as a startup job, repair, samples), `protocol/stats.ts`, `stats.*` RPC, policy row, `cmd stats` with block sparklines; the stats that need no new capture (agents time/turns/sessions/tools/files, commands, focus, git, web, files, ai, windows) | 4–5 |
 | 2 | Chart kit | `charts/`: `Plot`, marks, cursor, `format.ts`, tokens and the contrast test, presets with stories, `Stat` changes; `Chart`/`Sparkline`/`Legend` on `Plot`; the Chart reference window on presets | 5–6 |
-| 3 | The widget | Statistics and Stat widgets, drill view, arrangement, states, narrow/regular/wide stories, e2e: opens, shows numbers from fixture events, drills | 3–4 |
-| 4 | Gaps | Tokens per turn and Codex counters, prices, focus on blur, gauge samples, `user.command`; the stats that use them | 3 |
+| 3 | The widget | Stats and Stat widgets, drill view, states, narrow/regular/wide stories, e2e: opens, shows numbers from fixture events, drills | 3–4 |
+| 4 | Gaps | Tokens per turn and Codex counters, focus on blur, gauge samples, `user.command`; the stats that use them | 3 |
 | 5 | Out | Magic kit 4 and `stats()` in data.ts, Settings → Data on stats, remote access's "Now" tab with a few stats, the journal's week with its numbers | 3 |
 
 Checks to plan for (as of 2026-10-11): `test/registries.test.ts` wants a caller for every RPC method, so `stats.*` methods land with the CLI or widget that calls them; `test/layout.test.ts` fails when a file over 600 lines grows (`rpc.ts`, `store.ts`), so stats keep their types, methods, events and settings in `protocol/stats.ts` and their service in `stats/feature.ts`, touching the registries by one line each; `test/imports.test.ts` keeps the widget off `main/` and `node:`.
 
 Now, independent of all of it: the Magic `--c1…6` fix in `host.js`.
 
-## Open questions
+## Decided
 
-1. **Cost.** Show estimated dollars at list prices (subscriptions make them fictional for many people) or tokens only, with dollars opt-in? Proposal: tokens by default, `stats.showCost` off.
-2. **Arrangement.** A fixed, well-designed page, or sections people add and reorder from the catalogue? Proposal: fixed sections first, "Add Stat…" in phase 3 only if cheap.
-3. **Aggregates past retention.** Keep buckets of pruned events (counts outlive the raw rows, as above) or let stats forget with the log?
-4. **Dependency.** The four small d3 modules in `@cmd/ui`, or keep scales and ticks hand-written?
-5. **Name.** "Statistics" (macOS: Activity Monitor, Screen Time) or something in cmd's voice ("Activity", "Insights")? `Insights` reads like analytics; "Statistics" is plain.
+Settled with the user on 2026-10-11:
+
+1. **Tokens only.** No dollars, no price table: subscriptions make list prices fictional. `agents.tokens` and `ai.tokens` show tokens by model and purpose.
+2. **A fixed page to start.** The sections above in a set order; adding and reordering stats waits until the page has been used.
+3. **Old data stays.** Buckets of pruned events are kept (flagged), so counts outlive the raw rows; `cmd data forget` still deletes them.
+4. **d3 is fine.** `d3-scale`, `d3-shape`, `d3-array` and `d3-time` in `@cmd/ui`.
+5. **"Stats"** is the name: the widget, the CLI (`cmd stats`), the code (`stats/`).
