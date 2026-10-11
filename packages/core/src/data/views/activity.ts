@@ -9,7 +9,7 @@ import { ACTIVITY_SCHEMA, TURN_FORMAT, type ActivityEvent, type ActivityKind, ty
 import { logger } from "@cmd/protocol/node";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
 import { inlinePacer, type Pacer } from "../../kernel/scheduler.ts";
-import { capPayload, normalize, type RawEvent } from "../../agents/activity/normalize.ts";
+import { capPayload, normalize, storedPayload, type RawEvent } from "../../agents/activity/normalize.ts";
 import { ActivityReducer, type Reduction } from "../../agents/activity/reduce.ts";
 
 /** How often the live core runs the reducer's timing check (tracker.ts tick); a replay steps the same. */
@@ -88,14 +88,15 @@ export class ActivityView {
   /**
    * Stores an event an agent's hook reported; returns it normalised. The row
    * keeps the payload with long strings cut (normalising needs the shape, not a
-   * file's contents); a payload that was cut is kept whole as the event's
-   * content, within the agents class's cap.
+   * file's contents) and a tool's answer reduced to how it went (storedPayload);
+   * a prompt or answer that was cut is kept whole as the event's content, within
+   * the agents class's cap. A tool hook's isn't: the transcript has its input and output.
    */
   insert(r: RawEvent, paneId: PaneId | null, agentId: AgentId | null, agentVersion: string | null = null): ActivityEvent {
     const sessionId = typeof r.payload.session_id === "string" ? r.payload.session_id : null;
     const full = JSON.stringify(r.payload);
-    const payload = capPayload(r.payload) as Record<string, unknown>;
-    const cut = JSON.stringify(payload).length < full.length;
+    const payload = capPayload(storedPayload(r.payload)) as Record<string, unknown>;
+    const cut = typeof r.payload.tool_name !== "string" && JSON.stringify(payload).length < full.length;
     const data: HookData = { name: r.name, agent: r.agent, env: r.env, hook: r.hook ?? null, agentVersion, payload };
     const text = typeof r.payload.prompt === "string" ? line1(r.payload.prompt) : typeof r.payload.tool_name === "string" ? r.payload.tool_name : typeof r.payload.last_assistant_message === "string" ? line1(r.payload.last_assistant_message) : r.name;
     const body = typeof r.payload.prompt === "string" ? r.payload.prompt : typeof r.payload.last_assistant_message === "string" ? r.payload.last_assistant_message : null;

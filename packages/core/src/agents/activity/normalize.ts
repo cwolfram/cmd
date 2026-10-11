@@ -215,6 +215,26 @@ export function normalize(r: RawEvent, id = 0): ActivityEvent {
 export const MAX_STRING = 4000;
 const MAX_ITEMS = 200;
 
+/** Keys of a tool's answer that say how the call went (toolOf reads these); its output is the transcript's. */
+const RESPONSE_KEYS = ["is_error", "success", "error", "interrupted", "exit_code", "exitCode", "returnCode"];
+/** Of a tool answer that is text (Codex), the start: its exit code is on the first line. */
+const RESPONSE_TEXT = 300;
+
+/**
+ * A tool hook's payload as it's stored: the answer (tool_response) reduced to
+ * whether and how the call failed. What the tool printed is megabytes at times,
+ * the transcript keeps it, and nothing read it back from the hook.
+ */
+export function storedPayload(p: Payload): Payload {
+  if (!("tool_response" in p)) return p;
+  const r = p.tool_response;
+  let kept: unknown = r;
+  if (typeof r === "string") kept = r.length > RESPONSE_TEXT ? `${r.slice(0, RESPONSE_TEXT)}…[+${r.length - RESPONSE_TEXT}]` : r;
+  else if (obj(r)) kept = Object.fromEntries(RESPONSE_KEYS.filter((k) => k in obj(r)!).map((k) => [k, capPayload(obj(r)![k])]));
+  else if (Array.isArray(r)) kept = `[${r.length} items]`;
+  return { ...p, tool_response: kept };
+}
+
 /** A payload with long strings cut and long arrays shortened, for storage. */
 export function capPayload(v: unknown, depth = 0): unknown {
   if (typeof v === "string") return v.length > MAX_STRING ? `${v.slice(0, MAX_STRING)}…[+${v.length - MAX_STRING}]` : v;

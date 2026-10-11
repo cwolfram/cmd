@@ -88,20 +88,28 @@ describe("agent events in the log", () => {
     expect(parent(hook(3000 + 2 * 86400_000, "PostToolUse", "t2").id)).toBeNull();
   });
 
-  it("keeps a hook payload's long strings cut in the row and the whole payload as its content, with the pane's workspace", async () => {
+  it("keeps a hook payload's long strings cut in the row, a long prompt whole as its content, a tool's answer only as how it went, with the pane's workspace", async () => {
     const { ActivityView } = await import("../src/data/views/activity.ts");
     const { ViewsStore } = await import("../src/data/views/views.ts");
     const { d } = service();
     const view = new ActivityView(d, new ViewsStore(null));
     view.workspaceOf = (paneId) => (paneId === "p1" ? "space-1" : null);
     const big = "x".repeat(20_000);
-    view.insert({ at: 1, agent: "claude", name: "PostToolUse", payload: { hook_event_name: "PostToolUse", session_id: "s", tool_name: "Read", tool_response: big } }, "p1", "a1");
+    view.insert({ at: 1, agent: "claude", name: "UserPromptSubmit", payload: { hook_event_name: "UserPromptSubmit", session_id: "s", prompt: big } }, "p1", "a1");
     const [e] = d.query({ types: ["agent.hook"] });
     expect(e!.workspaceId).toBe("space-1");
     expect(JSON.stringify(e!.data).length).toBeLessThan(6000);
-    expect(JSON.parse(d.store.blob(e!.blob!)!.toString()).tool_response).toBe(big);
-    view.insert({ at: 2, agent: "claude", name: "Stop", payload: { hook_event_name: "Stop", session_id: "s" } }, "p1", "a1");
-    expect(d.query({ types: ["agent.hook"] })[1]!.blob).toBeNull();
+    expect(JSON.parse(d.store.blob(e!.blob!)!.toString()).prompt).toBe(big);
+    // A tool's output is the transcript's: the row keeps whether it failed, and there's no copy of the payload.
+    const failed = view.insert({ at: 2, agent: "claude", name: "PostToolUse", payload: { hook_event_name: "PostToolUse", session_id: "s", tool_name: "Bash", tool_input: { command: "make" }, tool_response: { stdout: big, stderr: "", is_error: true } } }, "p1", "a1");
+    expect(failed.tool).toMatchObject({ name: "Bash", ok: false });
+    const codex = view.insert({ at: 3, agent: "codex", name: "PostToolUse", payload: { hook_event_name: "PostToolUse", session_id: "s", tool_name: "apply_patch", tool_response: `Exit code: 1\n${big}` } }, "p1", "a1");
+    expect(codex.tool?.ok).toBe(false);
+    const [, post, text] = d.query({ types: ["agent.hook"] });
+    expect(post!.blob).toBeNull();
+    expect((post!.data as { payload: { tool_response: unknown } }).payload.tool_response).toEqual({ is_error: true });
+    expect(text!.blob).toBeNull();
+    expect(String((text!.data as { payload: { tool_response: string } }).payload.tool_response).length).toBeLessThan(400);
   });
 });
 

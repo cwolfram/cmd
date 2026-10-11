@@ -17,6 +17,7 @@ import { DataStore, type StoreEvent } from "./store.ts";
 import { excludedBy, parseExclude, type ExcludeRules } from "./exclude.ts";
 import { checkoutOf, remoteOf } from "../lib/checkout.ts";
 import { eventId } from "./ids.ts";
+import { compactLog, reclaim } from "./compact.ts";
 
 /** A project's attributes from its folder: name, path, and the repository's remote when it has one. */
 function projectAttrs(id: string): Record<string, unknown> {
@@ -34,6 +35,8 @@ const PRUNE_BATCH = 1000;
 const PRUNE_PAUSE_MS = 100;
 /** Retention runs this often while the core is up. */
 const PRUNE_EVERY_MS = 6 * 3600_000;
+/** Free pages given back to the disk per step once retention is done (4 MB at 4 KB pages: well under the lag watchdog's 100 ms). */
+const RECLAIM_PAGES = 1024;
 
 export interface DataServiceOptions {
   /** The events file; null: in memory (tests). */
@@ -91,6 +94,7 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
     this.recordedBy = o.recordedBy;
     if (o.file) fs.mkdirSync(path.dirname(o.file), { recursive: true });
     this.store = new DataStore(o.file ?? ":memory:", { recordedBy: o.recordedBy });
+    compactLog(this.store);
     if (o.file && o.maintenance) {
       // This connection checkpoints only if the worker falls far behind (80 MB of WAL); the file shrinks back to 64 MB after a reset.
       this.store.db.exec(`PRAGMA wal_autocheckpoint = 20000; PRAGMA journal_size_limit = 67108864`);
@@ -109,13 +113,18 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
   /**
    * Retention runs once the core is up and then every few hours, in batches
    * with pauses between them: a first run on a big log (a year of transcripts
-   * coming due) must not hold up the core's start or its clients.
+   * coming due) must not hold up the core's start or its clients. Then the
+   * pages it freed go back to the disk, a step at a time too.
    */
   start(): void {
     const run = () => {
       if (this.#disposed) return;
       const r = this.prune(PRUNE_BATCH);
       if (r.more) this.#batch = setTimeout(run, PRUNE_PAUSE_MS);
+      else this.#batch = setTimeout(give, PRUNE_PAUSE_MS);
+    };
+    const give = () => {
+      if (!this.#disposed && reclaim(this.store.db, RECLAIM_PAGES)) this.#batch = setTimeout(give, PRUNE_PAUSE_MS);
     };
     this.#batch = setTimeout(run, PRUNE_FIRST_MS);
     this.#batch.unref?.();

@@ -3,14 +3,18 @@
 // the agent's own ids kept verbatim (`claude:<uuid>`, parent = parentUuid;
 // `codex:<session>:<n>`), the message normalised into a small `data`, the words
 // for search as `body` (prompts, answers, tool inputs with their identifier
-// parts), the verbatim line as the blob when it's big. Files are read from
+// parts), the line as the blob when it's big. What tools printed and were handed
+// is kept cut to TOOL_RESULT_KEEP characters and thinking without its signature
+// (trimLine; the agent's file has the rest while it lasts), and Claude's
+// bookkeeping lines aren't kept at all: they were most of the log's rows and
+// bytes, and nothing read them. Files are read from
 // where the last read stopped (readTranscript), so a live session costs only
 // its new lines. Agents whose lines cmd doesn't know line by line (Copilot) are
 // read whole through their parser and re-emitted on change; ids keep that idempotent.
 
 import fs from "node:fs";
 import { StringDecoder } from "node:string_decoder";
-import type { AgentKind, DataEventType } from "@cmd/protocol";
+import { DATA_CLASSES, type AgentKind, type DataEventType } from "@cmd/protocol";
 import { cleanClaudePrompt, describeToolInput, headObjects, type SessionDocument, type TranscriptText } from "../../search/parser.ts";
 import { identifierParts } from "../../search/query.ts";
 import type { TranscriptRoot, TranscriptSources } from "../../search/sources.ts";
@@ -21,6 +25,10 @@ import type { StoreEvent as NewEvent } from "../store.ts";
 /** Lines shorter than this are kept whole in `data`; longer ones go to a blob with a summary inline. */
 export const INLINE_LINE = 2048;
 const TEXT_LINE = 300;
+/** What a tool printed, or was handed, is kept up to this many characters per string. */
+export const TOOL_RESULT_KEEP = 2000;
+/** Content over the transcripts class's cap is cut there (DataService): a line has to fit whole. */
+const TRANSCRIPT_CAP = DATA_CLASSES.transcripts.cap!;
 /** Words indexed per event are cut here. */
 const BODY_CAP = 20_000;
 
@@ -63,6 +71,77 @@ export function textOf(content: unknown): string {
     .join("\n");
 }
 
+const cutText = (s: string) => (s.length > TOOL_RESULT_KEEP ? `${s.slice(0, TOOL_RESULT_KEEP)}…[+${s.length - TOOL_RESULT_KEEP}]` : s);
+
+/** Long strings anywhere in a value cut (a tool call's input: a file Write wrote, a heredoc). */
+function cutStrings(v: unknown, cut: { any: boolean }, depth = 0): unknown {
+  if (typeof v === "string") {
+    const t = cutText(v);
+    if (t !== v) cut.any = true;
+    return t;
+  }
+  if (depth > 8 || !v || typeof v !== "object") return v;
+  if (Array.isArray(v)) return v.map((x) => cutStrings(x, cut, depth + 1));
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cutStrings(x, cut, depth + 1)]));
+}
+
+/** A tool result's content with its text cut and images without their bytes. */
+function cutResult(content: unknown, cut: { any: boolean }): unknown {
+  if (!Array.isArray(content)) return cutStrings(content, cut);
+  return content.map((b) => {
+    if (!isObj(b)) return b;
+    if (typeof b.type === "string" && b.type.includes("image")) return (cut.any = true), { type: b.type, omitted: true };
+    return typeof b.text === "string" ? { ...b, text: cutStrings(b.text, cut) } : b;
+  });
+}
+
+/** One content block as it's kept: results and inputs cut, thinking without its signature (the API's, not anyone's to read). */
+function trimBlock(b: unknown, cut: { any: boolean }): unknown {
+  if (!isObj(b)) return b;
+  if (b.type === "tool_result") return { ...b, content: cutResult(b.content, cut) };
+  if ((b.type === "tool_use" || b.type === "server_tool_use") && b.input !== undefined) return { ...b, input: cutStrings(b.input, cut) };
+  if (b.type === "redacted_thinking") return (cut.any = true), { type: b.type };
+  if (b.type === "thinking" && "signature" in b) {
+    const { signature: _, ...rest } = b;
+    return (cut.any = true), rest;
+  }
+  return b;
+}
+
+/**
+ * A transcript line cut down to what's kept: tool results and tool inputs to
+ * TOOL_RESULT_KEEP characters per string, images without their bytes, thinking
+ * without its signature, Claude's structured second copy of a result
+ * (toolUseResult) gone; Codex's outputs cut and its encrypted reasoning gone.
+ * What people and agents wrote stays whole. Null when there was nothing to cut.
+ */
+export function trimLine(o: Obj): Obj | null {
+  const cut = { any: false };
+  const out: Obj = { ...o };
+  if ("toolUseResult" in out) delete out.toolUseResult, (cut.any = true);
+  if (isObj(o.message) && Array.isArray(o.message.content)) out.message = { ...o.message, content: o.message.content.map((b) => trimBlock(b, cut)) };
+  if (isObj(o.payload)) {
+    const p: Obj = { ...o.payload };
+    if ("output" in p) p.output = cutResult(p.output, cut);
+    if ("encrypted_content" in p) delete p.encrypted_content, (cut.any = true);
+    if (p.type === "function_call" || p.type === "custom_tool_call") for (const k of ["arguments", "input"]) if (k in p) p[k] = cutStrings(p[k], cut);
+    out.payload = p;
+  }
+  return cut.any ? out : null;
+}
+
+/**
+ * What of a line goes into an event: the line cut down (trimLine), as the blob
+ * when it's big and inline when it's not. A line still over the class's cap
+ * keeps no copy: cut at the cap it wouldn't parse, so it was of no use.
+ */
+export function keptLine(o: Obj, line: string): { trimmed: Obj | null; kept: string | null; big: boolean } {
+  const trimmed = trimLine(o);
+  const kept = trimmed ? JSON.stringify(trimmed) : line;
+  if (kept.length > TRANSCRIPT_CAP) return { trimmed: trimmed ?? o, kept: null, big: true };
+  return { trimmed, kept, big: kept.length > INLINE_LINE };
+}
+
 /** Content blocks reduced to what's worth a row: type, tool name and ids, sizes. */
 function blocksOf(content: unknown): Obj[] {
   if (typeof content === "string") return [{ type: "text", chars: content.length }];
@@ -90,9 +169,8 @@ function toolText(content: unknown): string {
 }
 
 /**
- * One Claude Code line → an event, or null for
- * a line that isn't JSON. Every line type is kept as a kind of its own so a
- * reader can tell dialogue from compaction summaries and metadata.
+ * One Claude Code line → an event, or null for a line that isn't JSON or is
+ * bookkeeping. Dialogue, summaries, titles and system lines are kinds of their own.
  */
 export function claudeLine(line: string, n: number, file: TranscriptFile, sessionHint?: string): NewEvent | null {
   const agent = "claude";
@@ -128,7 +206,7 @@ export function claudeLine(line: string, n: number, file: TranscriptFile, sessio
     const blocks = blocksOf(message.content);
     const isToolResult = blocks.some((b) => b.type === "tool_result") && !blocks.some((b) => b.type === "text");
     const tools = toolText(message.content);
-    const big = line.length > INLINE_LINE;
+    const { trimmed, kept, big } = keptLine(o, line);
     const data: Obj = {
       ...common,
       role,
@@ -137,7 +215,9 @@ export function claudeLine(line: string, n: number, file: TranscriptFile, sessio
       usage: isObj(message.usage) ? message.usage : undefined,
       blocks,
       isCompactSummary: o.isCompactSummary === true,
-      ...(big ? { chars: line.length } : { message }),
+      ...(big || trimmed ? { chars: line.length } : {}),
+      ...(trimmed ? { cut: true } : {}),
+      ...(big ? {} : { message: trimmed ? trimmed.message : message }),
     };
     // Subagent internals and injected meta messages are kept, not searched (the parser skipped them too).
     const body = isToolResult || side ? null : cap([text, tools, identifierParts([text, tools])].filter(Boolean).join("\n"));
@@ -147,7 +227,7 @@ export function claudeLine(line: string, n: number, file: TranscriptFile, sessio
       text: line1(text) || (blocks.find((b) => b.name) ? `${blocks.find((b) => b.name)!.name as string}` : null),
       body,
       data,
-      content: big ? line : null,
+      content: big ? kept : null,
     };
   }
   switch (type) {
@@ -161,8 +241,8 @@ export function claudeLine(line: string, n: number, file: TranscriptFile, sessio
     case "system":
       return { ...base, type: str(o.subtype) === "compact_boundary" ? "transcript.compaction" : "transcript.system", text: line1(str(o.content) ?? str(o.subtype) ?? ""), data: { ...common, subtype: o.subtype, compactMetadata: o.compactMetadata, logicalParentUuid: o.logicalParentUuid }, content: line.length > INLINE_LINE ? line : null };
     default:
-      // Bookkeeping lines (attachment, permission-mode, file-history-snapshot, queue-operation, …): a row with its kind in `line`, bytes only when big.
-      return { ...base, type: "transcript.other", text: null, data: { ...common, chars: line.length }, content: line.length > INLINE_LINE ? line : null };
+      // Bookkeeping (attachment, permission-mode, file-history-snapshot, queue-operation, progress, …): not rows.
+      return null;
   }
 }
 
@@ -198,8 +278,8 @@ export function codexLine(line: string, n: number, file: TranscriptFile, state: 
     sessionId: `codex:${sid}`,
     projectId: projectIdOf(state.cwd),
   };
-  const big = line.length > INLINE_LINE;
-  const common: Obj = { line: outer, item: inner, cwd: state.cwd, ...(big ? { chars: line.length } : { payload }) };
+  const { trimmed, kept, big } = keptLine(o, line);
+  const common: Obj = { line: outer, item: inner, cwd: state.cwd, ...(big || trimmed ? { chars: line.length } : {}), ...(trimmed ? { cut: true } : {}), ...(big ? {} : { payload: trimmed ? trimmed.payload : payload }) };
   let type: DataEventType = "transcript.other";
   let text: string | null = null;
   let body: string | null = null;
@@ -230,7 +310,7 @@ export function codexLine(line: string, n: number, file: TranscriptFile, state: 
     common.callId = payload.call_id;
   } else if (outer === "compacted" || inner === "compacted") type = "transcript.compaction";
   else if (outer === "session_meta") type = "transcript.session";
-  return { ...base, type, text, body, data: { ...common, role: payload.role }, content: big ? line : null };
+  return { ...base, type, text, body, data: { ...common, role: payload.role }, content: big ? kept : null };
 }
 
 /**
