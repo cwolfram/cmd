@@ -1,12 +1,12 @@
-# Workbench: one place to see and work on every component
+# UI Workbench: one place to see and work on every component
 
 **Status:** proposal
 
-> Status (2026-10-11): proposal, branch `workbench` (on top of `wb-dock`, which keeps the Workbench from opening app windows). Replaces the `@cmd/ui` gallery (`pnpm ui`) with the Workbench, driven from the component sources and the story files.
+> Status (2026-10-11): proposal, branch `workbench` (on top of `wb-dock`, which keeps the Workbench from opening app windows). Replaces the `@cmd/ui` gallery (`pnpm ui`) with the UI Workbench (today's Workbench, grown), driven from the component sources and the story files.
 
 There are two tools for looking at UI today, and they overlap:
 
-| | Gallery (`pnpm ui`, `packages/ui/gallery`) | Workbench (`pnpm workbench`, `renderer/src/workbench`, `scripts/workbench.mjs`) |
+| | Gallery (`pnpm ui`, `packages/ui/gallery`) | Workbench, today (`pnpm workbench`, `renderer/src/workbench`, `scripts/workbench.mjs`) |
 |---|---|---|
 | Content | One hand-written `Gallery.tsx` (1,675 lines, 11 pages, about 60 specimens) | 34 `*.story.tsx` files, found by glob; each named export is a variant |
 | Runs in | A browser: Lucide icons, no preload, no core | The real app: SF Symbols, preload, core, `webview` |
@@ -15,7 +15,11 @@ There are two tools for looking at UI today, and they overlap:
 
 The gallery browses better; the Workbench shows the truth and has the agent loop. Both are maintained by hand: a new component needs a specimen in `Gallery.tsx` (a rule in CLAUDE.md that nothing checks), a specimen's note repeats what the component's header comment says, `code="<Button variant size icon busy>"` is typed out, and the lists of pages and themes are written into `shots.mjs`, `matrix` and the prototype skill.
 
-The goal: **one tool, the Workbench, and everything it shows derived from the sources**, so a new component, prop, variant value or story appears without registering it anywhere.
+The goal: **one tool, the UI Workbench, and everything it shows derived from the sources**, so a new component, prop, variant value or story appears without registering it anywhere.
+
+## The name
+
+The tool is the **UI Workbench**: in docs, skills, CLAUDE.md, the window's title and the CLI's messages. "Workbench" alone is how cmd describes itself ("terminal + agent workbench", docs/15), so the tool always takes the "UI". The command stays `pnpm workbench` (every script, skill and memory uses it); the code keeps its folder and file names (`renderer/src/workbench/`, `workbench.html`, `scripts/workbench.mjs`). "Gallery", `pnpm ui`, "specimen" and `Gallery.tsx` go away as names for anything current.
 
 ## Sources of truth
 
@@ -29,13 +33,13 @@ Three things are written by hand. Everything else is derived from them.
 
 Derived: the sidebar and its groups, story ids, the variant list, each component's variant matrix, playground controls, props table and code signature, the notes, coverage (components without a story, stories without a component), the smoke test's cases, the targets of `shot`/`matrix`/`ls`, and the theme list.
 
-**One rule moves:** what a component is for, and when to use which variant, goes in its JSDoc, not in a specimen's note. The editor's hover, the Workbench page and the props table then read the same text. Porting the gallery moves each `Spec` note into the JSDoc of the component it describes.
+**One rule moves:** what a component is for, and when to use which variant, goes in its JSDoc, not in a specimen's note. The editor's hover, the UI Workbench page and the props table then read the same text. Porting the gallery moves each `Spec` note into the JSDoc of the component it describes.
 
 ## Design
 
 ### 1. The component catalog (extracted from the source)
 
-A Vite plugin in the Workbench's dev server (`renderer/src/workbench/catalog/`, dev only) reads the kit with the TypeScript checker and serves the result as a virtual module, `virtual:workbench-catalog`:
+A Vite plugin in the UI Workbench's dev server (`renderer/src/workbench/catalog/`, dev only) reads the kit with the TypeScript checker and serves the result as a virtual module, `virtual:workbench-catalog`:
 
 - **Which components:** every export of `packages/ui/src/index.ts` whose type is a React component (a function or `forwardRef`/`memo` returning JSX). Renderer folders that have stories are read the same way, for the components their stories render.
 - **Per component:** name, file, the JSDoc (else the file's header comment), and its props: name, kind (`union` with its literal values, `boolean`, `string`, `number`, `node`, `function`, `other`), required or not, default, the prop's doc comment. Props inherited from DOM attributes (`ButtonHTMLAttributes`) are dropped, except a short list that matters for states (`disabled`).
@@ -44,7 +48,7 @@ A Vite plugin in the Workbench's dev server (`renderer/src/workbench/catalog/`, 
 
 ### 2. Stories (plain files, metadata read from them)
 
-Stories stay what they are: `*.story.tsx`, each named export a variant. Nothing new is required. The Workbench also globs `packages/ui/src/**/*.story.tsx`, so kit stories live beside the kit.
+Stories stay what they are: `*.story.tsx`, each named export a variant. Nothing new is required. The UI Workbench also globs `packages/ui/src/**/*.story.tsx`, so kit stories live beside the kit.
 
 - **Id:** from the path, not the file name: `ui/button`, `windows/pdf/pdfview`, `shell/feedback`. This fixes the collision two `Foo.story.tsx` would have today. Old ids keep working as aliases while the skills and scripts move.
 - **Group:** the folder.
@@ -52,7 +56,7 @@ Stories stay what they are: `*.story.tsx`, each named export a variant. Nothing 
 - **Which component:** the component file beside it (`button.story.tsx` → `button.tsx`'s components) or, failing that, the components the story imports from the kit.
 - **Optional `export const args`:** values for props the playground can't guess (`{ children: "Save" }`). The only metadata a story may carry, and only where a guess fails.
 
-### 3. The Workbench frame
+### 3. The UI Workbench frame
 
 The window becomes the gallery's layout, built from the kit (`Split`, `List`, `View`, `Toolbar`), in the real app:
 
@@ -71,8 +75,8 @@ The window becomes the gallery's layout, built from the kit (`Split`, `List`, `V
 
 - **`ls [--json]`:** components, stories, variants, and coverage, so agents stop guessing ids.
 - **`shot --themes all`:** one image of themes mode, replacing the Python contact-sheet snippet in the prototype skill.
-- **`--headless`:** the window isn't shown (`show: false`), so an agent can run the Workbench without taking over the user's screen; several can run at once (each already picks a free DevTools port).
-- **A clear "the Workbench isn't running" error** when `workbench.json` is missing or stale, instead of ENOENT or a CDP connection error.
+- **`--headless`:** the window isn't shown (`show: false`), so an agent can run the UI Workbench without taking over the user's screen; several can run at once (each already picks a free DevTools port).
+- **A clear "the UI Workbench isn't running" error** when `workbench.json` is missing or stale, instead of ENOENT or a CDP connection error.
 - `goto`, `shot`, `matrix`, `audit`, `eval`, `stop` stay; their targets and theme lists come from the catalog and the registry.
 
 ### 5. Tests
@@ -81,11 +85,11 @@ The window becomes the gallery's layout, built from the kit (`Split`, `List`, `V
 - **Story smoke test:** every kit component's matrix and every kit story variant renders, in a few themes, with no page errors. A component is covered the moment it is exported.
 - **Coverage:** every kit component either has a story or a matrix that renders something; the test lists the ones with neither (props the matrix can't generate and no story).
 - **Variants against CSS:** the kit draws variants as data attributes (`data-variant`, `data-size`, `data-tone`). With the unions extracted, a test checks that every union value has a rule in the kit's CSS and that no rule targets a value the type doesn't have, so styles can't drift from types.
-- App stories (renderer) stay Electron-only; the Workbench's own smoke run covers them in `pnpm workbench matrix`.
+- App stories (renderer) stay Electron-only; the UI Workbench's own smoke run covers them in `pnpm workbench matrix`.
 
 ### 6. Removing the gallery
 
-Delete `packages/ui/gallery` (`Gallery.tsx`, `gallery.css`, `main.tsx`, `index.html`, `shots.mjs`, `vite.config.ts`), the `gallery`, `build` and `shots` scripts in `packages/ui/package.json`, `pnpm ui` at the root, and `gallery/**` in `packages/ui/tsconfig.json`. `lucide.ts` stays (the desktop uses it too). Update CLAUDE.md ("pnpm ui", "a gallery specimen in Gallery.tsx" → "export it from `@cmd/ui`; the test checks the rest"), the `prototype`, `window-design` and `manager` skills, and the header comment of `packages/ui/src/index.ts`.
+Delete `packages/ui/gallery` (`Gallery.tsx`, `gallery.css`, `main.tsx`, `index.html`, `shots.mjs`, `vite.config.ts`), the `gallery`, `build` and `shots` scripts in `packages/ui/package.json`, `pnpm ui` at the root, and `gallery/**` in `packages/ui/tsconfig.json`. `lucide.ts` stays (the desktop uses it too). The references to it are step 7's.
 
 What the gallery shows by hand maps to:
 
@@ -95,6 +99,25 @@ What the gallery shows by hand maps to:
 | Composed specimens (forms, Window pieces, overlays, Checklist, FindBar, DataGrid with data) | Kit stories, about 15 files, beside the components |
 | Tokens page, Themes page | `tokens.story.tsx`, `themes.story.tsx` (reading `tokens.gen.ts` and the registry) |
 | Patterns page | Stories (the reference windows in `renderer/src/reference/` already cover most) |
+
+### 7. Documentation and skills
+
+Everything that tells a person or an agent how to look at UI names the UI Workbench and its commands, and nothing current names the gallery. Found with `grep -ri "workbench\|gallery\|pnpm ui"` (2026-10-11):
+
+| Where | What changes |
+|---|---|
+| `CLAUDE.md` | The `pnpm ui` line goes; `pnpm workbench` describes the UI Workbench (components and stories, every theme); "a gallery specimen in `Gallery.tsx`" becomes "export it from `@cmd/ui`: the UI Workbench picks it up and the tests check it renders"; a line on stories (where they live, notes from doc comments, `args`) |
+| `DEVELOPMENT.md`, `README.md` | The UI Workbench where they cover building or looking at UI (neither names the gallery today; check for a section that should) |
+| `.claude/skills/prototype` | Renamed in prose to the UI Workbench; path ids; the component page, themes mode and stage controls; `ls`, `shot --themes all` and `--headless` replace the contact-sheet snippet; the kit rule points to exporting, not to `Gallery.tsx` |
+| `.claude/skills/window-design` | Same rename; component pages and the audit overlay where it says how to check a layout; no gallery |
+| `.claude/skills/manager` | "a workbench story, the gallery" and `pnpm ui` → the UI Workbench |
+| Current docs: `40-window-design.md` (the gallery's pages and shots, how to check a window), `33-search.md` and `36-sqlite-viewer.md` ("with a gallery specimen") | The UI Workbench and its component pages; their status lines unchanged |
+| Code comments | The header of `packages/ui/src/index.ts`; `icon.tsx`, `lucide.ts`, `themes/registry.ts`, `tokens/build.ts` (and `tokens.gen.ts` through it), `dialog.test.ts`; the `// Workbench stories (pnpm workbench …)` headers of the 34 stories, for the new path ids |
+| Window title and CLI messages | "UI Workbench" (`main/index.ts`, `scripts/workbench.mjs`) |
+
+Not changed: dated records, and the words where they mean something else. `docs/architecture-review-01/` and superseded docs keep what they said then. "Workbench" meaning cmd itself (`15-positioning.md`, `26-data-requirements.md`, `43-performance.md`, the CLI's help, the website) and a Magic widget's workbench folder (`12-magic-widgets.md`) stay; so does "a gallery" for the Widget Library (`16-widgets.md`).
+
+A test keeps it that way (`test/docs.test.ts`): CLAUDE.md, DEVELOPMENT.md, README.md, `.claude/skills/**` and the docs whose status is built, partly built or proposal must not mention the old tool: `pnpm ui`, `Gallery.tsx`, `packages/ui/gallery`, `@cmd/ui gallery`, "gallery specimen" or "the gallery's". Exact phrases, so the Widget Library's "gallery" doesn't trip it. This doc is excepted while it is a proposal (it describes what is replaced).
 
 ## Limits
 
@@ -108,11 +131,13 @@ What the gallery shows by hand maps to:
 2. **Themes mode, stage controls, audit overlay.**
 3. **Port and delete the gallery:** notes into JSDoc, the composed specimens into kit stories, tokens and themes stories, the browser stage, the smoke, coverage and CSS tests, `dialog.test.ts` moved; remove `packages/ui/gallery` and update CLAUDE.md and the skills.
 4. **CLI:** `ls`, `shot --themes all`, `--headless`, the not-running error.
+5. **Documentation and skills** (section 7): every reference updated to the UI Workbench and its commands, the old names gone, and the test that keeps them out. Last, so the skills describe what was built, not what was planned; each earlier step updates the lines it makes wrong as it lands, so nothing points to a deleted tool in between.
 
 Later, not in this doc's scope: **`pnpm workbench review`**, which shoots every story on a branch and on `master` and lists those whose pixels changed (before and after side by side), for reviewing what an agent's branch changed visually. It needs a pixel-diff dependency and two builds.
 
 ## Decisions
 
+- **The name is UI Workbench; the command stays `pnpm workbench`.**
 - **Viewing is Electron-only.** The browser stage exists for tests, not as a second gallery.
 - **No metadata objects in stories.** Names, notes and groups come from the source; `args` is the one optional export.
-- **The catalog is dev-only.** Nothing of it ships: the plugin runs in the Workbench's dev server, and `workbench.html` stays out of the production build.
+- **The catalog is dev-only.** Nothing of it ships: the plugin runs in the UI Workbench's dev server, and `workbench.html` stays out of the production build.
