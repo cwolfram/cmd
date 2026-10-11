@@ -164,7 +164,9 @@ export class DataStore {
     this.#stmt(`INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)`).run(key, value);
   }
 
+  /** `fn` in one transaction; inside another, it's part of that one. */
   transaction<T>(fn: () => T): T {
+    if (this.db.isTransaction) return fn();
     this.db.exec("BEGIN");
     try {
       const r = fn();
@@ -267,6 +269,59 @@ export class DataStore {
     });
   }
 
+  /** What a delete with `where` would take: the span of time its events cover, and their seqs when there are at most `max`. */
+  affected(where: { before?: number; types?: string[]; sessionId?: string; projectId?: string }, max: number): { from: number; to: number; seqs: number[] | null } | null {
+    const [c, a] = conditions({ at: where.before ? [0, where.before] : undefined, types: where.types, sessionId: where.sessionId, projectId: where.projectId });
+    const w = c ? `WHERE ${c}` : "";
+    const r = this.db.prepare(`SELECT COUNT(*) AS n, MIN(at) AS from_, MAX(COALESCE(until, at)) AS to_ FROM events ${w}`).get(...a) as { n: number; from_: number | null; to_: number | null };
+    if (!r.n) return null;
+    const seqs = r.n <= max ? (this.db.prepare(`SELECT seq FROM events ${w} ORDER BY seq`).all(...a) as { seq: number }[]).map((x) => x.seq) : null;
+    return { from: r.from_!, to: r.to_!, seqs };
+  }
+
+  /**
+   * Runs `fn` with deletes that leave nothing behind in the table pages: freed
+   * pages and cells are zeroed (secure_delete). Slower than a plain delete: for a
+   * forget, not for retention. The full-text index keeps a deleted row's words
+   * until its segments are merged: scrubStep() does that.
+   */
+  securely<T>(fn: () => T): T {
+    this.db.exec(`PRAGMA secure_delete = ON`);
+    try {
+      return fn();
+    } finally {
+      this.db.exec(`PRAGMA secure_delete = OFF`);
+    }
+  }
+
+  /**
+   * One step of merging the full-text index's segments (at most `pages` pages),
+   * which drops the words of deleted rows for good; false once there's nothing
+   * left to merge. A step is a few ms, so a whole index goes between other work.
+   */
+  scrubStep(pages = 64): boolean {
+    let worked = false;
+    this.securely(() => {
+      for (const t of this.#ftsCursor !== null ? ["events_fts", "events_fts_next"] : ["events_fts"]) {
+        const before = this.#totalChanges();
+        this.db.prepare(`INSERT INTO ${t}(${t}, rank) VALUES ('merge', ?)`).run(-pages);
+        // FTS5: fewer than 2 changes means the merge had nothing to do.
+        if (this.#totalChanges() - before >= 2) worked = true;
+      }
+    });
+    return worked;
+  }
+
+  /** Writes the WAL back and empties it, so the page images it held before a forget go too; false when a reader holds it. */
+  truncateWal(): boolean {
+    try {
+      const r = this.db.prepare(`PRAGMA wal_checkpoint(TRUNCATE)`).get() as { busy: number } | undefined;
+      return !r?.busy;
+    } catch {
+      return false;
+    }
+  }
+
   /** Content-addressed; zstd when that saves space. Returns the hash. */
   putBlob(content: string | Buffer): string {
     const raw = typeof content === "string" ? Buffer.from(content, "utf8") : content;
@@ -329,6 +384,19 @@ export class DataStore {
   entityOf(kind: string, id: string): { kind: string; id: string; created: number; seen: number; attrs: Record<string, unknown> } | null {
     const r = this.#stmt(`SELECT kind, id, created, seen, json(attrs) AS attrs FROM entities WHERE kind = ? AND id = ?`).get(kind, id) as { kind: string; id: string; created: number; seen: number; attrs: string } | undefined;
     return r ? { ...r, attrs: JSON.parse(r.attrs) as Record<string, unknown> } : null;
+  }
+
+  /**
+   * Deletes an entity and its links; returns the entities it was linked to. With
+   * `orphans`, of those that had only this link, `orphans` kinds go too (a pane or
+   * agent known only through a forgotten session).
+   */
+  dropEntity(kind: string, id: string, orphans: string[] = []): [string, string][] {
+    const others = this.linksOf(kind, id).map((l) => (l.from[0] === kind && l.from[1] === id ? l.to : l.from));
+    this.#stmt(`DELETE FROM links WHERE (from_kind = ? AND from_id = ?) OR (to_kind = ? AND to_id = ?)`).run(kind, id, kind, id);
+    this.#stmt(`DELETE FROM entities WHERE kind = ? AND id = ?`).run(kind, id);
+    for (const [k, i] of others) if (orphans.includes(k) && !this.linksOf(k, i).length) this.#stmt(`DELETE FROM entities WHERE kind = ? AND id = ?`).run(k, i);
+    return others;
   }
 
   /** An entity's links, both ways. */

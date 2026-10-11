@@ -64,6 +64,8 @@ export interface EventPayloads {
   };
   /** Something a person or an agent wrote down on purpose. */
   note: { by: "user" | "agent"; agentSession: string | null };
+  /** A session summary written to a Markdown file (core/src/summaries): a forget of its session or project deletes the file. */
+  "summary.written": { path: string };
   /** Agent transcripts, one line each (docs/28 §2); shapes per agent in core/src/data/sources/transcripts.ts. */
   "transcript.message": Record<string, unknown>;
   "transcript.tool_use": Record<string, unknown>;
@@ -110,6 +112,7 @@ export const EVENT_V: Record<DataEventType, number> = {
   "notification.clear": 1,
   "ai.call": 1,
   note: 1,
+  "summary.written": 1,
   "transcript.message": 1,
   "transcript.tool_use": 1,
   "transcript.tool_result": 1,
@@ -235,7 +238,7 @@ export const DATA_CLASSES: Record<DataClass, Omit<DataClassInfo, "class" | "keep
   actions: { title: "Your actions", description: "What you focused, opened, closed and ran in cmd.", types: ["user.", "workspace."], keepDays: "setting", cap: null, setting: "data.record.actions", leaves: null },
   ai: { title: "Model calls", description: "Each call cmd made to a model: purpose, model, tokens, what was sent and what came back.", types: ["ai."], keepDays: "setting", cap: 1_000_000, setting: null, leaves: "The call itself goes to the provider; the record stays here." },
   git: { title: "Git", description: "Commits, merges, branches and tags in your projects.", types: ["git."], keepDays: null, cap: null, setting: null, leaves: null },
-  notes: { title: "Notes and notifications", description: "Notes you or agents wrote down; notifications shown.", types: ["note", "notification", "notification.clear"], keepDays: null, cap: null, setting: null, leaves: null },
+  notes: { title: "Notes and notifications", description: "Notes you or agents wrote down; notifications shown; summaries written.", types: ["note", "notification", "notification.clear", "summary."], keepDays: null, cap: null, setting: null, leaves: null },
   system: { title: "The data layer", description: "Imports, prunes, rebuilds.", types: ["data."], keepDays: null, cap: null, setting: null, leaves: null },
   remote: { title: "Remote access", description: "Who paired, connected, was refused or revoked.", types: ["remote."], keepDays: 90, cap: null, setting: null, leaves: null },
 };

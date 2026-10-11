@@ -54,9 +54,11 @@ export function JournalView({ win }: WindowViewProps) {
     setDays(null);
     void load("stale");
     // Written again when something happened (a live query over the kinds the journal reads), with a slow backstop.
+    // The first answer is what load() read already; a later whole answer (a reconnect, a forget) is news too.
     let debounce: ReturnType<typeof setTimeout> | undefined;
+    let first = true;
     const off = subscribeData({ types: ["command", "git.", "browser.visit", "file.open", "note", "workspace.", "transcript.message", "agent.note"], at: [Date.now(), Number.MAX_SAFE_INTEGER], limit: 1 }, (_events, initial) => {
-      if (initial) return;
+      if (initial && first) return void (first = false);
       clearTimeout(debounce);
       debounce = setTimeout(() => void load("stale"), 5000);
     });

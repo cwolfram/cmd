@@ -112,7 +112,7 @@ export async function agentsCommand(client: Client, closed: Promise<void>, pos: 
       // A live query over the log: the agent's (or pane's) hook events and the core's notes, as they're recorded.
       const { id } = await client.call("data.subscribe", { query: { types: ACTIVITY, agentId: t.agentId, paneId: t.agentId ? undefined : t.paneId, limit: 1 } });
       client.onEvent((e) => {
-        if (e.type !== "data.changed" || e.id !== id) return;
+        if (e.type !== "data.changed" || e.id !== id || e.reset) return; // reset: some were forgotten, the rest printed already
         for (const d of e.events) print(toActivity(d, !!opt.raw));
       });
       await client.call("events.subscribe", { types: ["data.changed"] });

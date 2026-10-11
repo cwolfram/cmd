@@ -95,6 +95,16 @@ export class Subscriptions {
     }
   }
 
+  /** Events were forgotten: every data subscription gets its whole result again (reset), with their seqs when known. */
+  dataRemoved(seqs?: number[]): void {
+    for (const [conn, subs] of this.#dataSubs) {
+      for (const [id, q] of subs) {
+        this.#dataPending.get(conn)?.delete(id);
+        this.#core.server.send(conn, { type: "data.changed", id, events: this.#core.data.query(q), reset: true, ...(seqs ? { removed: seqs } : {}) });
+      }
+    }
+  }
+
   /** A view's rows for a query: turns oldest first, sessions newest first. */
   rows(q: ViewQuery): Row[] {
     const { sessions, agents, workspaces } = this.#core;
@@ -158,6 +168,7 @@ export function createSubscriptions(core: SubsCore, activity: ActivityView): Sub
   const subs = new Subscriptions(core);
   core.data.on("recorded", (e) => subs.dataChanged([e]));
   core.data.on("batch", (events) => subs.dataChanged(events));
+  core.data.on("removed", ({ seqs }) => subs.dataRemoved(seqs));
   core.sessions.onChange((rows) => subs.viewChanged("sessions", rows));
   core.sessions.onReset(() => subs.reset((q) => q.view === "sessions"));
   activity.onTurn((t, cwd) => subs.viewChanged("turns", [{ ...t, cwd }]));

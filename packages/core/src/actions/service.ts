@@ -240,6 +240,16 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
     }
   }
 
+  /** A forgotten project (data.forget): what the model said about its folders goes; an open widget shows the files' own words. */
+  forgetProject(root: string): void {
+    this.#cache.forget(root);
+    for (const c of this.#catalogs.values()) {
+      if (c.root !== root && !c.root.startsWith(`${root}/`)) continue;
+      c.described = null;
+      this.emit("changed", c.root);
+    }
+  }
+
   dispose(): void {
     clearInterval(this.#sweep);
     for (const c of this.#catalogs.values()) {

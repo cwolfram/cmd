@@ -56,10 +56,25 @@ export interface ForgetWhat {
   types?: string[];
 }
 
-export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [DataEvent[]]; removed: [{ types: string[]; count: number }] }> {
+/** A forget about to delete: what it names and the span of time its events cover (null: no events matched). */
+export interface Forgetting {
+  what: ForgetWhat;
+  span: { from: number; to: number } | null;
+}
+
+/** Subscribers hear the seqs of at most this many forgotten events; past it, their whole result again. */
+const REMOVED_SEQS = 10_000;
+
+/** Whether an event type is one of `types` (a type, or a prefix ending in "."). */
+const typeIn = (type: string, types: string[]) => types.some((x) => (x.endsWith(".") ? type.startsWith(x) : type === x));
+
+export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [DataEvent[]]; removed: [{ types: string[]; count: number; seqs?: number[] }] }> {
   #rules: { setting: string; rules: ExcludeRules } | null = null;
   /** Sessions and projects the person told cmd to forget: never recorded again (a re-read transcript included). */
   #forgotten: Set<string> | null = null;
+  /** Times (and types) the person told cmd to forget: what a re-read brings from before them isn't recorded again. */
+  #ranges: { before: number; types: string[] | null }[] | null = null;
+  #forgetters: ((f: Forgetting) => void)[] = [];
   readonly store: DataStore;
   #o: DataServiceOptions;
   #seen = new Set<string>();
@@ -200,12 +215,14 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
       const key = `${kind}:${id}`;
       if (this.#seen.has(key)) continue;
       this.#seen.add(key);
+      if (this.#isForgotten(kind, id)) continue;
       this.store.entity(kind, id, kind === "project" ? projectAttrs(id) : {}, e.at);
     }
   }
 
   /** What an entity is: its attributes, written when they change (not on every update). */
   describe(kind: string, id: string, attrs: Record<string, unknown>, at = this.#now): void {
+    if (this.#isForgotten(kind, id)) return;
     const json = JSON.stringify(attrs);
     const key = `${kind}:${id}`;
     if (this.#described.get(key) === json) return;
@@ -216,6 +233,7 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
 
   /** A link between two entities (agent → session, session → project, …); kept once. */
   link(from: [string, string], to: [string, string], kind: string, at = this.#now): void {
+    if (this.#isForgotten(...from) || this.#isForgotten(...to)) return;
     const key = `${from.join(":")}>${kind}>${to.join(":")}`;
     if (this.#linked.has(key)) return;
     this.#linked.add(key);
@@ -265,24 +283,112 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
   /** Not recorded: excluded by the rules, or of a forgotten session or project. */
   #refused(e: NewDataEvent): boolean {
     if (excludedBy(this.rules(), e)) return true;
-    this.#forgotten ??= new Set(this.store.entities("forgotten").map((x) => x.id));
-    return (!!e.sessionId && this.#forgotten.has(e.sessionId)) || (!!e.projectId && this.#forgotten.has(e.projectId));
+    this.#loadForgotten();
+    if ((!!e.sessionId && this.#forgotten!.has(e.sessionId)) || (!!e.projectId && this.#forgotten!.has(e.projectId))) return true;
+    return this.#ranges!.some((r) => e.at < r.before && (!r.types || typeIn(e.type, r.types)));
+  }
+
+  #loadForgotten(): void {
+    if (this.#forgotten && this.#ranges) return;
+    const all = this.store.entities("forgotten");
+    this.#forgotten = new Set(all.filter((x) => !x.id.startsWith("range:")).map((x) => x.id));
+    this.#ranges = all.filter((x) => x.id.startsWith("range:")).map((x) => ({ before: Number(x.attrs.before), types: (x.attrs.types as string[] | null) ?? null }));
+  }
+
+  /** Whether a session or project was forgotten (its entities aren't described again). */
+  #isForgotten(kind: string, id: string): boolean {
+    if (kind !== "session" && kind !== "project") return false;
+    this.#loadForgotten();
+    return this.#forgotten!.has(id);
+  }
+
+  /**
+   * A store that keeps what it derived from the log (the journal's days, summary
+   * files, caches) hears of a forget before the events go, so it can still read
+   * what they were, and removes what it made from them.
+   */
+  onForget(fn: (f: Forgetting) => void): void {
+    this.#forgetters.push(fn);
   }
 
   /**
    * Deletes what's named (and the blobs only it used) and records that something
    * was forgotten, not what. A forgotten session or project stays forgotten:
-   * its events are refused from then on, even when its transcript is read again.
+   * its events are refused from then on, even when its transcript is read again;
+   * so does what a forget by time names, from before that time. Its entities
+   * and links go, the deleted bytes are zeroed, and what other stores derived
+   * hears of it first (onForget).
    */
   forget(w: ForgetWhat): number {
     if (!w.sessionId && !w.projectId && !w.before && !w.types?.length) throw new Error("say what to forget: a session, a project, a time or types");
+    const now = this.#now;
     const types = this.#typesOf(w);
-    const n = this.store.delete({ sessionId: w.sessionId, projectId: w.projectId, before: w.before, types: w.types });
-    for (const id of [w.sessionId, w.projectId]) if (id) this.store.entity("forgotten", id, {}, this.#now), this.#forgotten?.add(id);
-    this.store.sweepBlobs();
-    this.record({ id: `data:forget:${this.#now}`, at: this.#now, type: "data.op", source: "cmd", data: { op: "forget", detail: { events: n, session: !!w.sessionId, project: !!w.projectId, before: w.before ?? null, types: w.types ?? null } } });
-    if (n) this.emit("removed", { types, count: n });
+    const where = { sessionId: w.sessionId, projectId: w.projectId, before: w.before, types: w.types };
+    const hit = this.store.affected(where, REMOVED_SEQS);
+    for (const fn of this.#forgetters) {
+      try {
+        fn({ what: w, span: hit && { from: hit.from, to: hit.to } });
+      } catch (err) {
+        log.warn(`a store couldn't forget: ${(err as Error).message}`);
+      }
+    }
+    this.#loadForgotten();
+    const n = this.store.securely(() =>
+      this.store.transaction(() => {
+        const n = this.store.delete(where);
+        for (const [kind, id] of [["session", w.sessionId], ["project", w.projectId]] as const) {
+          if (!id) continue;
+          this.store.entity("forgotten", id, {}, now);
+          this.#forgotten!.add(id);
+          this.#forget(kind, id);
+        }
+        // By time or type alone: what a re-read brings from then isn't recorded again.
+        if (!w.sessionId && !w.projectId) {
+          const range = { before: w.before ?? now, types: w.types?.length ? w.types : null };
+          this.store.entity("forgotten", `range:${range.before}:${range.types?.join(",") ?? "*"}`, range, now);
+          this.#ranges!.push(range);
+        }
+        this.store.sweepBlobs();
+        return n;
+      }),
+    );
+    this.record({ id: `data:forget:${now}`, at: now, type: "data.op", source: "cmd", data: { op: "forget", detail: { events: n, session: !!w.sessionId, project: !!w.projectId, before: w.before ?? null, types: w.types ?? null } } });
+    if (n) this.emit("removed", { types, count: n, ...(hit?.seqs ? { seqs: hit.seqs } : {}) });
+    if (n) this.#scrubbing = this.#scrubbing.then(() => this.#scrub());
     return n;
+  }
+
+  #scrubbing: Promise<void> = Promise.resolve();
+
+  /** Resolves once what forgets deleted is gone from the file too (the index merged, the WAL emptied). */
+  scrubbed(): Promise<void> {
+    return this.#scrubbing;
+  }
+
+  /** The full-text index merged a step at a time between other work, then the WAL emptied. */
+  async #scrub(): Promise<void> {
+    const t0 = Date.now();
+    let steps = 0;
+    try {
+      while (!this.#disposed && this.store.scrubStep()) {
+        steps++;
+        await new Promise((r) => setImmediate(r));
+      }
+      if (!this.#disposed && this.store.file !== ":memory:" && !this.store.truncateWal()) log.info("the WAL is in use: the next checkpoint empties it");
+      log.info("scrubbed what a forget deleted", { steps, ms: Date.now() - t0 });
+    } catch (err) {
+      log.warn(`couldn't scrub after a forget: ${(err as Error).message}`);
+    }
+  }
+
+  /** A forgotten session's or project's entity, its links and what it alone held (a project's sessions; panes and agents known only through them). */
+  #forget(kind: "session" | "project", id: string): void {
+    const linked = this.store.dropEntity(kind, id, ["pane", "agent"]);
+    if (kind === "project") for (const [k, sid] of linked) if (k === "session") this.store.dropEntity(k, sid, ["pane", "agent"]);
+    const gone = `${kind}:${id}`;
+    this.#seen.delete(gone);
+    this.#described.delete(gone);
+    for (const key of this.#linked) if (key.includes(gone)) this.#linked.delete(key);
   }
 
   /** The types a forget will touch, for the views to know what to rebuild. */

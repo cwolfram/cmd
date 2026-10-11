@@ -167,6 +167,10 @@ export class DescribedCache {
       return null;
     }
   }
+  /** Drops what the model said about `root` and every folder in it; returns how many folders. */
+  forget(root: string): number {
+    return Number(this.#db?.prepare(`DELETE FROM workspace_actions_described WHERE root = ? OR substr(root, 1, ?) = ?`).run(root, root.length + 1, `${root}/`).changes ?? 0);
+  }
   set(root: string, hash: string, d: Described): void {
     this.#db?.prepare(`INSERT OR REPLACE INTO workspace_actions_described (root, hash, json, at) VALUES (?, ?, ?, ?)`).run(root, hash, JSON.stringify(d), Date.now());
   }

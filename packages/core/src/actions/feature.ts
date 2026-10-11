@@ -52,6 +52,7 @@ export function createActions(core: Pick<CoreContext, "panes" | "store" | "data"
     if (core.windows.list().some((w) => w.kind === "browser" && w.workspaceId === pane.workspaceId && typeof w.state.url === "string" && w.state.url.startsWith(url.replace(/\/$/, "")))) return;
     core.opened(core.windows.open("browser", { url }, core.workspaces.mustOpen(pane.workspaceId)));
   });
+  core.data.onForget(({ what }) => void (what.projectId?.startsWith("dir:") && actions.forgetProject(what.projectId.slice(4))));
   core.settings.bind(["actions.describe"], () => actions.aiChanged());
   core.ai.on("updated", () => actions.aiChanged());
   return actions;

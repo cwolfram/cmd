@@ -540,8 +540,12 @@ export type CoreEvent =
   | ActionsEvent
   /** A watched file or folder changed on disk (see fs.watch). */
   | { type: "fs.changed"; path: string }
-  /** Events recorded or updated since the last one, for a data.subscribe subscription (merge by id). */
-  | { type: "data.changed"; id: string; events: DataEvent[] }
+  /**
+   * Events recorded or updated since the last one, for a data.subscribe subscription (merge by id).
+   * reset: events are the query's whole result and replace what the subscriber has (events were forgotten);
+   * removed: the seqs of the forgotten events, when there weren't too many to list.
+   */
+  | { type: "data.changed"; id: string; events: DataEvent[]; reset?: boolean; removed?: number[] }
   /**
    * Rows of a view that changed, for a data.subscribeView subscription (turns by agent and index, sessions by key).
    * reset: the rows are the query's whole result and replace what the subscriber has (the view was rebuilt, workspaces changed).

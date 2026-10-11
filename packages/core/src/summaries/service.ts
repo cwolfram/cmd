@@ -27,6 +27,8 @@ import { renderSummary, SUMMARY_SCHEMA, type SummaryFacts, type SummaryText } fr
 import type { CoreContext } from "../kernel/context.ts";
 import { sessionIdOf } from "../agents/tracker.ts";
 import { conversationOf } from "../data/views/conversation.ts";
+import { projectIdOf } from "../data/project.ts";
+import type { ForgetWhat } from "../data/service.ts";
 
 const log = logger("summaries");
 
@@ -54,6 +56,8 @@ export interface SummaryServiceOptions {
   /** Shows `file` in a Markdown window in `workspaceId` (an open one if there is); its id. */
   show: (file: string, workspaceId: WorkspaceId) => WindowId;
   notify: (windowId: WindowId, title: string, body: string) => void;
+  /** A summary file was written for an agent's session: recorded, so a forget of the session or project finds the file. */
+  written?: (file: string, a: Agent, session: string | null) => void;
   /** Tests: git's commits since a time, newest first (default: `git log`). */
   commits?: (cwd: string, since: number) => Promise<Commit[]>;
   branch?: (cwd: string) => Promise<string | null>;
@@ -275,6 +279,7 @@ export class SummaryService {
       ],
     });
     write(renderSummary(facts, {}, { pending: `Summarizing ${facts.prompts === 1 ? "1 prompt" : `${facts.prompts} prompts`} with ${model}…` }));
+    this.#o.written?.(file, a, session);
     const windowId = o.open === false ? null : this.#o.show(file, a.workspaceId);
 
     const footer = (m: string) =>
@@ -325,7 +330,7 @@ export class SummaryService {
 
 /** Session summaries (`core.summaries`), kept in `dir`, shown in a Markdown window. */
 export function createSummaries(core: Pick<CoreContext, "ai" | "agents" | "data" | "transcripts" | "windows" | "workspaces" | "notifications" | "broadcast" | "opened">, dir: string | null): SummaryService {
-  return new SummaryService({
+  const service = new SummaryService({
     ai: {
       object: (o) => core.ai.object(o),
       modelName: () => {
@@ -344,5 +349,40 @@ export function createSummaries(core: Pick<CoreContext, "ai" | "agents" | "data"
       return core.opened(core.windows.open("markdown", { path: file }, core.workspaces.mustOpen(workspaceId))).id;
     },
     notify: (id, title, body) => core.notifications.window(id, "summary", title, body),
+    written: (file, a, session) =>
+      core.data.record({ id: `summary:${file}`, at: Date.now(), type: "summary.written", source: "cmd", agentId: a.id, paneId: a.paneId, workspaceId: a.workspaceId, sessionId: session ? `${a.kind}:${session}` : null, projectId: projectIdOf(a.cwd), text: path.basename(file), data: { path: file } }),
   });
+  core.data.onForget(({ what }) => forgetSummaries(core.data, what, service.dir));
+  return service;
+}
+
+/**
+ * The summary files a forget covers go with it (AR1-16-02): those recorded for
+ * its session, project or time, and, for a session, a file from before they
+ * were recorded, by the session id in its name. A forget of other kinds of
+ * events alone (not transcripts, agents or summaries) leaves them.
+ */
+export function forgetSummaries(data: Pick<CoreContext["data"], "query">, what: ForgetWhat, dir: string): number {
+  const covers = !what.types?.length || what.types.some((t) => "summary.written".startsWith(t) || t.startsWith("transcript") || t.startsWith("agent"));
+  if (!covers) return 0;
+  const files = new Set(data.query({ types: ["summary.written"], sessionId: what.sessionId, projectId: what.projectId, at: what.before ? [0, what.before] : undefined, limit: 10_000 }).map((e) => (e.data as { path: string }).path));
+  const raw = what.sessionId?.slice(what.sessionId.indexOf(":") + 1).slice(0, 8);
+  if (raw) {
+    try {
+      for (const f of fs.readdirSync(dir)) if (f.endsWith(`-${raw}.md`)) files.add(path.join(dir, f));
+    } catch {
+      // no summaries yet
+    }
+  }
+  let n = 0;
+  for (const f of files) {
+    try {
+      fs.rmSync(f);
+      n++;
+    } catch {
+      // gone already
+    }
+  }
+  if (n) log.info("deleted summaries of what was forgotten", { files: n });
+  return n;
 }

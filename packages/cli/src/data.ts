@@ -175,7 +175,7 @@ export async function dataCommand(client: Client, pos: string[], opt: Record<str
       const { id, events } = await client.call("data.subscribe", { query: { limit: 50, ...queryOf(opt), by: "time", order: "desc" } });
       for (const e of events.reverse()) console.log(json ? JSON.stringify(e) : line(e));
       client.onEvent((e) => {
-        if (e.type !== "data.changed" || e.id !== id) return;
+        if (e.type !== "data.changed" || e.id !== id || e.reset) return; // reset: some were forgotten, the rest printed already
         for (const ev of e.events) console.log(json ? JSON.stringify(ev) : line(ev));
       });
       await client.call("events.subscribe", { types: ["data.changed"] });

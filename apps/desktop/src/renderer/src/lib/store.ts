@@ -537,7 +537,7 @@ function handle(e: CoreEvent): void {
       for (const fn of notificationListeners) fn(e.notification);
       return;
     case "data.changed":
-      dataById.get(e.id)?.fn(e.events, false);
+      dataById.get(e.id)?.fn(e.events, !!e.reset);
       return;
     case "view.changed":
       viewById.get(e.id)?.fn(e.rows, !!e.reset);

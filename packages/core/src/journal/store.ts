@@ -30,6 +30,8 @@ export const UPGRADES: Record<number, (db: DatabaseSync) => void> = {};
 /** Day documents from before days carried their format: format 1. */
 const FORMAT_1 = { schema: 1, threads: 1, writer: 1 };
 
+const HOUR_MS = 3600_000;
+
 /** A span that began this long before a range may still reach into it (commands, visits; sessions and turns bring their own ends). */
 const SPAN_MS = 3 * 86400_000;
 
@@ -98,6 +100,13 @@ export class JournalStore {
     `);
     this.#renameSpaces();
     this.#upgrade();
+    // What the log forgets or retention drops, the days written from it go with (AR1-16-02).
+    this.data.onForget(({ what, span }) => {
+      const repo = what.projectId?.startsWith("dir:") ? what.projectId.slice(4) : null;
+      const n = this.forget({ span, repo, before: !what.sessionId && !what.projectId && !what.types?.length ? (what.before ?? null) : null });
+      if (n) log.info("forgot what was written from forgotten events", { rows: n });
+    });
+    this.data.onPrune((before) => void this.forget({ before }));
   }
 
   /** Before 0.24 workspaces were Spaces: scopes were "space:<id>", and days and weeks said spaceId. Once per database. */
@@ -368,6 +377,46 @@ export class JournalStore {
 
   saveWeek(w: JournalWeek): void {
     this.#stmt(`INSERT OR REPLACE INTO journal_weeks (scope, start, doc) VALUES (?, ?, ?)`).run(w.scope, w.start, JSON.stringify(w));
+  }
+
+  /**
+   * Forgets what was written from forgotten events (data.forget): the days, their
+   * history and the weeks that `span` reaches into, in every scope (a day of
+   * "all" tells of a project too), and a forgotten project's own scope and every
+   * day that names it. The next read writes what's left again. Returns the rows deleted.
+   */
+  forget(o: { span?: { from: number; to: number } | null; repo?: string | null; before?: number | null }): number {
+    const where: { days: string[]; weeks: string[]; args: (string | number)[]; weekArgs: (string | number)[] } = { days: [], weeks: [], args: [], weekArgs: [] };
+    if (o.span) {
+      // A work day runs 04:00 to 04:00 from its date; a week from its Monday for 7 days and 4 hours.
+      where.days.push(`(date > ? AND date <= ?)`), where.args.push(o.span.from - 28 * HOUR_MS, o.span.to - 4 * HOUR_MS);
+      where.weeks.push(`(start > ? AND start <= ?)`), where.weekArgs.push(o.span.from - 7 * 24 * HOUR_MS - 4 * HOUR_MS, o.span.to);
+    }
+    if (o.before) {
+      where.days.push(`date < ?`), where.args.push(o.before);
+      where.weeks.push(`start < ?`), where.weekArgs.push(o.before);
+    }
+    if (o.repo) {
+      const named = `%"repo":${JSON.stringify(o.repo).slice(0, -1)}"%`;
+      where.days.push(`scope = ? OR doc LIKE ?`), where.args.push(`repo:${o.repo}`, named);
+      where.weeks.push(`scope = ?`), where.weekArgs.push(`repo:${o.repo}`);
+    }
+    if (!where.days.length) return 0;
+    const days = where.days.map((c) => `(${c})`).join(" OR ");
+    const weeks = where.weeks.map((c) => `(${c})`).join(" OR ");
+    this.#db.exec("PRAGMA secure_delete = ON; BEGIN");
+    try {
+      let n = 0;
+      for (const t of ["journal_days", "journal_days_history"]) n += Number(this.#db.prepare(`DELETE FROM ${t} WHERE ${days}`).run(...where.args).changes);
+      n += Number(this.#db.prepare(`DELETE FROM journal_weeks WHERE ${weeks}`).run(...where.weekArgs).changes);
+      this.#db.exec("COMMIT");
+      return n;
+    } catch (err) {
+      this.#db.exec("ROLLBACK");
+      throw err;
+    } finally {
+      this.#db.exec("PRAGMA secure_delete = OFF");
+    }
   }
 
   /** Earlier versions of a day, newest first. */
