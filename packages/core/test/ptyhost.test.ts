@@ -8,7 +8,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Core } from "../src/kernel/core.ts";
 import { HOST_METHODS, HOST_PROTOCOL, MIN_CORE, PtyHost } from "../src/terminals/host.ts";
-import { HostMismatch, MIN_HOST, RemoteBackend, hostCompatible } from "../src/terminals/remote.ts";
+import { HostMismatch, MIN_HOST, RemoteBackend, hostCompatible, outputMode } from "../src/terminals/remote.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 import { until as untilWhat } from "../../../test/system.ts";
@@ -192,6 +192,33 @@ describe("PTY host", () => {
     // Every method it lists, it answers (about a terminal it doesn't have, here).
     for (const m of HOST_METHODS.filter((m) => m !== "spawn" && m !== "shutdown")) await expect(a.request(m, { id: "nope" })).rejects.toThrow("no such terminal: nope");
     a.dispose();
+  });
+
+  it("drops a line from the host that isn't JSON, and gives up on a host that stops answering", async () => {
+    const sock = path.join(dir, "mute.sock");
+    const server = net.createServer((c) =>
+      c.on("data", (d) => {
+        for (const line of String(d).split("\n").filter(Boolean)) {
+          const m = JSON.parse(line) as { id: number; m: string };
+          // Junk before and after the hello; then silence.
+          if (m.m === "hello") c.write(`not json\n${JSON.stringify({ id: m.id, r: { protocol: HOST_PROTOCOL, instance: "dev", pid: 1, startedAt: 0, terms: [] } })}\nnot json either\n`);
+        }
+      }),
+    );
+    await new Promise<void>((r) => server.listen(sock, r));
+    const b = await RemoteBackend.connect(sock, { requestMs: 50 });
+    let lost = false;
+    b.onLost(() => (lost = true));
+    for (let i = 0; i < 3; i++) await expect(b.request("read", { id: "x", lines: 1 })).rejects.toThrow(/didn't answer read/);
+    await until(() => lost, "the host given up after three timeouts");
+    server.close();
+  });
+
+  it("starts the host's output file over once it's past 5 MB", () => {
+    const f = path.join(dir, "ptyhost.out.log");
+    expect(outputMode(f)).toBe("a");
+    fs.writeFileSync(f, Buffer.alloc(5 * 1024 * 1024 + 1));
+    expect(outputMode(f)).toBe("w");
   });
 
   it("won't use a host whose code folder is gone (a removed worktree)", async () => {

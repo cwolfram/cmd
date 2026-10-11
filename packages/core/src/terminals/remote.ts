@@ -20,6 +20,22 @@ const log = logger("ptyhost");
  */
 export const MIN_HOST = 2;
 
+/** How long a request to the host may take; this many timeouts in a row and the host counts as lost (its terminals are resurrected). */
+export const REQUEST_MS = 10_000;
+const LOST_AFTER = 3;
+/** ptyhost.out.log (what bypasses the host's logger) starts over past this at a host's start. */
+const OUTPUT_MAX = 5 * 1024 * 1024;
+
+/** A line from the host, or null (logged) when it isn't JSON: a bad line must not take the core down. */
+function parseLine<T>(line: string): T | null {
+  try {
+    return JSON.parse(line) as T;
+  } catch {
+    log.warn(`the PTY host sent a line that isn't JSON: ${line.slice(0, 80)}`);
+    return null;
+  }
+}
+
 /** Whether this core can use a host that said `hello`: it is new enough for us, and we for it. */
 export function hostCompatible(hello: Pick<HostHello, "protocol" | "minCore">): boolean {
   // A host from before minCore served only its own protocol.
@@ -111,7 +127,12 @@ export class RemoteBackend implements TermBackend {
   #replaced = false;
   #onReplaced: (() => void)[] = [];
 
-  private constructor(sock: net.Socket, hello: HostHello) {
+  #requestMs: number;
+  /** Requests that timed out in a row. */
+  #timeouts = 0;
+
+  private constructor(sock: net.Socket, hello: HostHello, requestMs: number) {
+    this.#requestMs = requestMs;
     this.#sock = sock;
     this.instance = hello.instance;
     this.pid = hello.pid;
@@ -120,7 +141,7 @@ export class RemoteBackend implements TermBackend {
   }
 
   /** Connect and say hello (taking the host over from a previous core). Rejects a host of another protocol, or whose code is gone. */
-  static connect(socketPath: string): Promise<RemoteBackend> {
+  static connect(socketPath: string, o: { requestMs?: number } = {}): Promise<RemoteBackend> {
     return new Promise((resolve, reject) => {
       const sock = net.createConnection(ipcPath(socketPath));
       sock.setEncoding("utf8");
@@ -131,14 +152,15 @@ export class RemoteBackend implements TermBackend {
         lineSplitter((line) => {
           if (backend) return backend.#receive(line);
           // The hello reply comes first; events can only follow it.
-          const msg = JSON.parse(line) as { id?: number; r?: HostHello; e?: string };
+          const msg = parseLine<{ id?: number; r?: HostHello; e?: string }>(line);
+          if (!msg) return;
           if (msg.id !== 0) return void early.push(line);
           if (msg.e || !msg.r) return (sock.destroy(), reject(new Error(msg.e ?? "no hello")));
           if (!hostCompatible(msg.r) || hostCodeGone(msg.r.root)) {
             sock.destroy();
             return reject(new HostMismatch(msg.r));
           }
-          backend = new RemoteBackend(sock, msg.r);
+          backend = new RemoteBackend(sock, msg.r, o.requestMs ?? REQUEST_MS);
           for (const l of early) backend.#receive(l);
           resolve(backend);
         }),
@@ -217,7 +239,18 @@ export class RemoteBackend implements TermBackend {
     return new Promise((resolve, reject) => {
       if (!this.has(m)) return reject(new Error(`the PTY host (protocol ${this.hello.protocol}) has no ${m}`));
       if (!this.#sock.writable) return reject(new Error("the PTY host is gone"));
-      this.#pending.set(id, { resolve: read ? (r) => resolve(read(r)) : resolve, reject });
+      // A host stuck in a huge snapshot answers nothing; three of those in a row and it counts as lost.
+      const timer = setTimeout(() => {
+        if (!this.#pending.delete(id)) return;
+        reject(new Error(`the PTY host didn't answer ${m} in ${this.#requestMs / 1000} s`));
+        if (++this.#timeouts >= LOST_AFTER) {
+          log.error(`the PTY host (pid ${this.pid}) didn't answer ${LOST_AFTER} requests in a row: giving it up`);
+          this.#sock.destroy();
+        }
+      }, this.#requestMs);
+      timer.unref?.();
+      const done = <T,>(fn: (v: T) => void) => (v: T) => (clearTimeout(timer), fn(v));
+      this.#pending.set(id, { resolve: done(read ? (r: unknown) => resolve(read(r)) : resolve), reject: done(reject) });
       this.#sock.write(JSON.stringify({ id, m, p }) + "\n");
     });
   }
@@ -228,7 +261,8 @@ export class RemoteBackend implements TermBackend {
 
   #receive(line: string): void {
     if (!line.trim()) return;
-    const msg = JSON.parse(line) as { id?: number; r?: unknown; e?: string; ev?: string; t?: string; d?: string; c?: number | null };
+    const msg = parseLine<{ id?: number; r?: unknown; e?: string; ev?: string; t?: string; d?: string; c?: number | null }>(line);
+    if (!msg) return;
     if (msg.ev === "bye") {
       this.#bye = true;
     } else if (msg.ev === "replaced") {
@@ -243,6 +277,7 @@ export class RemoteBackend implements TermBackend {
       const p = this.#pending.get(msg.id);
       if (!p) return;
       this.#pending.delete(msg.id);
+      this.#timeouts = 0;
       if (msg.e !== undefined) p.reject(new Error(msg.e));
       else p.resolve(msg.r);
     }
@@ -368,7 +403,7 @@ function tail(file: string, n: number): string[] {
 
 function startHost(o: HostOptions): void {
   fs.mkdirSync(path.dirname(o.outputFile), { recursive: true });
-  const fd = fs.openSync(o.outputFile, "a");
+  const fd = fs.openSync(o.outputFile, outputMode(o.outputFile));
   const env = { ...process.env };
   // The packaged core is Electron running as Node; so is the host.
   if (process.versions.electron) env.ELECTRON_RUN_AS_NODE = "1";
@@ -376,6 +411,15 @@ function startHost(o: HostOptions): void {
   fs.closeSync(fd);
   log.debug(`started a PTY host, pid ${child.pid}`);
   child.unref();
+}
+
+/** How a host's output file is opened: appended to, or started over once past OUTPUT_MAX. */
+export function outputMode(file: string): "a" | "w" {
+  try {
+    return fs.statSync(file).size > OUTPUT_MAX ? "w" : "a";
+  } catch {
+    return "a";
+  }
 }
 
 function answers(socketPath: string): Promise<boolean> {
