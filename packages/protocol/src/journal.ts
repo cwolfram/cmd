@@ -26,7 +26,7 @@ import type { AgentKind, PaneId, WorkspaceId } from "./model.ts";
  */
 export const JOURNAL_SCHEMA = 1;
 export const SOURCES_FORMAT = 1;
-export const THREADS_FORMAT = 1;
+export const THREADS_FORMAT = 2;
 export const WRITER_FORMAT = 1;
 
 /** Which versions of the rules a day was written with. */

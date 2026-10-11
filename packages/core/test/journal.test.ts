@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,10 +11,11 @@ import { digest, eventsHash } from "../src/journal/digest.ts";
 import { gitEvents, gitStamp, parseReflog } from "../src/journal/git.ts";
 import { JournalService, SYNC_FRESH_MS, type JournalAi } from "../src/journal/service.ts";
 import { DatabaseSync } from "node:sqlite";
-import { JOURNAL_SCHEMA, SOURCES_FORMAT, WRITER_FORMAT, type JournalDay } from "@cmd/protocol";
+import { JOURNAL_SCHEMA, SOURCES_FORMAT, THREADS_FORMAT, WRITER_FORMAT, type JournalDay } from "@cmd/protocol";
 import { JournalStore, UPGRADES, type NewJournalEvent } from "../src/journal/store.ts";
 import { buildThreads } from "../src/journal/threads.ts";
-import { toDay, type WrittenDay } from "../src/journal/writer.ts";
+import { ENTRY_KINDS, OUTCOMES, SCHEMA, SYSTEM, toDay, type WrittenDay } from "../src/journal/writer.ts";
+import { sessionEvents, turnEvent } from "../src/journal/backfill.ts";
 import { fakeFactory } from "./fake-pty.ts";
 import { syntheticDay } from "./fixtures/journal-day.ts";
 import { rmTemp } from "./tmp.ts";
@@ -522,5 +524,74 @@ describe("journal weeks", () => {
     await j.week("all", from + 3600_000, "force");
     expect(weekCalls()).toBe(2);
     expect(await j.week("all", from + 3600_000, "never")).toMatchObject({ headline: "A week." });
+  });
+});
+
+// Golden hashes of each layer's output on fixed input, paired with the format
+// constant that says which rules made it (docs/24). A rule change changes the
+// hash: raise the constant and record both here; the days written by the old
+// rules are then marked outdated and the recent ones written again.
+describe("journal formats", () => {
+  const GOLDEN = {
+    threads: { format: 2, hash: "9bf831d23b3d9cd6" },
+    writer: { format: 1, hash: "c2c9df1b29d2412f" },
+    sources: { format: 1, hash: "af808a5387bc9f76" },
+  };
+  /** Of JSON with Maps as entries; with `day`, times (in ids too) relative to it, so any time zone hashes the same. */
+  const hash = (v: unknown, day?: number) => {
+    const json = JSON.stringify(v, (_k, x) => (x instanceof Map ? [...x] : x));
+    return createHash("sha256")
+      .update(day === undefined ? json : json.replace(/\b1\d{12}\b/g, (t) => `T${Number(t) - day}`))
+      .digest("hex")
+      .slice(0, 16);
+  };
+  const check = (layer: keyof typeof GOLDEN, constant: string, format: number, got: string) => {
+    const g = GOLDEN[layer];
+    if (g.hash !== got && g.format === format) expect.fail(`the journal's ${layer} changed (golden ${g.hash}, now ${got}): raise ${constant} (docs/24-journal-versions.md), then record ${constant}'s new value and this hash in GOLDEN.${layer}`);
+    expect({ format, hash: got }, `record ${constant} and its hash in GOLDEN.${layer}`).toEqual(g);
+  };
+
+  it("threads and digest", () => {
+    // Beside the fixture day: a branch git recorded no worktree for, and a session working in a folder named like one (a4ed535: not linked).
+    const store = new JournalStore();
+    const SHOP = "/Users/sam/src/shopfront";
+    const at = (hm: string) => new Date(`${DAY}T${hm}:00`).getTime();
+    const extra = (key: string, hm: string, o: Partial<NewJournalEvent> & Pick<NewJournalEvent, "data">): NewJournalEvent => ({ at: at(hm), until: null, kind: o.data.kind, key, workspaceId: "shop", repo: SHOP, cwd: SHOP, thread: null, text: key, ...o });
+    store.recordAll([
+      ...syntheticDay(DAY),
+      extra("x:commit", "16:10", { thread: `branch:${SHOP}#guessed`, data: { kind: "git.commit", hash: "c0ffee", subject: "Guessed", branch: "guessed", worktree: null } }),
+      extra("x:turn", "16:00", { until: at("16:05"), cwd: `${SHOP}-guessed`, thread: "session:s-guess", data: { kind: "agent.turn", agent: "claude", sessionId: "s-guess", agentId: "a-guess", prompt: "make it", auto: false, followUps: [], final: null, outcome: "done", error: null, files: [`${SHOP}-guessed/a.ts`, `${SHOP}-guessed/b.ts`], commands: [], tools: 3 } }),
+    ]);
+    const events = store.events();
+    const threads = buildThreads(events, { from, to });
+    const d = digest(threads, events, { title: "t" });
+    check("threads", "THREADS_FORMAT", THREADS_FORMAT, hash({ threads, text: d.text, refs: d.refs }, from));
+  });
+
+  it("writer: prompt, schema and checks", () => {
+    const { events } = fixture();
+    const threads = buildThreads(events, { from, to });
+    const d = digest(threads, events, { title: "t" });
+    const ref = (id: string) => [...d.refs].find(([, t]) => t === id)![0];
+    const w: WrittenDay = { headline: " Fixed search. ", entries: [{ refs: [ref("session:s-fts"), "Z9"], kind: "fix", title: "Fixed search.", summary: "It rebuilds.", outcome: "nope" }] };
+    const { format: _f, eventsHash: _e, inputHash: _i, ...day } = toDay(w, d, threads, events, { date: from, scope: "all", writtenBy: "m", writtenAt: from });
+    check("writer", "WRITER_FORMAT", WRITER_FORMAT, hash({ SYSTEM, SCHEMA, ENTRY_KINDS, OUTCOMES, day }, from));
+  });
+
+  it("sources: sessions, turns and reflogs as events", () => {
+    const project = (cwd: string) => (cwd.startsWith("/Users/sam/src/shop") ? "/Users/sam/src/shopfront" : null);
+    const at = 1791280000000;
+    const sessions = sessionEvents(
+      [
+        { key: "claude:s1", id: "s1", agent: "claude", path: null, env: null, cwd: "/Users/sam/src/shopfront", branch: "main", title: " Fix search ", first_prompt: "the search  index\nis corrupt", started: at, updated: at + 60_000, messages: 4, project_id: null, name: null, name_by: null, named_at: null },
+        { key: "claude:s2", id: "s2", agent: "claude", path: null, env: null, cwd: "/private/tmp/x", branch: null, title: null, first_prompt: "x".repeat(700), started: at, updated: null, messages: 1, project_id: null, name: null, name_by: null, named_at: null },
+        { key: "codex:s3", id: "s3", agent: "codex", path: null, env: null, cwd: null, branch: null, title: null, first_prompt: null, started: null, updated: null, messages: 0, project_id: null, name: null, name_by: null, named_at: null },
+      ] as SessionRow[],
+      project,
+    );
+    const turn = { agentId: "a1", agentKind: "claude", index: 2, sessionId: "s1", startedAt: at, endedAt: at + 5000, prompt: "fix\nit", auto: false, followUps: ["and test it"], final: "done", outcome: "done", error: null, files: [{ path: "/Users/sam/src/shopfront/a.ts" }], commands: ["pnpm test"], tools: [{ name: "Edit", count: 2, failed: 0 }] } as unknown as AgentTurn;
+    const turns = [turnEvent(turn, "/Users/sam/src/shopfront-fts", "live", project), turnEvent({ ...turn, sessionId: null, prompt: null, endedAt: null }, null, "backfill", project)];
+    const reflog = parseReflog(`${"0".repeat(40)} ${"a".repeat(40)} Sam <s@x> 1791280074 +0200\tcommit (initial): First\n${"a".repeat(40)} ${"b".repeat(40)} Sam <s@x> 1791280099 -0700\tmerge fts: Fast-forward\n`);
+    check("sources", "SOURCES_FORMAT", SOURCES_FORMAT, hash({ sessions, turns, reflog }));
   });
 });

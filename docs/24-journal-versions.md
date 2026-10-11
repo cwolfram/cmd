@@ -25,6 +25,12 @@ All in `packages/protocol/src/journal.ts`:
 | `THREADS_FORMAT` | Threading rules and the digest's text (`threads.ts`, `digest.ts`) | A rule or the digest changes | Nothing to migrate (computed on read); days written by older rules count as outdated |
 | `WRITER_FORMAT` | The prompt, the answer's schema and its checks (`writer.ts`) | Any of those change | Days written by older rules count as outdated |
 
+`journal.test.ts` ("journal formats") holds each layer's output on fixed input as a hash beside its constant, and fails when the output changes while the constant didn't, naming the constant to raise.
+
+What each raise was for:
+
+- `THREADS_FORMAT` 2 (2026-10-11): a branch's worktree is only the one git recorded, no longer guessed from a sibling folder named `<repo>-<branch>` (a4ed535, docs/35), so fewer sessions link to branches.
+
 ## What data carries
 
 - **Every event row**: `schema` (the `JOURNAL_SCHEMA` that wrote it) and `cmd` (the build: its version, or `source+<build>` from a checkout), next to `source` (live or backfill).
@@ -63,7 +69,7 @@ The runbook for the next one.
    - how a turn, session or commit becomes an event → `SOURCES_FORMAT`;
    - the shape of stored event data → `JOURNAL_SCHEMA` plus an entry in `UPGRADES` (or readers that take both shapes, for live kinds: commands, pages, files, notes can't be read again).
    A change can raise several.
-3. **Tests**: `packages/core/test/journal.test.ts` pins threading on the fixture day (`test/fixtures/journal-day.ts`) and the versioning rules. Change the expectations a rule change meant to change; add the messy case that motivated the revision to the fixture.
+3. **Tests**: `packages/core/test/journal.test.ts` pins threading on the fixture day (`test/fixtures/journal-day.ts`) and the versioning rules, and its golden hashes fail until the raised constant and the new hash are recorded together (`GOLDEN`); add a line for the raise under "The versions". Change the expectations a rule change meant to change; add the messy case that motivated the revision to the fixture.
 4. **Ship.** Today and yesterday are written with the new rules the first time they're opened; older days stay. `cmd journal --write --days N` rewrites a range on purpose; `cmd journal history --day D` shows a day now and as each earlier version wrote it.
 5. **Write it down**: what changed and why in [23-journal.md](23-journal.md), and the version numbers in the status line there.
 
