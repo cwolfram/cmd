@@ -14,6 +14,7 @@ import { buildContext } from "../ai/context.ts";
 import { matchAction } from "./history.ts";
 import type { CompleteResult, ObjectRequest } from "../ai/backends.ts";
 import type { CallOptions } from "../ai/service.ts";
+import { checkoutOf } from "../lib/checkout.ts";
 
 export interface Described {
   /** Action id → what the model said about it. */
@@ -111,12 +112,22 @@ const SCHEMA = {
 
 type Answer = { actions: { id: string; description: string; kind: string; long: boolean; risky: boolean }[]; primary: string | null; suggested: Described["suggested"] };
 
-/** What the model is asked about: the actions it would see, and the docs. Changes → a new call. */
+/**
+ * What the pins and the model's descriptions of a folder are kept under: the
+ * repository's shared git folder and the folder's path in its checkout, so every
+ * worktree of a repository shares them; the folder itself outside git.
+ */
+export function folderKey(root: string): string {
+  const c = checkoutOf(root);
+  return c ? `${c.common}:${path.relative(c.top, root) || "."}` : root;
+}
+
+/** What the model is asked about: the actions it would see, and the docs (and the folder's name, all it sees of where). Changes → a new call. */
 export function inputOf(root: string, actions: WorkspaceAction[]): { lines: string; docs: string; hash: string } {
   const shown = actions.filter((a) => !a.hidden).slice(0, 80);
   const lines = shown.map((a) => `- id: ${a.id}\n  name: ${a.name}${a.package ? `\n  package: ${a.package}` : ""}\n  command: ${a.command}${a.script ? `\n  runs: ${a.script.slice(0, 300)}` : ""}${a.description ? `\n  author says: ${a.description}` : ""}\n  from: ${a.source.file}\n  rules guess: ${a.kind}${a.long ? ", long" : ""}${a.risky ? ", risky" : ""}`).join("\n");
   const docs = docCommands(root);
-  return { lines, docs, hash: createHash("sha256").update(`v2\0${root}\0${lines}\0${docs}`).digest("hex").slice(0, 24) };
+  return { lines, docs, hash: createHash("sha256").update(`v3\0${path.basename(root)}\0${lines}\0${docs}`).digest("hex").slice(0, 24) };
 }
 
 export async function describe(ai: DescribeAi, root: string, actions: WorkspaceAction[], input = inputOf(root, actions)): Promise<Described> {
@@ -151,16 +162,20 @@ export async function describe(ai: DescribeAi, root: string, actions: WorkspaceA
   return out;
 }
 
-/** What the model said per folder, so a restart or a second widget costs nothing. */
+/** Rows of the describe cache unused this long are dropped (removed worktrees, folders not opened again). */
+export const DESCRIBED_KEEP_MS = 90 * 86400_000;
+
+/** What the model said per folder (by folderKey), so a restart, a second widget or another worktree costs nothing. */
 export class DescribedCache {
   #db: DatabaseSync | null;
   constructor(db: DatabaseSync | null) {
     this.#db = db;
     db?.exec(`CREATE TABLE IF NOT EXISTS workspace_actions_described (root TEXT PRIMARY KEY, hash TEXT NOT NULL, json TEXT NOT NULL, at INTEGER NOT NULL)`);
   }
-  get(root: string): { hash: string; described: Described } | null {
-    const row = this.#db?.prepare(`SELECT hash, json FROM workspace_actions_described WHERE root = ?`).get(root) as { hash: string; json: string } | undefined;
+  get(key: string): { hash: string; described: Described } | null {
+    const row = this.#db?.prepare(`SELECT hash, json FROM workspace_actions_described WHERE root = ?`).get(key) as { hash: string; json: string } | undefined;
     if (!row) return null;
+    this.#db?.prepare(`UPDATE workspace_actions_described SET at = ? WHERE root = ?`).run(Date.now(), key);
     try {
       return { hash: row.hash, described: JSON.parse(row.json) as Described };
     } catch {
@@ -171,8 +186,12 @@ export class DescribedCache {
   forget(root: string): number {
     return Number(this.#db?.prepare(`DELETE FROM workspace_actions_described WHERE root = ? OR substr(root, 1, ?) = ?`).run(root, root.length + 1, `${root}/`).changes ?? 0);
   }
-  set(root: string, hash: string, d: Described): void {
-    this.#db?.prepare(`INSERT OR REPLACE INTO workspace_actions_described (root, hash, json, at) VALUES (?, ?, ?, ?)`).run(root, hash, JSON.stringify(d), Date.now());
+  set(key: string, hash: string, d: Described): void {
+    this.#db?.prepare(`INSERT OR REPLACE INTO workspace_actions_described (root, hash, json, at) VALUES (?, ?, ?, ?)`).run(key, hash, JSON.stringify(d), Date.now());
+  }
+  /** Drops rows unused since `before`; returns how many. */
+  sweep(before: number): number {
+    return Number(this.#db?.prepare(`DELETE FROM workspace_actions_described WHERE at < ?`).run(before).changes ?? 0);
   }
 }
 

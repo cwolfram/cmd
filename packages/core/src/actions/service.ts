@@ -15,7 +15,7 @@ import { scan, type Scan } from "./catalog.ts";
 import { checkoutOf, placeOf, worktreesOf } from "../lib/checkout.ts";
 import { classify } from "./classify.ts";
 import { rank, type Ran, type Ranked } from "./history.ts";
-import { applyDescribed, describe, DescribedCache, inputOf, type DescribeAi, type Described } from "./describe.ts";
+import { applyDescribed, describe, DescribedCache, DESCRIBED_KEEP_MS, folderKey, inputOf, type DescribeAi, type Described } from "./describe.ts";
 
 const log = logger("actions");
 
@@ -215,13 +215,13 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
 
   /** Pin (or unpin) an action of this folder; a command from history or the README is saved as one. */
   pin(root: string, actionId: string, pinned: boolean): void {
-    if (!pinned) this.#o.db?.prepare(`DELETE FROM workspace_actions_pins WHERE root = ? AND id = ?`).run(root, actionId);
+    if (!pinned) this.#o.db?.prepare(`DELETE FROM workspace_actions_pins WHERE root = ? AND id = ?`).run(this.#key(root), actionId);
     else {
       const list = this.list(root);
       const a = [...list.actions, ...list.history, ...list.suggested].find((x) => x.id === actionId);
       if (!a) throw new Error(`no action ${actionId} in ${root}`);
       const { use: _use, pinned: _p, ...keep } = a;
-      this.#o.db?.prepare(`INSERT OR REPLACE INTO workspace_actions_pins (root, id, json, at) VALUES (?, ?, ?, ?)`).run(root, actionId, JSON.stringify(keep), Date.now());
+      this.#o.db?.prepare(`INSERT OR REPLACE INTO workspace_actions_pins (root, id, json, at) VALUES (?, ?, ?, ?)`).run(this.#key(root), actionId, JSON.stringify(keep), Date.now());
     }
     this.emit("changed", root);
   }
@@ -268,7 +268,7 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
     const s = scan(root, null);
     const ms = performance.now() - started;
     if (ms > 50) log.warn(`reading ${root} took ${ms.toFixed(0)} ms`);
-    const cached = this.#cache.get(root);
+    const cached = this.#cache.get(this.#key(root));
     c = { root, scan: s, watched: [], usedAt: Date.now(), described: cached ? { hash: cached.hash, d: cached.described } : null, describing: false };
     this.#catalogs.set(root, c);
     this.#rewatch(c, readAt);
@@ -345,7 +345,7 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
     try {
       const d = await describe(ai, c.root, c.scan.actions, input);
       c.described = { hash: input.hash, d };
-      this.#cache.set(c.root, input.hash, d);
+      this.#cache.set(this.#key(c.root), input.hash, d);
     } catch (e) {
       log.warn(`describing ${c.root}: ${(e as Error).message}`);
     } finally {
@@ -356,8 +356,20 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
     if (this.#catalogs.get(c.root) === c && inputOf(c.root, c.scan.actions).hash !== input.hash) this.#describeSoon(c);
   }
 
+  /** Pins and descriptions are kept by folderKey (shared by a repository's worktrees); a folder's key, worked out once. */
+  #keys = new Map<string, string>();
+  #key(root: string): string {
+    let k = this.#keys.get(root);
+    if (k) return k;
+    k = folderKey(root);
+    this.#keys.set(root, k);
+    // Pins from before they were kept by repository, under the folder itself: moved over once.
+    if (k !== root) this.#o.db?.prepare(`UPDATE OR IGNORE workspace_actions_pins SET root = ? WHERE root = ?`).run(k, root);
+    return k;
+  }
+
   #pins(root: string): WorkspaceAction[] {
-    const rows = (this.#o.db?.prepare(`SELECT json FROM workspace_actions_pins WHERE root = ? ORDER BY at`).all(root) ?? []) as { json: string }[];
+    const rows = (this.#o.db?.prepare(`SELECT json FROM workspace_actions_pins WHERE root = ? ORDER BY at`).all(this.#key(root)) ?? []) as { json: string }[];
     const out: WorkspaceAction[] = [];
     for (const r of rows) {
       try {
@@ -406,5 +418,9 @@ export class ActionsService extends EventEmitter<{ changed: [root: string]; url:
       for (const p of c.watched) this.#watch.unwatch(p);
       this.#catalogs.delete(c.root);
     }
+    // What the model said about folders nobody opened in 90 days (removed worktrees): once an hour.
+    if (now - this.#swept > 3600_000) (this.#swept = now), this.#cache.sweep(now - DESCRIBED_KEEP_MS);
   }
+
+  #swept = 0;
 }

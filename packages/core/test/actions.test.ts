@@ -11,7 +11,8 @@ import type { WorkspaceAction } from "@cmd/protocol";
 import { scan } from "../src/actions/catalog.ts";
 import { classify } from "../src/actions/classify.ts";
 import { matchAction, rank, scriptOf } from "../src/actions/history.ts";
-import { applyDescribed, describe as describeActions, docCommands, type Described } from "../src/actions/describe.ts";
+import { applyDescribed, describe as describeActions, DescribedCache, DESCRIBED_KEEP_MS, docCommands, inputOf, type Described } from "../src/actions/describe.ts";
+import { DatabaseSync } from "node:sqlite";
 import { packageManager, workspacePackages } from "../src/actions/sources.ts";
 import { findUrl } from "../src/actions/service.ts";
 import { Core } from "../src/kernel/core.ts";
@@ -293,6 +294,23 @@ describe("describing", () => {
   });
 });
 
+describe("the describe cache", () => {
+  it("hashes a folder by its name, not where it is, and sweeps rows unused for 90 days", () => {
+    const a = path.join(dir, "one", "proj");
+    const b = path.join(dir, "two", "proj");
+    for (const r of [a, b]) fs.mkdirSync(r, { recursive: true });
+    const actions = [{ id: "npm:package.json:dev", name: "dev", command: "npm run dev", kind: "dev", source: { kind: "npm", file: "package.json" } }] as unknown as WorkspaceAction[];
+    expect(inputOf(a, actions).hash).toBe(inputOf(b, actions).hash);
+    const db = new DatabaseSync(":memory:");
+    const cache = new DescribedCache(db);
+    cache.set("old", "h", { actions: {}, primary: null, suggested: [] });
+    cache.set("new", "h", { actions: {}, primary: null, suggested: [] });
+    db.prepare(`UPDATE workspace_actions_described SET at = ? WHERE root = 'old'`).run(Date.now() - DESCRIBED_KEEP_MS - 1);
+    expect(cache.sweep(Date.now() - DESCRIBED_KEEP_MS)).toBe(1);
+    expect([cache.get("old"), !!cache.get("new")]).toEqual([null, true]);
+  });
+});
+
 describe("service", () => {
   let core: Core;
   let ptys: FakePty[];
@@ -384,6 +402,30 @@ describe("service", () => {
     ]);
     expect(at(main).runs).toEqual([]);
     expect(at(main).elsewhere).toMatchObject([{ actionId: "npm:package.json:dev", root: wt, branch: "feature", url: "http://localhost:5174/", endedAt: null }]);
+  });
+
+  it("shares pins and the model's words between worktrees of one repository", async () => {
+    // Worktrees named like their repository (all the model sees of where they are), in other folders.
+    const main = path.join(dir, "a", "proj");
+    const wt = path.join(dir, "b", "proj");
+    const pkg = JSON.stringify({ scripts: { dev: "vite" } });
+    fs.mkdirSync(path.join(main, ".git", "worktrees", "wt"), { recursive: true });
+    fs.mkdirSync(wt, { recursive: true });
+    fs.writeFileSync(path.join(main, ".git", "HEAD"), "ref: refs/heads/master\n");
+    fs.writeFileSync(path.join(main, ".git", "worktrees", "wt", "HEAD"), "ref: refs/heads/feature\n");
+    fs.writeFileSync(path.join(main, ".git", "worktrees", "wt", "commondir"), "../..\n");
+    fs.writeFileSync(path.join(main, ".git", "worktrees", "wt", "gitdir"), path.join(wt, ".git") + "\n");
+    fs.writeFileSync(path.join(wt, ".git"), `gitdir: ${path.join(main, ".git", "worktrees", "wt")}\n`);
+    fs.writeFileSync(path.join(main, "package.json"), pkg);
+    fs.writeFileSync(path.join(wt, "package.json"), pkg);
+    vi.spyOn(core.ai, "status").mockReturnValue({ ...core.ai.status(), ready: true });
+    const object = vi.spyOn(core.ai, "object").mockResolvedValue({ value: { actions: [{ id: "npm:package.json:dev", description: "Start the dev server", kind: "dev", long: true, risky: false }], primary: null, suggested: [] } as never, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, model: "fast" });
+    const at = (root: string) => core.actions.list(root);
+    expect(at(main).actions[0]!.description).toBeUndefined();
+    await vi.waitFor(() => expect(at(main).actions[0]!.description).toBe("Start the dev server"), { timeout: SYSTEM_TIMEOUT / 2 });
+    core.actions.pin(main, "npm:package.json:dev", true);
+    expect(at(wt).actions[0]!.pinned).toBe(true);
+    expect(object).toHaveBeenCalledTimes(1);
   });
 
   it("pins an action to the top and keeps a pinned command from history", () => {
