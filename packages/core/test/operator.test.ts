@@ -20,9 +20,9 @@ import { fakeFactory, type FakePty } from "./fake-pty.ts";
 import { rmTemp } from "./tmp.ts";
 
 describe("what the Operator may call", () => {
-  it("never its own rules, secrets, keys or file writes; typing and stopping agents only with approval", () => {
-    for (const m of ["settings.set", "settings.reset", "secrets.set", "ai.connect", "fs.write", "data.forget", "remote.pair", "operator.send"] as const) expect(OPERATOR_ACCESS[m]).toBe("never");
-    expect(Object.entries(OPERATOR_ACCESS).filter(([, a]) => a === "confirm").map(([m]) => m).sort()).toEqual(["agent.kill", "agent.send", "pane.write"]);
+  it("never its own rules, secrets or keys; typing, writing files and stopping agents only with approval", () => {
+    for (const m of ["settings.set", "settings.reset", "secrets.set", "ai.connect", "data.forget", "remote.pair", "operator.send"] as const) expect(OPERATOR_ACCESS[m]).toBe("never");
+    expect(Object.entries(OPERATOR_ACCESS).filter(([, a]) => a === "confirm").map(([m]) => m).sort()).toEqual(["agent.kill", "agent.send", "fs.write", "pane.write"]);
     expect(OPERATOR_ACCESS["actions.run"]).toBe("act");
   });
 
@@ -184,7 +184,7 @@ describe("the service", () => {
     });
     op.send(ws.id, "list the files");
     await vi.waitFor(() => expect(tool(op.get(ws.id).items, "type")?.state).toBe("waiting"));
-    expect(tool(op.get(ws.id).items, "type")!.ask).toMatch(/^Type in w\d+: ls -la$/);
+    expect(tool(op.get(ws.id).items, "type")).toMatchObject({ ask: expect.stringMatching(/^Type in the terminal in /), exact: "ls -la  ⏎" });
     expect(ptys.at(-1)!.written.join("")).not.toContain("ls -la");
     op.answer(ws.id, "t1", true);
     await idle();
@@ -210,6 +210,19 @@ describe("the service", () => {
     expect(op.get(ws.id).items.at(-1)).toMatchObject({ kind: "error" });
   });
 
+  it("presses keys to answer a prompt on a terminal's screen, one at a time", async () => {
+    turns.push(async (r) => {
+      const ref = /(w\d+)/.exec((await exec(r, "open", { kind: "terminal" })).output)![1]!;
+      await exec(r, "type", { ref, keys: ["down", "enter"] }, "k1");
+    });
+    op.send(ws.id, "trust the folder");
+    await vi.waitFor(() => expect(tool(op.get(ws.id).items, "type")?.state).toBe("waiting"));
+    expect(tool(op.get(ws.id).items, "type")).toMatchObject({ ask: expect.stringMatching(/^Press keys in the terminal in /), exact: "↓ ⏎" });
+    op.answer(ws.id, "k1", true);
+    await idle();
+    expect(ptys.at(-1)!.written.slice(-2)).toEqual(["\x1b[B", "\r"]);
+  });
+
   it("refuses a denied line without asking", async () => {
     let out = "";
     turns.push(async (r) => {
@@ -230,7 +243,7 @@ describe("the service", () => {
     turns.push(async (r) => void (await exec(r, "run", { name: "deploy" }, "r1")));
     op.send(ws.id, "deploy");
     await vi.waitFor(() => expect(tool(op.get(ws.id).items, "run")?.state).toBe("waiting"));
-    expect(tool(op.get(ws.id).items, "run")!.ask).toBe('Run "deploy": npm run deploy');
+    expect(tool(op.get(ws.id).items, "run")).toMatchObject({ ask: "Run “deploy”, which is risky", exact: "npm run deploy" });
     op.answer(ws.id, "r1", true);
     await idle();
     expect(tool(op.get(ws.id).items, "run")!.output).toMatch(/^Started "deploy"/);
@@ -297,6 +310,48 @@ describe("the service", () => {
     expect(String(sent.at(-1)!.content)).toContain("third");
   });
 
+  it("edits a file in an editor once allowed, showing the diff; refuses what it can't find once", async () => {
+    fs.writeFileSync(path.join(dir, "config.toml"), "port = 3000\nhost = \"localhost\"\n");
+    const outs: string[] = [];
+    turns.push(async (r) => {
+      outs.push((await exec(r, "edit", { path: "config.toml", find: "o", replace: "0" })).output);
+      outs.push((await exec(r, "edit", { path: "config.toml", find: "port = 3000", replace: "port = 4000" }, "e1")).output);
+      outs.push((await exec(r, "edit", { path: "TODO.md", content: "- ship it\n" }, "e2")).output);
+      outs.push((await exec(r, "edit", { path: ".git/config", content: "x" })).output);
+      outs.push((await exec(r, "edit", { path: "notes/a.md", content: "x" })).output);
+    });
+    op.send(ws.id, "use port 4000");
+    await vi.waitFor(() => expect(op.get(ws.id).items.some((i) => i.id === "e1" && i.kind === "tool" && i.state === "waiting")).toBe(true));
+    expect(op.get(ws.id).items.find((i) => i.id === "e1")).toMatchObject({ ask: "Edit config.toml", exact: "- port = 3000\n+ port = 4000\n  host = \"localhost\"\n  " });
+    expect(fs.readFileSync(path.join(dir, "config.toml"), "utf8")).toContain("3000");
+    op.answer(ws.id, "e1", true);
+    await vi.waitFor(() => expect(op.get(ws.id).items.some((i) => i.id === "e2" && i.kind === "tool" && i.state === "waiting")).toBe(true));
+    expect(op.get(ws.id).items.find((i) => i.id === "e2")).toMatchObject({ ask: "Create TODO.md" });
+    op.answer(ws.id, "e2", true);
+    await idle();
+    expect(outs[0]).toMatch(/times: give more of the surrounding text/);
+    expect(outs[1]).toMatch(/^Changed config.toml, shown in w\d+/);
+    expect(fs.readFileSync(path.join(dir, "config.toml"), "utf8")).toBe("port = 4000\nhost = \"localhost\"\n");
+    expect(fs.readFileSync(path.join(dir, "TODO.md"), "utf8")).toBe("- ship it\n");
+    expect(outs[3]).toMatch(/isn't a file to edit/);
+    expect(outs[4]).toMatch(/the folder notes doesn't exist/);
+    expect(core.windows.others().filter((w) => w.kind === "text").map((w) => path.basename(String(w.state.path))).sort()).toEqual(["TODO.md", "config.toml"]);
+  });
+
+  it("never closes an Operator window, by any tool", async () => {
+    const self = core.windows.open("operator", {}, ws);
+    const outs: string[] = [];
+    turns.push(async (r) => {
+      const board = (await exec(r, "look", {})).output;
+      const ref = /(w\d+) operator/.exec(board)![1]!;
+      outs.push((await exec(r, "close", { refs: [ref] })).output);
+    });
+    op.send(ws.id, "close everything");
+    await idle();
+    expect(outs[0]).toMatch(/can't close an Operator window/);
+    expect(core.windows.others().some((w) => w.id === self.id)).toBe(true);
+  });
+
   it("records each turn and its tool calls in the event log, linked, with what the person allowed", async () => {
     turns.push(async (r) => {
       r.onStep();
@@ -313,7 +368,7 @@ describe("the service", () => {
     expect(turn!.until).not.toBeNull();
     const tools = core.data.query({ types: ["operator.tool"], parentId: turn!.id, by: "time", order: "asc" });
     expect(tools.map((t) => [t.text, (t.data as { state: string }).state])).toEqual([["doing open", "done"], ["doing type", "denied"]]);
-    expect(tools[1]).toMatchObject({ data: { allowed: false, reason: "use the files window", ask: expect.stringMatching(/^Type in w\d+: ls$/) } });
+    expect(tools[1]).toMatchObject({ data: { allowed: false, reason: "use the files window", ask: expect.stringMatching(/^Type in the terminal/), exact: "ls  ⏎" } });
     expect(tools[1]!.windowId).toBeTruthy();
   });
 

@@ -29,8 +29,10 @@ export type OperatorItem =
       target: WindowId | null;
       state: OperatorToolState;
       input: Record<string, unknown>;
-      /** What it asks you to allow, exactly (the text to type and where). */
+      /** What it asks you to allow, in words ("Type in the terminal “tests”"). */
       ask?: string;
+      /** Exactly what would happen: the text to type, a file's diff. */
+      exact?: string;
       /** The result as the model got it, or why it failed or was denied. */
       output?: string;
       ms?: number;

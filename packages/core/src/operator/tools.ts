@@ -28,15 +28,21 @@ export interface OperatorTool {
   acts: boolean;
   /** The window it is about, for the card and the board's mark. */
   target?(input: Input, b: Bench): WindowId | null;
-  /** What to ask the person before running it (the exact text and where), or null to run at once. Throws to refuse outright. */
-  confirm?(input: Input, b: Bench): Promise<string | null>;
+  /** What to ask the person before running it, or null to run at once. Throws to refuse outright. */
+  confirm?(input: Input, b: Bench): Promise<Ask | null>;
   run(input: Input, b: Bench): Promise<string>;
 }
 
 type Input = Record<string, unknown>;
 
-const why = { type: "string", description: "One short line for the person watching, saying what this step does and why, e.g. \"Running the tests to see what fails\"." };
-const ref = { type: "string", description: "A window's ref from look: w1, w2…" };
+/** An approval: in words (`title`, naming windows as people do), and exactly what would happen (`exact`: the text, a diff). */
+export interface Ask {
+  title: string;
+  exact?: string;
+}
+
+const why = { type: "string", description: "One short line for the person watching, saying what this step does and why, in their words, e.g. \"Running the tests to see what fails\". Name windows by what they are, never by ref." };
+const ref = { type: "string", description: "A window's ref from look: w1, w2… (for tools only; never write refs to the person)." };
 const schema = (props: Record<string, unknown>, required: string[] = []) => ({ type: "object", properties: { why, ...props }, required: ["why", ...required], additionalProperties: false });
 
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
@@ -56,6 +62,11 @@ async function windowOf(b: Bench, r: unknown): Promise<AppWindow> {
   return w;
 }
 
+const KIND_NAMES: Record<string, string> = { text: "editor", files: "file browser", markdown: "Markdown window", json: "JSON viewer", diff: "Live Diff", actions: "Workspace Actions" };
+
+/** A window as people say it: the terminal “tests”, the editor “README.md”. */
+export const windowName = (w: AppWindow) => `the ${KIND_NAMES[w.kind] ?? w.kind} “${w.title}”`;
+
 async function agentIn(b: Bench, w: AppWindow): Promise<Agent | null> {
   if (w.kind !== "terminal") return null;
   const pane = (await b.call("pane.list", {})).find((p) => p.id === w.id);
@@ -70,6 +81,9 @@ function readablePath(b: Bench, p: string): string {
   if (isDeniedPath(abs, remotePrivatePaths())) throw new Error(`${p} stays private`);
   return abs;
 }
+
+/** How long starting an agent waits for it to get going (or stop at a question). */
+const START_WAIT_MS = 15_000;
 
 const fmtTime = (at: number) => new Date(at).toTimeString().slice(0, 5);
 
@@ -150,7 +164,7 @@ const runTool: OperatorTool = {
   async confirm(i, b) {
     if (i.list) return null;
     const { action } = await actionByName(b, String(i.name ?? ""));
-    return action.risky ? `Run "${action.name}": ${action.command}` : null;
+    return action.risky ? { title: `Run “${action.name}”, which is risky`, exact: action.command } : null;
   },
   async run(i, b) {
     if (i.list) {
@@ -171,8 +185,8 @@ const agentTool: OperatorTool = {
     name: "agent",
     explores: false,
     description:
-      "Start a coding agent with a task, or stop one. Agents are how files get changed: you never edit files yourself. `start` opens a terminal with the agent (claude by default) working on `prompt` in the workspace's folder; write the prompt as a complete brief (what, where, how to check it's done). `stop` asks the person first. Use wait to know when an agent is done or needs input, read to see what it said.",
-    schema: schema({ do: { type: "string", enum: ["start", "stop"] }, prompt: { type: "string" }, kind: { type: "string", enum: ["claude", "codex"] }, ref }, ["do"]),
+      "Start a coding agent with a task, or stop one. Agents make the larger changes: anything beyond a small, clear edit (edit), or that needs code run and checked. `start` opens a terminal with the agent (claude by default) working on `prompt` in the workspace's folder; write the prompt as a complete brief (what, where, how to check it's done). `stop` asks the person first. Use wait to know when an agent is done or needs input, read to see what it said.",
+    schema: schema({ do: { type: "string", enum: ["start", "stop"] }, prompt: { type: "string" }, kind: { type: "string", enum: ["claude", "codex"] }, folder: { type: "string", description: "Where it works, relative to the workspace's folder (default: the workspace's folder)." }, ref }, ["do"]),
   },
   target: (i, b) => (i.do === "stop" && i.ref ? b.refs.id(i.ref) : null),
   async confirm(i, b) {
@@ -180,7 +194,7 @@ const agentTool: OperatorTool = {
     const w = await windowOf(b, i.ref);
     const a = await agentIn(b, w);
     if (!a) throw new Error(`${String(i.ref)} has no agent`);
-    return `Stop ${agentLine(a)}`;
+    return { title: `Stop ${a.kind}${a.name ? ` “${a.name}”` : ""} in ${windowName(w)}`, exact: agentLine(a) };
   },
   async run(i, b) {
     if (i.do === "stop") {
@@ -191,8 +205,15 @@ const agentTool: OperatorTool = {
     }
     const prompt = str(i.prompt)?.trim();
     if (!prompt) throw new Error("start needs a prompt");
-    const a = await b.call("agent.spawn", { kind: str(i.kind) ?? "claude", prompt, workspaceId: b.workspace().id, cwd: b.workspace().root, parentId: null });
-    return a.paneId ? `Started ${a.kind} in ${b.refs.of(a.paneId)}.` : `Started ${a.kind}.`;
+    const cwd = str(i.folder) ? readablePath(b, str(i.folder)!) : b.workspace().root;
+    const a = await b.call("agent.spawn", { kind: str(i.kind) ?? "claude", prompt, workspaceId: b.workspace().id, cwd, parentId: null });
+    if (!a.paneId) return `Started ${a.kind}.`;
+    // Not "started" until it is past starting: it may stop at a question first (trusting the folder, a login).
+    const r = await b.call("agent.wait", { agentIds: [a.id], until: ["working", "needs_input", "idle", "done", "failed", "exited"], timeoutMs: START_WAIT_MS }).catch(() => null);
+    const now = r?.agents[0] ?? a;
+    const { text } = await b.call("pane.read", { paneId: a.paneId, lines: 20 }).catch(() => ({ text: "" }));
+    const state = now.state === "working" ? "is working on it" : now.state === "starting" ? "is still starting" : `is ${now.state.replace("_", " ")}: it may be waiting for an answer on its screen before it starts`;
+    return `Started ${a.kind} in ${b.refs.of(a.paneId)} (in ${path.relative(b.workspace().root, cwd) || "the workspace's folder"}); it ${state}.\n` + untrusted(`${b.refs.of(a.paneId)} terminal`, `Its screen now:\n${text.trimEnd()}`);
   },
 };
 
@@ -227,36 +248,163 @@ const waitTool: OperatorTool = {
   },
 };
 
+/** Keys `type` can press, as the terminal gets them, and as the approval shows them. */
+const KEYS: Record<string, [string, string]> = {
+  enter: ["\r", "⏎"],
+  escape: ["\x1b", "Esc"],
+  tab: ["\t", "⇥"],
+  backspace: ["\x7f", "⌫"],
+  space: [" ", "Space"],
+  up: ["\x1b[A", "↑"],
+  down: ["\x1b[B", "↓"],
+  right: ["\x1b[C", "→"],
+  left: ["\x1b[D", "←"],
+  "ctrl-c": ["\x03", "⌃C"],
+  "ctrl-d": ["\x04", "⌃D"],
+};
+
+const KEY_GAP_MS = 80;
+
+const keysOf = (v: unknown): string[] => {
+  const keys = Array.isArray(v) ? v.map(String) : [];
+  const bad = keys.filter((k) => !KEYS[k]);
+  if (bad.length) throw new Error(`no key ${bad.join(", ")}: use ${Object.keys(KEYS).join(", ")}`);
+  return keys;
+};
+
+/** A terminal as people say it: the agent in it, else the folder it's in. */
+async function terminalName(b: Bench, w: AppWindow, agent: Agent | null): Promise<string> {
+  if (agent) return `${agent.kind === "claude" ? "Claude" : agent.kind === "codex" ? "Codex" : agent.kind}${agent.name ? ` “${agent.name}”` : ""}`;
+  const pane = (await b.call("pane.list", {})).find((p) => p.id === w.id);
+  const dir = pane ? path.relative(b.workspace().root, pane.cwd) || path.basename(pane.cwd) : null;
+  return dir ? `the terminal in ${dir}` : windowName(w);
+}
+
 const typeTool: OperatorTool = {
   acts: true,
   spec: {
     name: "type",
     explores: false,
     description:
-      "Type text into a terminal (a command) or into an agent (a message), and press return unless `submit` is false. Always asks the person first, showing exactly what and where. The fallback: use run for the project's own commands and agent to start work. Some commands are refused outright (root, piping downloads into a shell, credentials).",
-    schema: schema({ ref, text: { type: "string" }, submit: { type: "boolean" } }, ["ref", "text"]),
+      "Type into a terminal (a command) or into an agent (a message), and press return unless `submit` is false; or press `keys` (arrows, enter, escape, tab, ctrl-c…) to answer a menu or prompt on its screen, such as a yes/no or a list to pick from (down then enter picks the second item). Always asks the person first, showing exactly what and where. The fallback: use run for the project's own commands and agent to start work. Some commands are refused outright (root, piping downloads into a shell, credentials).",
+    schema: schema({ ref, text: { type: "string" }, submit: { type: "boolean" }, keys: { type: "array", items: { type: "string", enum: Object.keys(KEYS) }, description: "Keys pressed after the text, in order." } }, ["ref"]),
   },
   target: (i, b) => b.refs.id(i.ref),
   async confirm(i, b) {
     const w = await windowOf(b, i.ref);
-    if (w.id === b.self) throw new Error("that is you");
+    if (w.kind === "operator") throw new Error("that is an Operator window");
     if (w.kind !== "terminal") throw new Error(`${String(i.ref)} is a ${w.kind}, not a terminal`);
-    const text = String(i.text ?? "");
+    const text = str(i.text) ?? "";
+    const keys = keysOf(i.keys);
+    if (!text && !keys.length) throw new Error("give text or keys");
     const agent = await agentIn(b, w);
-    if (!agent) {
+    if (!agent && text) {
       const why = denied(text);
       if (why) throw new Error(`refused: it ${why}. Ask the person to do it themselves if it's needed.`);
     }
-    return `${agent ? `Send to ${agent.kind}${agent.name ? ` "${agent.name}"` : ""}` : "Type in"} ${String(i.ref)}: ${text}`;
+    const where = await terminalName(b, w, agent);
+    const pressed = keys.map((k) => KEYS[k]![1]).join(" ");
+    const exact = [text, keys.length ? pressed : text && i.submit !== false ? "⏎" : ""].filter(Boolean).join("  ");
+    return { title: keys.length && !text ? `Press keys in ${where}` : agent ? `Send to ${where}` : `Type in ${where}`, exact };
   },
   async run(i, b) {
     const w = await windowOf(b, i.ref);
     const agent = await agentIn(b, w);
-    const text = String(i.text ?? "");
-    const submit = i.submit !== false;
-    if (agent) await b.call("agent.send", { agentId: agent.id, text, submit });
-    else await b.call("pane.write", { paneId: w.id, data: submit ? text + "\r" : text });
-    return `Typed into ${String(i.ref)}.${agent ? "" : " Use wait (prompt) to know when the command ends."}`;
+    const text = str(i.text) ?? "";
+    const keys = keysOf(i.keys);
+    // Keys go to the terminal as they are, an agent's too: they answer what its screen shows.
+    if (text && agent && !keys.length) await b.call("agent.send", { agentId: agent.id, text, submit: i.submit !== false });
+    else {
+      const submit = i.submit !== false && !keys.length;
+      if (text || submit) await b.call("pane.write", { paneId: w.id, data: text + (submit ? "\r" : "") });
+      // One at a time: a program reading its input in one chunk may take several keys for a paste.
+      for (const k of keys) {
+        await new Promise((r) => setTimeout(r, KEY_GAP_MS));
+        await b.call("pane.write", { paneId: w.id, data: KEYS[k]![0] });
+      }
+    }
+    return `Typed into ${String(i.ref)}. Read it to see what happened${agent ? "" : ", or wait (prompt) for a command to end"}.`;
+  },
+};
+
+/** Lines that differ between `a` and `b`, with a little context: `- ` removed, `+ ` added. At most `max` lines. */
+export function lineDiff(a: string, b: string, max = 80): string {
+  const x = a.split("\n");
+  const y = b.split("\n");
+  let head = 0;
+  while (head < x.length && head < y.length && x[head] === y[head]) head++;
+  let tail = 0;
+  while (tail < x.length - head && tail < y.length - head && x[x.length - 1 - tail] === y[y.length - 1 - tail]) tail++;
+  const ctx = 2;
+  const out = [
+    ...(head > ctx ? [`@@ line ${head - ctx + 1}`] : []),
+    ...x.slice(Math.max(0, head - ctx), head).map((l) => `  ${l}`),
+    ...x.slice(head, x.length - tail).map((l) => `- ${l}`),
+    ...y.slice(head, y.length - tail).map((l) => `+ ${l}`),
+    ...x.slice(x.length - tail, x.length - tail + ctx).map((l) => `  ${l}`),
+  ];
+  return out.length > max ? [...out.slice(0, max), `… ${out.length - max} more lines`].join("\n") : out.join("\n");
+}
+
+/** A path to write: as for reading, and never inside .git or node_modules. */
+function writablePath(b: Bench, p: string): string {
+  const abs = readablePath(b, p);
+  if (/(^|\/)(\.git|node_modules)(\/|$)/.test(path.relative(b.workspace().root, abs))) throw new Error(`${p} isn't a file to edit`);
+  return abs;
+}
+
+/** What an edit makes of the file: its text before (null: a new file) and after. Throws a message the model can act on. */
+async function planEdit(i: Input, b: Bench): Promise<{ abs: string; rel: string; before: string | null; after: string; mtime: number | undefined }> {
+  const abs = writablePath(b, String(i.path ?? ""));
+  const rel = path.relative(b.workspace().root, abs);
+  let before: string | null = null;
+  let mtime: number | undefined;
+  try {
+    const f = await b.call("fs.read", { path: abs });
+    if (f.binary || f.truncated) throw new Error(`${rel} is ${f.binary ? "binary" : "too large"}: start an agent to change it`);
+    before = f.text;
+    mtime = f.mtime;
+  } catch (e) {
+    if (!/ENOENT|no such file/i.test((e as Error).message)) throw e;
+  }
+  if (before === null) {
+    const dir = path.dirname(abs);
+    const listed = await b.call("fs.list", { path: dir }).catch(() => null);
+    if (!listed) throw new Error(`the folder ${path.relative(b.workspace().root, dir)} doesn't exist: new files go into folders that do (an agent can make folders)`);
+  }
+  if (typeof i.content === "string") return { abs, rel, before, after: i.content, mtime };
+  if (before === null) throw new Error(`${rel} doesn't exist: give its whole content to create it`);
+  const find = str(i.find);
+  if (!find) throw new Error("give find and replace, or the whole content");
+  const n = before.split(find).length - 1;
+  if (n === 0) throw new Error(`find isn't in ${rel}: read it and copy the text exactly`);
+  if (n > 1 && !i.all) throw new Error(`find is in ${rel} ${n} times: give more of the surrounding text, or all: true`);
+  return { abs, rel, before, after: i.all ? before.split(find).join(String(i.replace ?? "")) : before.replace(find, () => String(i.replace ?? "")), mtime };
+}
+
+const editTool: OperatorTool = {
+  acts: true,
+  spec: {
+    name: "edit",
+    explores: false,
+    description:
+      "Change a file in the workspace's folder, or create one, in an editor window the person sees. For small, clear changes: a line in a config, a typo, a note, a short new file. Give `find` (text copied exactly from the file, enough to be unique) and `replace`, or `content` for a new file or a whole rewrite. Always asks the person first, showing the diff. Larger changes, or ones that need code run and checked, go to a coding agent (agent).",
+    schema: schema({ path: { type: "string", description: "Relative to the workspace's folder." }, find: { type: "string" }, replace: { type: "string" }, all: { type: "boolean", description: "Replace every occurrence of find." }, content: { type: "string" } }, ["path"]),
+  },
+  async confirm(i, b) {
+    const e = await planEdit(i, b);
+    if (e.before === e.after) throw new Error(`that changes nothing in ${e.rel}`);
+    return { title: e.before === null ? `Create ${e.rel}` : `Edit ${e.rel}`, exact: e.before === null ? lineDiff("", e.after).replace(/^- $/m, "") : lineDiff(e.before, e.after) };
+  },
+  async run(i, b) {
+    const e = await planEdit(i, b);
+    // In an editor, so the person sees the change land (it reloads from disk); one already showing it if there is one.
+    const shown = (await b.call("window.list", {})).find((w) => w.workspaceId === b.workspace().id && w.kind === "text" && w.state.path === e.abs);
+    const w = shown ?? (e.before === null ? null : await b.call("window.open", { kind: "text", input: { path: e.abs }, workspaceId: b.workspace().id }));
+    // expectMtime: refused if the file changed on disk since it was read.
+    await b.call("fs.write", { path: e.abs, text: e.after, expectMtime: e.mtime });
+    const opened = w ?? (await b.call("window.open", { kind: "text", input: { path: e.abs }, workspaceId: b.workspace().id }));
+    return `${e.before === null ? "Created" : "Changed"} ${e.rel}, shown in ${b.refs.of(opened.id)}.`;
   },
 };
 
@@ -295,7 +443,7 @@ const closeTool: OperatorTool = {
   async run(i, b) {
     const wins = await Promise.all((Array.isArray(i.refs) ? i.refs : []).map((r) => windowOf(b, r)));
     for (const w of wins) {
-      if (w.id === b.self) throw new Error("you can't close yourself");
+      if (w.kind === "operator") throw new Error("you can't close an Operator window");
       await b.call("window.close", { id: w.id });
     }
     return `Closed ${wins.map((w) => b.refs.of(w.id)).join(", ")}.`;
@@ -404,4 +552,4 @@ const eventsTool: OperatorTool = {
   },
 };
 
-export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, openTool, closeTool, focusTool, searchTool, eventsTool];
+export const OPERATOR_TOOLS: OperatorTool[] = [lookTool, readTool, runTool, agentTool, waitTool, typeTool, editTool, openTool, closeTool, focusTool, searchTool, eventsTool];

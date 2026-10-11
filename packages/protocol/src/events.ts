@@ -92,7 +92,7 @@ export interface EventPayloads {
    * One tool call in an Operator turn (its parent): what it did and why (the text), the window it acted on,
    * how it ended, whether the person was asked and what they said. Its result as the model got it is the content.
    */
-  "operator.tool": { tool: string; acts: boolean; state: "done" | "failed" | "denied"; input: Record<string, unknown>; ask: string | null; allowed: boolean | null; reason: string | null; ms: number };
+  "operator.tool": { tool: string; acts: boolean; state: "done" | "failed" | "denied"; input: Record<string, unknown>; ask: string | null; exact?: string | null; allowed: boolean | null; reason: string | null; ms: number };
   /** The data layer about itself: a rebuild, a prune, an import, a forget. */
   "data.op": { op: "import" | "prune" | "rebuild" | "forget"; detail: Record<string, unknown> };
 }

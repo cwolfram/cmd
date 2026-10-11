@@ -15,8 +15,8 @@ import type { ToolOutput } from "../magic/tools.ts";
 import { AiNotConfigured } from "../ai/service.ts";
 import { OPERATOR_ACCESS } from "./access.ts";
 import { Refs, clip, look } from "./board.ts";
-import { systemPrompt } from "./prompt.ts";
-import { OPERATOR_TOOLS, type Bench, type OperatorTool } from "./tools.ts";
+import { RULES_VERSION, systemPrompt } from "./prompt.ts";
+import { OPERATOR_TOOLS, type Ask, type Bench, type OperatorTool } from "./tools.ts";
 
 const log = logger("operator");
 
@@ -55,6 +55,8 @@ interface Conversation {
   messages: ModelMessage[];
   refs: Refs;
   system: string | null;
+  /** The rules the system prompt was made with (RULES_VERSION). */
+  rules: string | null;
   usage: OperatorUsage;
   model: string | null;
   latency: OperatorConversation["latency"];
@@ -70,6 +72,7 @@ interface Saved {
   messages: ModelMessage[];
   refs: Record<string, WindowId>;
   system: string | null;
+  rules?: string | null;
   usage: OperatorUsage;
   model: string | null;
 }
@@ -117,7 +120,7 @@ export class OperatorService {
   reset(workspaceId: WorkspaceId): void {
     this.stop(workspaceId);
     const c = this.#conv(workspaceId);
-    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, usage: zero(), model: null, latency: null, denials: 0 });
+    Object.assign(c, { items: [], messages: [], refs: new Refs(), system: null, rules: null, usage: zero(), model: null, latency: null, denials: 0 });
     this.#save(c);
     this.#d.broadcast({ type: "operator.changed", workspaceId, reset: true, items: [], usage: c.usage, model: null, latency: null });
   }
@@ -150,7 +153,8 @@ export class OperatorService {
     this.#d.record?.({ ...turn, data: { steps: 0, denied: 0, stopped: false, error: null, model: null, tokens, firstStepMs: null, ms: null, answer: null }, content: request });
     try {
       const bench = this.#bench(c, abort.signal);
-      if (!c.system) c.system = systemPrompt({ root: ws.root, brief: await this.#brief(bench) }).text;
+      // Made once per conversation (the provider caches it), again when the rules changed since.
+      if (!c.system || c.rules !== RULES_VERSION) (c.system = systemPrompt({ root: ws.root, brief: await this.#brief(bench) }).text), (c.rules = RULES_VERSION);
       // The board as it is now goes with the request, so the first step needn't be a look.
       const board = await this.#safe(() => this.#look(bench));
       const selected = asked.map((a) => a.selected).filter(Boolean).pop();
@@ -233,20 +237,20 @@ export class OperatorService {
     const item: Extract<OperatorItem, { kind: "tool" }> = { kind: "tool", id: call.id, at: Date.now(), tool: tool.spec.name, why: typeof why === "string" && why.trim() ? why.trim() : tool.spec.name, acts: tool.acts, target, state: "running", input };
     this.#add(c, item);
     const t0 = Date.now();
-    let approval: { ask: string; allowed: boolean | null; reason: string | null } | null = null;
+    let approval: { ask: Ask; allowed: boolean | null; reason: string | null } | null = null;
     const end = (state: "done" | "failed" | "denied", output: string, isError: boolean): ToolOutput => {
-      const next = { ...item, ...(approval ? { ask: approval.ask } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
+      const next = { ...item, ...(approval ? { ask: approval.ask.title, exact: approval.ask.exact } : {}), state, output: clip(output, CARD_MAX), ms: Date.now() - t0 };
       this.#update(c, next);
       done.push(next);
       const sent = clip(output, OUTPUT_MAX);
-      this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, ms: next.ms }, content: sent });
+      this.#d.record?.({ id: `operator:${call.id}`, at: t0, until: Date.now(), type: "operator.tool", source: "cmd", parentId: turnId, workspaceId: c.workspaceId, windowId: target, text: item.why, data: { tool: item.tool, acts: item.acts, state, input, ask: approval?.ask.title ?? null, exact: approval?.ask.exact ?? null, allowed: approval?.allowed ?? null, reason: approval?.reason ?? null, ms: next.ms }, content: sent });
       return { output: sent, isError };
     };
     try {
       const ask = tool.confirm ? await tool.confirm(call.input, bench) : null;
       if (ask) {
-        this.#update(c, { ...item, state: "waiting", ask });
-        if (!this.#d.selfIn(c.workspaceId)) this.#d.notify?.(c.workspaceId, "The Operator asks", ask);
+        this.#update(c, { ...item, state: "waiting", ask: ask.title, exact: ask.exact });
+        if (!this.#d.selfIn(c.workspaceId)) this.#d.notify?.(c.workspaceId, "The Operator asks", ask.title);
         const a = await new Promise<{ allow: boolean; reason?: string }>((resolve) => c.approvals.set(item.id, resolve));
         c.approvals.delete(item.id);
         approval = { ask, allowed: a.allow, reason: a.reason ?? null };
@@ -255,7 +259,7 @@ export class OperatorService {
           return end("denied", `The person said no${a.reason ? `: ${a.reason}` : ""}. Don't do this another way; ask what they want instead.`, true);
         }
         c.denials = 0;
-        this.#update(c, { ...item, ask, state: "running" });
+        this.#update(c, { ...item, ask: ask.title, exact: ask.exact, state: "running" });
         const out = await tool.run(call.input, { ...bench, call: this.#gate(true, abort.signal) });
         return end("done", out, false);
       }
@@ -286,8 +290,15 @@ export class OperatorService {
       const access = OPERATOR_ACCESS[method];
       if (access === "never") return Promise.reject(new Error(`the Operator may not call ${method}`));
       if (access === "confirm" && !allowed) return Promise.reject(new Error(`${method} needs the person's approval first`));
+      // Whatever a tool does, an Operator window stays: the person's way to watch and stop it.
+      if (method === "window.close") return this.#closing((params as Params<"window.close">).id).then(() => this.#d.call(method, params) as Promise<Result<M>>);
       return this.#d.call(method, params) as Promise<Result<M>>;
     };
+  }
+
+  async #closing(id: WindowId): Promise<void> {
+    const windows = (await this.#d.call("window.list", {})) as { id: WindowId; kind: string }[];
+    if (windows.find((w) => w.id === id)?.kind === "operator") throw new Error("an Operator window can't be closed by the Operator");
   }
 
   async #look(b: Bench): Promise<string> {
@@ -299,6 +310,7 @@ export class OperatorService {
   async #brief(b: Bench): Promise<string> {
     const ws = b.workspace();
     const parts: string[] = [];
+    if (ws.home) parts.push("This is the Home workspace: the person's home folder, not a project. Before starting agents, running or editing anything, ask which project folder they mean (or use the folder they named).");
     const git = await this.#safe(() => b.call("git.status", { path: ws.root }));
     if (git) {
       const n = Object.keys(git.files).length;
@@ -365,6 +377,7 @@ export class OperatorService {
       messages: saved?.messages ?? [],
       refs: new Refs(saved?.refs),
       system: saved?.system ?? null,
+      rules: saved?.rules ?? null,
       usage: saved?.usage ?? zero(),
       model: saved?.model ?? null,
       latency: null,
@@ -396,7 +409,7 @@ export class OperatorService {
         this.#d.db.prepare("DELETE FROM operator_conversations WHERE workspace_id = ?").run(c.workspaceId);
         return;
       }
-      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, usage: c.usage, model: c.model };
+      const saved: Saved = { items: c.items, messages: c.messages, refs: c.refs.toJSON(), system: c.system, rules: c.rules, usage: c.usage, model: c.model };
       this.#d.db.prepare("INSERT OR REPLACE INTO operator_conversations (workspace_id, json, at) VALUES (?, ?, ?)").run(c.workspaceId, JSON.stringify(saved), Date.now());
     } catch (e) {
       log.warn(`could not save the conversation: ${(e as Error).message}`);

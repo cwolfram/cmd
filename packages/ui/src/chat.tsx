@@ -3,8 +3,8 @@
 // keeps the end in sight while it streams. Rows, not bubbles: cmd is a workbench.
 //
 //   ChatMessage   the person's request (on a recess) or the agent's answer (plain, streaming)
-//   ChatStep      one step: a light for its state, its "why", the window it is about, its time;
-//                 a click shows what it did (input and result)
+//   ChatStep      one step, quiet beside the messages: a small icon (a spinner while it runs),
+//                 its "why", the window it is about, its time; a click shows what it did
 //   ChatApproval  a step waiting for the person: what it wants to do in words and exactly,
 //                 Allow / Deny / Deny and Say Why
 //   useStickToEnd a scroller that follows new content unless the person scrolled up
@@ -15,8 +15,7 @@ import { TextField } from "./fields.tsx";
 import { Inline, Stack, Text } from "./frame.tsx";
 import { ICON, iconNode } from "./icon.tsx";
 import { Callout, CodeBlock } from "./layout.tsx";
-import { Mark } from "./list.tsx";
-import type { DotState } from "./status.tsx";
+import { Spinner } from "./status.tsx";
 
 const cls = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
 
@@ -31,10 +30,9 @@ export function ChatMessage({ from, streaming, children }: { from: "person" | "a
 
 export type ChatStepState = "running" | "waiting" | "done" | "failed" | "denied";
 
-const LIGHT: Record<ChatStepState, DotState> = { running: "working", waiting: "needs", done: "done", failed: "danger", denied: "warning" };
-
 /**
- * One step the agent took: `icon` (an SF Symbol) with a light for its state, `title` (its why),
+ * One step the agent took, drawn quieter than the conversation: `icon` (an SF Symbol; a spinner
+ * while it runs, a warning when it failed), `title` (its why),
  * `target` (a chip for the window it is about; clicking it goes there), `time` at the end. With
  * `children`, a click opens them under the row (the input and result). `quiet`: a step that only looked.
  */
@@ -43,7 +41,7 @@ export function ChatStep({ icon, title, state, target, onTarget, time, quiet, ch
   return (
     <div className="ui-chat-step" data-state={state} data-quiet={quiet || undefined} data-open={open || undefined}>
       <div className={cls("ui-chat-step-row", children != null && "has-detail")} onClick={children != null ? () => setOpen(!open) : undefined}>
-        <Mark icon={icon} light={LIGHT[state]} tone={quiet ? "dim" : undefined} />
+        <span className="ui-chat-step-icon">{state === "running" ? <Spinner size={10} /> : iconNode(state === "failed" ? "exclamationmark.triangle" : icon, ICON.small)}</span>
         <span className="ui-chat-step-title">{title}</span>
         {target != null && (
           <button

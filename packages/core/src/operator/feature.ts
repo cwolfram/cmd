@@ -14,7 +14,7 @@ import { OperatorService } from "./service.ts";
 export const operatorType: WindowType = {
   kind: "operator",
   title: OPERATOR_TITLE,
-  icon: "steeringwheel",
+  icon: "brain",
   role: "widget",
   description: "Ask it to run your workspace: run the tests, start agents on what fails, wait for them and tell you. You watch every step and say yes before it types anything.",
   create: () => ({ state: {}, title: OPERATOR_TITLE }),

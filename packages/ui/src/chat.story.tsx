@@ -13,15 +13,15 @@ export const Conversation = () => (
       <ChatMessage from="person">Run the tests and start an agent on whatever fails.</ChatMessage>
       <Stack gap={0}>
         <ChatStep icon="eye" title="Looking at the board" state="done" quiet time="0.1s" />
-        <ChatStep icon="play" title="Running the tests" state="done" target="w3" onTarget={() => {}} time="14.2s">
+        <ChatStep icon="play" title="Running the tests" state="done" target="pnpm test" onTarget={() => {}} time="14.2s">
           <CodeBlock>{"pnpm test\n✗ 2 failed, 312 passed"}</CodeBlock>
         </ChatStep>
-        <ChatStep icon="text.alignleft" title="Reading the failures" state="done" quiet target="w3" onTarget={() => {}} time="0.2s" />
-        <ChatStep icon="person.badge.plus" title="Starting Claude on the failing parser test" state="running" target="w5" onTarget={() => {}} />
+        <ChatStep icon="text.alignleft" title="Reading the failures" state="done" quiet target="pnpm test" onTarget={() => {}} time="0.2s" />
+        <ChatStep icon="person.badge.plus" title="Starting Claude on the failing parser test" state="running" target="Claude · parser" onTarget={() => {}} />
       </Stack>
       <ChatMessage from="agent">
         <p>
-          Two tests fail in <code>osc.test.ts</code>. Claude is on it in <strong>w5</strong>; I'll tell you when it's done.
+          Two tests fail in <code>osc.test.ts</code>. Claude is on it in its own terminal; I'll tell you when it's done.
         </p>
       </ChatMessage>
     </Stack>
@@ -33,12 +33,12 @@ export const Steps = () => (
   <div style={frame}>
     <Stack gap={0}>
       <ChatStep icon="eye" title="Looking at the board" state="done" quiet time="0.1s" />
-      <ChatStep icon="play" title="Running the dev server" state="running" target="w2" onTarget={() => {}} />
-      <ChatStep icon="keyboard" title="Typing the migration command" state="waiting" target="w4" onTarget={() => {}} />
-      <ChatStep icon="xmark.circle" title="Closing the build terminal" state="failed" target="w6" time="0.0s">
+      <ChatStep icon="play" title="Running the dev server" state="running" target="pnpm dev" onTarget={() => {}} />
+      <ChatStep icon="keyboard" title="Typing the migration command" state="waiting" target="zsh — api" onTarget={() => {}} />
+      <ChatStep icon="xmark.circle" title="Closing the build terminal" state="failed" target="build" time="0.0s">
         <CodeBlock tone="danger">w6 is closed: look again</CodeBlock>
       </ChatStep>
-      <ChatStep icon="keyboard" title="Typing rm -rf dist" state="denied" target="w4" />
+      <ChatStep icon="keyboard" title="Typing rm -rf dist" state="denied" target="zsh — api" />
     </Stack>
   </div>
 );
@@ -46,7 +46,7 @@ export const Steps = () => (
 /** A step waiting for the person: in words, exactly, and the three answers. */
 export const Approval = () => (
   <div style={frame}>
-    <ChatApproval title="Type in w4" exact="pnpm db:migrate --env staging" onAnswer={() => {}} />
+    <ChatApproval title="Type in the terminal “zsh — api”" exact="pnpm db:migrate --env staging" onAnswer={() => {}} />
   </div>
 );
 

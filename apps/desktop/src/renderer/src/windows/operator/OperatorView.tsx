@@ -10,7 +10,8 @@ import type { OperatorConversation, OperatorItem, WindowId } from "@cmd/protocol
 import { AiField, Button, Callout, ChatApproval, ChatMessage, ChatNote, ChatStep, CodeBlock, Stack, Text, View, useStickToEnd } from "@cmd/ui";
 import { useAiStatus } from "../../ai/status.ts";
 import { showSetup } from "../../onboarding/Onboarding.tsx";
-import { getWorkspaceView } from "../../lib/store.ts";
+import { getWorkspaceView, useStoreValue } from "../../lib/store.ts";
+import { fieldsOf, type SidebarRow } from "../../lib/model.ts";
 import { durationText, goTo } from "../../lib/widgets.ts";
 import type { WindowViewProps } from "../registry.ts";
 import { operatorCall, useOperator } from "./operator.ts";
@@ -90,7 +91,7 @@ export function OperatorView({ win, focused }: WindowViewProps) {
           !conv
             ? { kind: "loading" }
             : empty
-              ? { kind: "empty", icon: "steeringwheel", title: "Ask the Operator", text: "It runs this workspace while you watch: tests, agents, dev servers. It asks before it types anything." }
+              ? { kind: "empty", icon: "brain", title: "Ask the Operator", text: "It runs this workspace while you watch: tests, agents, dev servers. It asks before it types anything." }
               : null
         }
       >
@@ -181,13 +182,14 @@ function Step({ item, workspaceId, quiet }: { item: Tool; workspaceId: string; q
       title={item.why}
       state={item.state}
       quiet={quiet}
-      target={item.target ? targetLabel(item) : undefined}
+      target={item.target ? <WindowName id={item.target} /> : undefined}
       onTarget={item.target ? () => goTo(item.target!, workspaceId) : undefined}
       time={item.ms !== undefined ? durationText(item.ms) : undefined}
     >
       {(input || item.output || item.ask) && (
         <>
           {item.ask && <Text size="sm">Asked: {item.ask}</Text>}
+          {item.exact && <CodeBlock>{item.exact}</CodeBlock>}
           {input && <CodeBlock>{input}</CodeBlock>}
           {item.output && <CodeBlock tone={item.state === "failed" ? "danger" : undefined}>{item.output}</CodeBlock>}
         </>
@@ -196,10 +198,16 @@ function Step({ item, workspaceId, quiet }: { item: Tool; workspaceId: string; q
   );
 }
 
-/** The window chip: the ref the Operator uses for it ("w3"), from the step's input. */
-function targetLabel(item: Tool): string {
-  const ref = item.input.ref ?? (Array.isArray(item.input.refs) ? item.input.refs[0] : undefined);
-  return typeof ref === "string" ? ref : "window";
+/** The window a step is about, by its title as the board shows it (the Operator's refs are for its tools). */
+function WindowName({ id }: { id: WindowId }) {
+  const name = useStoreValue((s) => {
+    const pane = s.panes.get(id) ?? null;
+    const win = s.windows.get(id) ?? null;
+    if (!pane && !win) return null;
+    const agent = pane?.agentId ? (s.agents.get(pane.agentId) ?? null) : null;
+    return fieldsOf({ key: id, pane, win, agent, children: [], urgent: agent } as SidebarRow, undefined, 0).name;
+  });
+  return <>{name ?? "Closed window"}</>;
 }
 
 function Looks({ items, workspaceId }: { items: Tool[]; workspaceId: string }) {
@@ -225,13 +233,10 @@ function Looks({ items, workspaceId }: { items: Tool[]; workspaceId: string }) {
 
 function Approval({ item, workspaceId }: { item: Tool; workspaceId: string }) {
   const [busy, setBusy] = useState(false);
-  const colon = item.ask!.indexOf(": ");
-  const title = colon > 0 ? item.ask!.slice(0, colon) : item.why;
-  const exact = colon > 0 ? item.ask!.slice(colon + 2) : item.ask;
   return (
     <ChatApproval
-      title={title}
-      exact={exact}
+      title={item.ask}
+      exact={item.exact}
       busy={busy}
       onAnswer={(allow, reason) => {
         setBusy(true);

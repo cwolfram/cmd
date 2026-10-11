@@ -118,7 +118,7 @@ export const OPERATOR_ACCESS: { [M in Method]: OperatorAccess } = {
   "fs.read": "read",
   "fs.watch": "never",
   "fs.unwatch": "never",
-  "fs.write": "never", // it edits nothing; agents do
+  "fs.write": "confirm", // the edit tool: in an editor window, with the diff asked for first
   "fs.rename": "never",
   "fs.duplicate": "never",
   "fs.create": "never",
