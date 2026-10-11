@@ -97,6 +97,10 @@ const api = {
     const c = conn ?? (await ready);
     return c.client.call(method, params);
   },
+  /** Whether the core serves `method` (the methods its core.hello listed); true until it answered. */
+  has: (method: Method): boolean => conn?.client.has(method) ?? true,
+  /** The protocol the core speaks (core.hello), null before it answered or from a core too old to say. */
+  protocol: (): number | null => conn?.hello?.protocol ?? null,
   onEvent(fn: (e: CoreEvent) => void): () => void {
     eventListeners.add(fn);
     return () => eventListeners.delete(fn);

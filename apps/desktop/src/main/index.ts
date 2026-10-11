@@ -13,7 +13,7 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
-import { KIT_FILES, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
+import { KIT_FILES, PROTOCOL, SETTINGS_TEMPLATE, SYSTEM_SOUNDS, kitVersion, mediaOrigin, widgetCsp } from "@cmd/protocol";
 import { cmdHome, connect, CORE_REFUSED_EXIT, coreRefusal, coreSocketPath, enterInstance, foreignHome, foreignHomeText, hasDevMarker, initLog, instanceName, isOwnCore, installCrashHandlers, ipcPath, logDir, logger, sourceBuildId } from "@cmd/protocol/node";
 import type { ContextItem, MenuState } from "../shared/commands.ts";
 import { contextTemplate } from "./menu-template.ts";
@@ -181,12 +181,13 @@ function ownCore(hello: { pid: number; stateDir?: string }): boolean {
 async function checkCoreBuild(): Promise<void> {
   const conn = await connect(socketPath);
   try {
-    const hello = await conn.client.call("core.hello", {});
+    const hello = conn.hello ?? (await conn.client.call("core.hello", {}));
     if (!ownCore(hello)) return;
     const current = sourceBuildId(repoRoot);
     const root = coreRoot();
-    if (hello.build === current && (!hello.root || path.resolve(hello.root) === path.resolve(root))) return;
-    if (hello.build !== current) log.info(`core ${hello.pid} runs build ${hello.build}, this app ships ${current}: restarting it`);
+    if (hello.protocol === PROTOCOL && hello.build === current && (!hello.root || path.resolve(hello.root) === path.resolve(root))) return;
+    if (hello.protocol !== PROTOCOL) log.info(`core ${hello.pid} speaks protocol ${hello.protocol ?? "(none)"}, this app ${PROTOCOL}: restarting it`);
+    else if (hello.build !== current) log.info(`core ${hello.pid} runs build ${hello.build}, this app ships ${current}: restarting it`);
     else log.info(`core ${hello.pid} runs from ${hello.root}, this app from ${root}: restarting it`);
     conn.close(); // the core closes only once its clients are gone
     await stopCore(hello.pid);
@@ -302,7 +303,7 @@ async function restartCore(): Promise<void> {
   const conn = await connect(socketPath).catch(() => null);
   if (conn) {
     try {
-      const hello = await conn.client.call("core.hello", {});
+      const hello = conn.hello ?? (await conn.client.call("core.hello", {}));
       if (!ownCore(hello)) throw new Error(`the core on ${socketPath} is not this app's (its state is in ${hello.stateDir ?? "an unknown place"}); stop it yourself`);
       conn.close(); // the core closes only once its clients are gone
       await stopCore(hello.pid);

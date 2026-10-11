@@ -29,7 +29,7 @@ import { createJournal } from "../journal/feature.ts";
 import { createWatches } from "../lib/watch.ts";
 import { createMagic, type MagicService } from "../magic/service.ts";
 import { createNotifications, type NotificationCenter } from "../notifications/center.ts";
-import { REMOTE_ACCESS, scopeAllows } from "../remote/policy.ts";
+import { REMOTE_ACCESS } from "../remote/policy.ts";
 import { createRemote, type RemoteService } from "../remote/service.ts";
 import { registerBuiltinSources } from "../search/builtin.ts";
 import { Search } from "../search/search.ts";
@@ -414,9 +414,13 @@ export class Core {
   }
 
   /** A method, as a caller inside the core (or the server, for a connection) calls it. */
-  /** The protocol, and the methods the caller may use: a paired device hears only what its scope allows. */
+  /**
+   * The protocol, and the methods there are for the caller: a paired device hears
+   * of those a device may ever call (its scope can change while it's connected; a
+   * call beyond it is still refused, as RemoteDenied).
+   */
   #hello(conn: Connection | null): CoreHello {
-    const methods = (Object.keys(this.handlers) as Method[]).filter((m) => !conn || conn.access === "local" || scopeAllows(conn.access, REMOTE_ACCESS[m]));
+    const methods = (Object.keys(this.handlers) as Method[]).filter((m) => !conn || conn.access === "local" || REMOTE_ACCESS[m] !== "never");
     const app = process.env.CMD_APP_VERSION || "source";
     return { protocol: PROTOCOL, app, methods, pid: process.pid, socket: this.#opts.socketPath, build: this.#opts.build ?? "", stateDir: this.#opts.stateDir, root: path.resolve(import.meta.dirname, "../../../..") };
   }

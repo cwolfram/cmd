@@ -106,6 +106,8 @@ export class Connection {
       client.onEvent((e) => this.#events.forEach((fn) => fn(e)));
       this.client = client;
       this.#retry = 0;
+      // What the Mac serves, so client.has() can tell a feature its cmd doesn't have yet (a Mac without the list has all of them).
+      await client.hello().catch(() => {});
       const boot = await client.call("remote.bootstrap", {});
       this.#set({ kind: "online", boot });
       // The name a list of Macs shows; it follows a renamed Mac.

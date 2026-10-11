@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { RpcClient, RpcError, type CoreEvent, type RemotePairRequest } from "@cmd/protocol";
+import { RpcClient, RpcError, UNKNOWN_METHOD, type CoreEvent, type RemotePairRequest } from "@cmd/protocol";
 import { decodePairing, generateKeyPair, openDeviceSession, type Bytes, type DeviceSession, type KeyPair } from "@cmd/remote-crypto";
 import { startRelay, type Relay } from "../../../apps/relay/src/relay.ts";
 import { Core } from "../src/kernel/core.ts";
@@ -105,6 +105,11 @@ describe("remote access", () => {
     await expect(client.call("settings.get", {})).rejects.toThrow(RpcError);
     await expect(client.call("pane.create", {})).rejects.toThrow(/needs control access/);
     await expect(client.call("fs.read", { path: "/etc/passwd" })).rejects.toThrow(/outside your workspaces/);
+    // Its hello lists what a device may ever call: pane.create (control) yes, settings.get (Mac only) no.
+    const hello = await client.hello();
+    expect(hello.methods).toContain("pane.create");
+    expect(hello.methods).not.toContain("settings.get");
+    await expect(client.call("settings.get", {})).rejects.toMatchObject({ code: UNKNOWN_METHOD });
     c.ws.close();
   });
 

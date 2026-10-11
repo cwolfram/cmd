@@ -5,7 +5,7 @@
 import { useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import type { Agent, AgentId, AppNotification, AppWindow, ClosedWindow, CommandRun, CoreEvent, Pane, PaneId, RemotePairRequest, RemoteStatus, SearchStatus, SettingsSnapshot, Workspace, WorkspaceId, StartupStatus, WidgetEntry, WindowId, DataEvent, DataQuery, SessionInfo, TurnRow, ViewQuery } from "@cmd/protocol";
-import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID } from "@cmd/protocol";
+import { DEFAULT_SETTINGS, HOME_WORKSPACE_ID, PROTOCOL } from "@cmd/protocol";
 import { OutputGate } from "@cmd/protocol/replay";
 import { reducedMotion } from "@cmd/ui";
 import { cmd } from "./bridge.ts";
@@ -102,7 +102,7 @@ async function openDataSub(sub: DataSub): Promise<void> {
     dataById.set(r.id, sub);
     sub.fn(r.events, true);
   } catch {
-    // an older core, or none yet: tried again on the next connection
+    // the core went away: tried again on the next connection
   }
 }
 export function subscribeData(query: DataQuery, fn: (events: DataEvent[], initial: boolean) => void): () => void {
@@ -143,7 +143,7 @@ async function openViewSub(sub: ViewSub): Promise<void> {
     viewById.set(r.id, sub);
     sub.fn(r.rows, true);
   } catch {
-    // an older core, or none yet
+    // the core went away: tried again on the next connection
   }
 }
 export function subscribeView(query: ViewQuery, fn: (rows: (TurnRow | SessionInfo)[], initial: boolean) => void): () => void {
@@ -215,9 +215,8 @@ const pendingUi = new Map<string, ReturnType<typeof setTimeout>>();
 
 /** Update UI state now; write it to the core shortly after (debounced per key). */
 /** The Widget Library as the core just listed it. */
-/** An older core has no closed windows: the list stays empty. */
 function loadClosed(): void {
-  void cmd.call("window.closed", {}).then((closed) => set({ closed }), () => {});
+  if (cmd.has("window.closed")) void cmd.call("window.closed", {}).then((closed) => set({ closed }), () => {});
 }
 
 export function setLibrary(library: WidgetEntry[]): void {
@@ -415,7 +414,7 @@ export function usePersisted<T>(key: string, fallback: T): [T, (v: T | ((prev: T
 
 // Output for panes that existed before we subscribed waits for their snapshot, which
 // lets through only what it doesn't show (by seq: output around the reply can be on
-// either side of what the snapshot holds, @cmd/protocol/replay). An older core's is dropped.
+// either side of what the snapshot holds, @cmd/protocol/replay).
 const gates = new Map<PaneId, OutputGate>();
 
 function handle(e: CoreEvent): void {
@@ -570,7 +569,8 @@ cmd.onStatus(async (status) => {
   try {
     snap = await cmd.call("events.subscribe", {});
     performance.mark("boot:snapshot");
-    if (!snap.settings) throw new Error("core is running older code; restart it (relaunch the app to be asked)");
+    // The app restarts a core of another build on launch; one it couldn't (or another instance's) speaks another protocol.
+    if (cmd.protocol() !== PROTOCOL) throw new Error("The core is from another version of cmd. Restart it in Settings → Updates & About.");
   } catch (err) {
     console.error("cmd: subscribe failed", err);
     set({ connected: false, error: (err as Error).message });
@@ -596,8 +596,7 @@ cmd.onStatus(async (status) => {
   void cmd.call("search.status", {}).then((search) => set({ search }), () => {});
   void cmd.call("widget.list", {}).then((library) => set({ library }), () => {});
   loadClosed();
-  // An older core has no remote access: leave it null.
-  void cmd.call("remote.status", {}).then((remote) => set({ remote, pairRequests: remote.requests ?? [] }), () => {});
+  if (cmd.has("remote.status")) void cmd.call("remote.status", {}).then((remote) => set({ remote, pairRequests: remote.requests ?? [] }), () => {});
   // The windows show now; each terminal opens once its content is written (hold).
   // Asked in this order: the selected terminal first, then the rest of this window's
   // workspace, then other workspaces. Answers may come back in any order, and output around

@@ -17,10 +17,6 @@ export interface Model {
   host: string;
 }
 
-/** A Mac still on cmd 0.23 or older says Space: `spaces`, `spaceId` and `space.*` events. The client deploys first, so it reads both. */
-type Legacy = { spaces?: Workspace[]; spaceId?: string; space?: Workspace };
-const paneOf = (p: Pane): Pane => (p.workspaceId ? p : { ...p, workspaceId: (p as Pane & Legacy).spaceId ?? "" });
-
 /** The bootstrap, kept current by events. Stays (stale) while offline. Applies the Mac's theme as it comes and changes. */
 export function useModel(conn: Connection, phase: Phase): Model | null {
   const [model, setModel] = useState<Model | null>(null);
@@ -29,9 +25,9 @@ export function useModel(conn: Connection, phase: Phase): Model | null {
     const b = phase.boot;
     setMacTheme(b.theme);
     setModel({
-      panes: new Map(b.panes.map((p) => [p.id, paneOf(p)])),
+      panes: new Map(b.panes.map((p) => [p.id, p])),
       agents: new Map(b.agents.map((a) => [a.id, a])),
-      workspaces: new Map((b.workspaces ?? (b as Legacy).spaces ?? []).map((s) => [s.id, s])),
+      workspaces: new Map((b.workspaces ?? []).map((s) => [s.id, s])),
       scope: b.device?.scope ?? "view",
       host: b.host?.name ?? "your Mac",
     });
@@ -43,15 +39,12 @@ export function useModel(conn: Connection, phase: Phase): Model | null {
         setModel((m) => {
           if (!m) return m;
           const next = { ...m };
-          const type = (e.type as string).replace(/^space\./, "workspace.");
-          if (e.type === "pane.updated") next.panes = new Map(m.panes).set(e.pane.id, paneOf(e.pane));
+          if (e.type === "pane.updated") next.panes = new Map(m.panes).set(e.pane.id, e.pane);
           else if (e.type === "pane.removed") (next.panes = new Map(m.panes)).delete(e.paneId);
           else if (e.type === "agent.updated") next.agents = new Map(m.agents).set(e.agent.id, e.agent);
           else if (e.type === "agent.removed") (next.agents = new Map(m.agents)).delete(e.agentId);
-          else if (type === "workspace.updated") {
-            const w = (e as { workspace?: Workspace } & Legacy).workspace ?? (e as Legacy).space!;
-            next.workspaces = new Map(m.workspaces).set(w.id, w);
-          } else if (type === "workspace.removed") (next.workspaces = new Map(m.workspaces)).delete((e as { id: string }).id);
+          else if (e.type === "workspace.updated") next.workspaces = new Map(m.workspaces).set(e.workspace.id, e.workspace);
+          else if (e.type === "workspace.removed") (next.workspaces = new Map(m.workspaces)).delete(e.id);
           else return m;
           return next;
         });
