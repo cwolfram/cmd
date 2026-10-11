@@ -33,7 +33,7 @@
 .ui-view-body[data-inset] { padding: var(--inset); }
 /* TitleBand: a window of its own's band under the traffic lights; the window drags by it. */
 .ui-title-band { position: relative; z-index: 1; flex: none; display: flex; align-items: flex-end; min-height: var(--titlebar-h); padding: 0 var(--inset); box-shadow: 0 1px 0 transparent; transition: box-shadow var(--dur) var(--ease); -webkit-app-region: drag; }
-.ui-title-band:has(h1) { min-height: calc(var(--titlebar-h) + var(--space-lg)); padding-bottom: var(--space-md); }
+.ui-title-band:has(h1) { min-height: calc(var(--titlebar-h) + var(--space-xl)); padding-bottom: var(--space-lg); }
 .ui-title-band[data-line] { box-shadow: 0 1px 0 var(--window-edge); }
 .ui-title-band h1 { margin-block: 0; font-weight: 600; font-size: var(--text-xl); letter-spacing: -0.01em; }
 .ui-page { width: 100%; max-width: var(--page-w); margin-inline: auto; }
