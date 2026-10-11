@@ -1,6 +1,7 @@
 export { buildWidget, fastRoute, type BuildOptions, type BuildResult, type BuildEvent, type TraceStep } from "./build.ts";
 export * from "../ai/index.ts";
-export { MagicService, refineRequest } from "./service.ts";
+export { MagicService } from "./service.ts";
+export { refineRequest } from "./refine.ts";
 export { classify, credentialsFor, credentialsForPrograms, DEFAULT_DENY_PATHS, isDeniedPath, redact } from "./policy.ts";
 export { execArgv, execCommand, sandboxAvailable, sandboxProfile, type SandboxMode } from "./sandbox.ts";
 export { runSource, preview, type MagicSource, type SourceResult } from "./sources.ts";
