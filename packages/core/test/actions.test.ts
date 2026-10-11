@@ -12,7 +12,7 @@ import { scan } from "../src/actions/catalog.ts";
 import { classify } from "../src/actions/classify.ts";
 import { matchAction, rank, scriptOf } from "../src/actions/history.ts";
 import { applyDescribed, describe as describeActions, docCommands, type Described } from "../src/actions/describe.ts";
-import { packageManager, parseJsonc, workspacePackages } from "../src/actions/sources.ts";
+import { packageManager, workspacePackages } from "../src/actions/sources.ts";
 import { findUrl } from "../src/actions/service.ts";
 import { Core } from "../src/kernel/core.ts";
 import { fakeFactory, type FakePty } from "./fake-pty.ts";
@@ -188,8 +188,9 @@ describe("sources", () => {
     expect(scan(dir, null).folders.sort()).toEqual([dir, path.join(dir, ".vscode"), path.join(dir, "scripts")].sort());
   });
 
-  it("JSONC: comments and trailing commas, not inside strings", () => {
-    expect(parseJsonc('{ "a": "http://x", /* c */ "b": [1, 2,], // d\n }')).toEqual({ a: "http://x", b: [1, 2] });
+  it("reads .vscode/tasks.json as JSONC, leaving strings alone", () => {
+    write({ ".vscode/tasks.json": '{ // tasks\n "tasks": [ { "label": "odd", "type": "shell", "command": "echo \\"a, ]b, }c\\"", }, ], }' });
+    expect(scan(dir, null).actions.find((a) => a.name === "odd")?.command).toBe('echo "a, ]b, }c"');
   });
 });
 

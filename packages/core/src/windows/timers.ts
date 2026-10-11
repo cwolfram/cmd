@@ -1,7 +1,10 @@
 // Rings Timer widgets (windows/builtin.ts timerType) from the core, so a timer
 // ends on time whether or not its workspace is on screen or the app is open: one
-// setTimeout per running timer, set again whenever its window changes. When it
-// fires, the window is marked rung and a notification goes out.
+// setTimeout per running timer, set again whenever its window changes. Node's
+// timers run on a clock that stops while the Mac sleeps, so while any timer runs a
+// check every CHECK_MS compares the wall clock with each end and rings what's due
+// (a wake, a clock change). When it fires, the window is marked rung and a
+// notification goes out.
 
 import type { AppWindow, WindowId } from "@cmd/protocol";
 import type { WindowManager } from "./index.ts";
@@ -11,11 +14,15 @@ import { durationLabel, type TimerState } from "./builtin.ts";
 
 /** setTimeout's limit; a longer wait is set again when it fires. */
 const MAX_WAIT = 2 ** 31 - 1;
+/** How often running timers are checked against the wall clock. */
+export const CHECK_MS = 15_000;
 
 export class TimerAlarms {
   #windows: WindowManager;
   #ring: (w: AppWindow, title: string, body: string) => void;
   #timers = new Map<WindowId, { endsAt: number; timer: NodeJS.Timeout }>();
+  /** Runs only while a timer does. */
+  #check: NodeJS.Timeout | null = null;
 
   constructor(windows: WindowManager, ring: (w: AppWindow, title: string, body: string) => void) {
     this.#windows = windows;
@@ -35,10 +42,14 @@ export class TimerAlarms {
     const timer = setTimeout(() => this.#fire(w.id, endsAt), Math.min(MAX_WAIT, Math.max(0, endsAt - Date.now())));
     timer.unref();
     this.#timers.set(w.id, { endsAt, timer });
+    this.#check ??= setInterval(() => {
+      for (const [id, t] of [...this.#timers]) if (Date.now() >= t.endsAt) this.#fire(id, t.endsAt);
+    }, CHECK_MS);
+    this.#check.unref();
   }
 
   #fire(id: WindowId, endsAt: number): void {
-    this.#timers.delete(id);
+    this.#clear(id);
     const w = this.#windows.list().find((x) => x.id === id);
     if (!w || (w.state as TimerState).endsAt !== endsAt) return;
     if (endsAt > Date.now() + 1000) return this.#sync(w); // waited MAX_WAIT; more to go
@@ -53,6 +64,7 @@ export class TimerAlarms {
     const cur = this.#timers.get(id);
     if (cur) clearTimeout(cur.timer);
     this.#timers.delete(id);
+    if (!this.#timers.size && this.#check) clearInterval(this.#check), (this.#check = null);
   }
 
   close(): void {
