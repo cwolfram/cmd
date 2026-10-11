@@ -343,6 +343,8 @@ One worktree each, `pnpm typecheck && pnpm test` green, e2e once at the end of e
 | 4 | Gaps | Tokens per turn and Codex counters, prices, focus on blur, gauge samples, `user.command`; the stats that use them | 3 |
 | 5 | Out | Magic kit 4 and `stats()` in data.ts, Settings → Data on stats, remote access's "Now" tab with a few stats, the journal's week with its numbers | 3 |
 
+Checks to plan for (as of 2026-10-11): `test/registries.test.ts` wants a caller for every RPC method, so `stats.*` methods land with the CLI or widget that calls them; `test/layout.test.ts` fails when a file over 600 lines grows (`rpc.ts`, `store.ts`), so stats keep their types, methods, events and settings in `protocol/stats.ts` and their service in `stats/feature.ts`, touching the registries by one line each; `test/imports.test.ts` keeps the widget off `main/` and `node:`.
+
 Now, independent of all of it: the Magic `--c1…6` fix in `host.js`.
 
 ## Open questions
