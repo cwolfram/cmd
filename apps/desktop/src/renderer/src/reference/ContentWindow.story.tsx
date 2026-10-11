@@ -3,7 +3,7 @@
 // the scroll. The spec for Markdown, the Journal, What's New and any window
 // whose content is text.
 
-import { Badge, Callout, CodeBlock, Inline, ListRow, Measure, Prose, Split, Stack, StatusLine, Text, ToolbarButton, ToolbarSearchField, ToolbarSpacer, View, WindowToolbar } from "@cmd/ui";
+import { Badge, Callout, CodeBlock, Inline, ListRow, ListRowContent, Measure, Prose, Split, Stack, StatusLine, Text, ToolbarButton, ToolbarSearchField, ToolbarSpacer, View, WindowToolbar } from "@cmd/ui";
 import { useState } from "react";
 import { AllSizes, RefWindow, type SizeName } from "./RefWindow.tsx";
 
@@ -43,7 +43,14 @@ function Doc({ size = "wide", loading }: { size?: SizeName; loading?: boolean })
           pane={
             <Stack gap={0} pad={1}>
               {OUTLINE.map((h) => (
-                <ListRow key={h.id} title={h.title} depth={h.depth} selected={h.id === at} onClick={() => setAt(h.id)} />
+                <ListRow
+                  key={h.id}
+                  depth={h.depth}
+                  selected={h.id === at}
+                  onClick={() => setAt(h.id)}
+                >
+                  <ListRowContent title={h.title} />
+                </ListRow>
               ))}
             </Stack>
           }

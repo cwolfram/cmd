@@ -4,7 +4,7 @@
 // when the Mac isn't connected.
 
 import { useEffect, useState } from "react";
-import { Button, Callout, Dialog, Icon, KeyValue, ListRow, ListSection } from "@cmd/ui";
+import { Button, Callout, Dialog, Icon, KeyValue, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection } from "@cmd/ui";
 import type { Connection, Phase } from "./connection.ts";
 import { deviceName, listMacs, type Mac } from "./identity.ts";
 import type { Model } from "./model.ts";
@@ -72,17 +72,20 @@ function MacList({ current, currentName, onAdd, onSwitch }: { current: string; c
           return (
             <ListRow
               key={m.key}
-              icon="laptopcomputer"
-              title={here ? (currentName ?? m.name) : m.name}
-              detail={here ? "Open now" : used(m.lastUsed)}
               selected={here}
               aria-current={here || undefined}
-              end={here ? <Icon name="checkmark" /> : undefined}
               onClick={() => onSwitch(m.key)}
-            />
+            >
+              <ListRowIcon icon="laptopcomputer" />
+              <ListRowContent title={here ? (currentName ?? m.name) : m.name} detail={here ? "Open now" : used(m.lastUsed)} />
+              <ListRowEnd>{here ? <Icon name="checkmark" /> : undefined}</ListRowEnd>
+            </ListRow>
           );
         })}
-        <ListRow icon="plus" title="Add a Mac" onClick={onAdd} />
+        <ListRow onClick={onAdd}>
+          <ListRowIcon icon="plus" />
+          <ListRowContent title="Add a Mac" />
+        </ListRow>
       </ListSection>
     </div>
   );

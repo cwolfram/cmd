@@ -9,7 +9,7 @@
 // skill's actions window: the filter in the toolbar, the main action first, grouped
 // sections, where it runs in the footer), so ActionsView.story.tsx can show every state.
 
-import { Button, CodeBlock, ConfirmDialog, Icon, IconButton, LinkButton, List, ListGroup, ListRow, ListSection, ListValue, Spinner, StatusLine, ToolbarSearchField, View, WindowToolbar, Callout, type ViewStateSpec } from "@cmd/ui";
+import { Button, Callout, CodeBlock, ConfirmDialog, Icon, IconButton, LinkButton, List, ListGroup, ListRow, ListRowActions, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Spinner, StatusLine, ToolbarSearchField, View, type ViewStateSpec, WindowToolbar } from "@cmd/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type ActionKind, type ActionRun, type ActionsList, type PaneId, type WorkspaceId, type WorkspaceAction } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -126,47 +126,42 @@ export function Actions(p: ActionsProps) {
       <ListRow
         key={a.id}
         flipKey={a.id}
-        icon={a.history ? "clock.arrow.circlepath" : a.source.kind === "readme" ? "doc.text" : KIND[a.kind].icon}
-        light={on ? "working" : bad ? "danger" : undefined}
-        title={a.name}
-        mono
-        detail={a.description ? a.description : a.history ? `${a.history.runs}× in this folder` : a.command}
-        tone={bad ? "danger" : undefined}
         tip={`${a.command}${a.script && a.script !== a.command ? `\n→ ${a.script}` : ""}\n${a.source.kind === "history" ? "From your history" : a.source.kind === "readme" ? "Suggested from the docs" : `${a.source.file}${a.source.line ? `:${a.source.line}` : ""}`}${a.risky ? "\nAsks before it runs" : ""}`}
-        end={
-          <>
-            {url && (
-              <LinkButton tone="accent" onClick={(e) => (e.stopPropagation(), p.onOpenUrl(url))} data-tip={`Open ${url}`}>
-                {shortUrl(url)}
-              </LinkButton>
-            )}
-            {state && <ListValue>{state}</ListValue>}
-            {away.map((x) => (
-              <LinkButton key={x.paneId} tone="dim" onClick={(e) => (e.stopPropagation(), p.onShow(x.paneId))} data-tip={`Running in ${shortPath(x.root)}${x.url ? ` at ${x.url}` : ""}. Show its terminal`}>
-                in {x.branch ?? x.root.split("/").pop()}
-                {x.url ? ` · ${shortUrl(x.url)}` : ""}
-              </LinkButton>
-            ))}
-            {big && !on && (
-              <Button size="sm" variant="primary" icon="play.fill" onClick={(e) => (e.stopPropagation(), p.onRun(a))}>
-                Run
-              </Button>
-            )}
-          </>
-        }
-        hover={
-          on ? (
+        onClick={() => (on ? p.onShow(r!.paneId) : p.onRun(a))}
+        onContextMenu={() => p.onMenu(a)}
+      >
+        <ListRowIcon icon={a.history ? "clock.arrow.circlepath" : a.source.kind === "readme" ? "doc.text" : KIND[a.kind].icon} light={on ? "working" : bad ? "danger" : undefined} />
+        <ListRowContent title={a.name} mono detail={a.description ? a.description : a.history ? `${a.history.runs}× in this folder` : a.command} tone={bad ? "danger" : undefined} />
+        <ListRowEnd>
+          {url && (
+            <LinkButton tone="accent" onClick={(e) => (e.stopPropagation(), p.onOpenUrl(url))} data-tip={`Open ${url}`}>
+              {shortUrl(url)}
+            </LinkButton>
+          )}
+          {state && <ListValue>{state}</ListValue>}
+          {away.map((x) => (
+            <LinkButton key={x.paneId} tone="dim" onClick={(e) => (e.stopPropagation(), p.onShow(x.paneId))} data-tip={`Running in ${shortPath(x.root)}${x.url ? ` at ${x.url}` : ""}. Show its terminal`}>
+              in {x.branch ?? x.root.split("/").pop()}
+              {x.url ? ` · ${shortUrl(x.url)}` : ""}
+            </LinkButton>
+          ))}
+          {big && !on && (
+            <Button size="sm" variant="primary" icon="play.fill" onClick={(e) => (e.stopPropagation(), p.onRun(a))}>
+              Run
+            </Button>
+          )}
+        </ListRowEnd>
+        <ListRowActions>
+          {on ? (
             <>
               {a.long && <IconButton size="sm" icon="arrow.clockwise" label="Restart" onClick={() => p.onRun(a, { restart: true })} />}
               <IconButton size="sm" icon="stop.fill" label="Stop" onClick={() => p.onStop(a)} />
             </>
           ) : big ? undefined : (
             <IconButton size="sm" icon={a.args ? "text.cursor" : "play.fill"} label={a.args ? "Type in Terminal" : "Run"} onClick={() => p.onRun(a)} />
-          )
-        }
-        onClick={() => (on ? p.onShow(r!.paneId) : p.onRun(a))}
-        onContextMenu={() => p.onMenu(a)}
-      />
+          )}
+        </ListRowActions>
+      </ListRow>
     );
   };
 
@@ -227,7 +222,7 @@ export function Actions(p: ActionsProps) {
     const packages = [...new Set(rest.filter((a) => a.package && !a.hidden && !a.pinned).map((a) => a.package!))];
     const hidden = rest.filter((a) => a.hidden && !a.pinned);
     body = (
-      <List variant="grouped">
+      <List>
         {list.sources
           .filter((x) => x.error)
           .map((e) => (

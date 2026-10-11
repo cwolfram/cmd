@@ -4,7 +4,7 @@
 // oldest thing that needs you.
 
 import { useMemo, useState } from "react";
-import { Badge, Button, EmptyState, ListRow, ListSection } from "@cmd/ui";
+import { Badge, Button, EmptyState, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection } from "@cmd/ui";
 import type { Connection } from "./connection.ts";
 import { sections, workspaceList, type Item, type Model } from "./model.ts";
 import { ago } from "./ui.tsx";
@@ -89,16 +89,13 @@ function Row({ it, showWorkspace, onOpen }: { it: Item; showWorkspace: boolean; 
     <ListRow
       role="button"
       tabIndex={0}
-      icon={it.agent ? "sparkles" : "terminal"}
-      light={it.light === "idle" ? undefined : it.light}
-      title={it.title}
-      place={place}
-      detail={it.detail ? (place ? `${place} · ${it.detail}` : it.detail) : undefined}
-      tone={it.group === "needs" ? "needs" : undefined}
-      end={<span className="when">{ago(it.since)}</span>}
       data-group={it.group}
       onClick={() => onOpen(it.paneId)}
       onKeyDown={(e) => e.key === "Enter" && onOpen(it.paneId)}
-    />
+    >
+      <ListRowIcon icon={it.agent ? "sparkles" : "terminal"} light={it.light === "idle" ? undefined : it.light} />
+      <ListRowContent title={it.title} place={place} detail={it.detail ? (place ? `${place} · ${it.detail}` : it.detail) : undefined} tone={it.group === "needs" ? "needs" : undefined} />
+      <ListRowEnd><span className="when">{ago(it.since)}</span></ListRowEnd>
+    </ListRow>
   );
 }

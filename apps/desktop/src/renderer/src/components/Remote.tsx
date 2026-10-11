@@ -4,7 +4,7 @@
 // is in, with what access, watching which windows; disconnect in one click),
 // and the notifications that go with them.
 
-import { Badge, Button, IconButton, Inline, ListRow, LiveBadge, Popover, Separator, Spacer, Stack, Text, useTooltip } from "@cmd/ui";
+import { Badge, Button, IconButton, Inline, ListRow, ListRowContent, ListRowEnd, ListRowIcon, LiveBadge, Popover, Separator, Spacer, Stack, Text, useTooltip } from "@cmd/ui";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { RemoteStatus } from "@cmd/protocol";
 import { cmd } from "../lib/bridge.ts";
@@ -145,22 +145,32 @@ function RemotePopover({ anchor, status, onClose }: { anchor: RefObject<HTMLElem
         </Stack>
         <div>
           {status.requests.map((r) => (
-            <ListRow key={r.requestId} icon="iphone" title={<span><b>{r.name}</b> is waiting for you to allow it</span>} />
+            <ListRow key={r.requestId}>
+              <ListRowIcon icon="iphone" />
+              <ListRowContent title={<span><b>{r.name}</b> is waiting for you to allow it</span>} />
+            </ListRow>
           ))}
           {sessions.map((s) => (
-            <ListRow
-              key={s.id}
-              icon="iphone.radiowaves.left.and.right"
-              title={
-                <span>
-                  {s.name} <Badge tone={s.scope === "control" ? "accent" : "neutral"}>{scopeLabel(s.scope)}</Badge>
-                </span>
-              }
-              detail={`Since ${clock(s.since)} · ${s.watching.length ? `watching ${s.watching.map(windowTitle).join(", ")}` : "on its home screen"}`}
-              end={<Button onClick={act(() => cmd.call("remote.disconnect", { id: s.deviceId }))}>Disconnect</Button>}
-            />
+            <ListRow key={s.id}>
+              <ListRowIcon icon="iphone.radiowaves.left.and.right" />
+              <ListRowContent
+                title={
+                  <span>
+                    {s.name} <Badge tone={s.scope === "control" ? "accent" : "neutral"}>{scopeLabel(s.scope)}</Badge>
+                  </span>
+                }
+                detail={`Since ${clock(s.since)} · ${s.watching.length ? `watching ${s.watching.map(windowTitle).join(", ")}` : "on its home screen"}`}
+              />
+              <ListRowEnd>
+                <Button onClick={act(() => cmd.call("remote.disconnect", { id: s.deviceId }))}>Disconnect</Button>
+              </ListRowEnd>
+            </ListRow>
           ))}
-          {!sessions.length && !status.requests.length && <ListRow title={<Text tone="dim">{paired ? `No device connected. ${paired} paired.` : "No devices paired yet."}</Text>} />}
+          {!sessions.length && !status.requests.length && (
+            <ListRow>
+              <ListRowContent title={<Text tone="dim">{paired ? `No device connected. ${paired} paired.` : "No devices paired yet."}</Text>} />
+            </ListRow>
+          )}
         </div>
         <Separator />
         <Inline gap={1.5}>

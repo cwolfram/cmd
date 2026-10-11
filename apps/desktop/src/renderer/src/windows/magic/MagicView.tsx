@@ -9,7 +9,7 @@
 // theme tokens, its data and its saved cmd.state. Data that stops coming shows
 // as "Stale" with the reason; problems a build left show in a line with Fix.
 
-import { AiField, Button, Callout, CodeBlock, Inline, LinkButton, List, ListRow, Spinner, Stack, StatusLine, Text, toast, View, ViewState, WebStage, type ViewStateSpec } from "@cmd/ui";
+import { AiField, Button, Callout, CodeBlock, Inline, LinkButton, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Spinner, Stack, StatusLine, Text, toast, View, ViewState, type ViewStateSpec, WebStage } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { kitVersion, requestedMedia, SYSTEM_SOUNDS, widgetTokens, type AppWindow, type MagicState, type MagicStep } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -259,7 +259,13 @@ export function Ask(p: { text: string; onText: (t: string) => void; onAsk: (prom
             )}
             <List>
               {EXAMPLES.map((x) => (
-                <ListRow key={x} icon="sparkle" title={x} onClick={() => p.onAsk(x)} />
+                <ListRow
+                  key={x}
+                  onClick={() => p.onAsk(x)}
+                >
+                  <ListRowIcon icon="sparkle" />
+                  <ListRowContent title={x} />
+                </ListRow>
               ))}
             </List>
           </Stack>
@@ -333,7 +339,12 @@ export function StepList({ live, steps }: { live?: MagicLive; steps?: MagicStep[
       {(steps ?? live?.steps ?? []).map((st) => (
         <StepRow key={st.id} step={st} />
       ))}
-      {live?.repair && <ListRow icon="arrow.triangle.2.circlepath" markTone="dim" title={live.repair} />}
+      {live?.repair && (
+        <ListRow>
+          <ListRowIcon icon="arrow.triangle.2.circlepath" tone="dim" />
+          <ListRowContent title={live.repair} />
+        </ListRow>
+      )}
     </List>
   );
 }
@@ -343,20 +354,17 @@ function StepRow({ step }: { step: MagicStep }) {
   const light = step.ms === undefined ? "working" : step.isError ? "danger" : "done";
   return (
     <>
-      <ListRow
-        icon="circle"
-        light={light}
-        title={step.why}
-        place={step.detail}
-        end={
-          step.ms !== undefined && (
+      <ListRow onClick={step.output ? () => setOpen(!open) : undefined}>
+        <ListRowIcon icon="circle" light={light} />
+        <ListRowContent title={step.why} place={step.detail} />
+        <ListRowEnd>
+          {step.ms !== undefined && (
             <Text size="xs" tone="dim">
               {(step.ms / 1000).toFixed(1)}s
             </Text>
-          )
-        }
-        onClick={step.output ? () => setOpen(!open) : undefined}
-      />
+          )}
+        </ListRowEnd>
+      </ListRow>
       {open && step.output && (
         <Stack pad={1.5}>
           <CodeBlock>{step.output}</CodeBlock>

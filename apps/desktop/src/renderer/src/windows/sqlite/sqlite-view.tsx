@@ -6,7 +6,7 @@
 // watched, and what's shown reloads when they change. The core reads the file
 // (sqlite.schema / rows / query) in a worker, read-only; nothing here writes.
 
-import { Button, Callout, CodeBlock, DataGrid, Hide, KeyValue, List, ListRow, ListSection, ListValue, Pane, Panes, Split, Stack, StatusLine, Text, TextArea, ToolbarButton, ToolbarMenu, ToolbarSearchField, ToolbarSegmented, ToolbarSpacer, View, ViewState, WindowToolbar, type GridCell, type GridColumn, type GridSort } from "@cmd/ui";
+import { Button, Callout, CodeBlock, DataGrid, type GridCell, type GridColumn, type GridSort, Hide, KeyValue, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Pane, Panes, Split, Stack, StatusLine, Text, TextArea, ToolbarButton, ToolbarMenu, ToolbarSearchField, ToolbarSegmented, ToolbarSpacer, View, ViewState, WindowToolbar } from "@cmd/ui";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SqliteResult, SqliteSchema, SqliteTable, SqliteValue } from "@cmd/protocol";
@@ -149,13 +149,30 @@ export function SqliteView({ win, focused: _focused, update }: WindowViewProps &
     <List>
       <ListSection title="Tables" count={schema.tables.length}>
         {schema.tables.map((t) => (
-          <ListRow key={t.name} icon="tablecells" title={t.name} mono selected={t.name === picked} end={t.rows !== null && <ListValue>{n(t.rows)}</ListValue>} onClick={() => set({ table: t.name })} onContextMenu={() => tableMenu(t)} />
+          <ListRow
+            key={t.name}
+            selected={t.name === picked}
+            onClick={() => set({ table: t.name })}
+            onContextMenu={() => tableMenu(t)}
+          >
+            <ListRowIcon icon="tablecells" />
+            <ListRowContent title={t.name} mono />
+            <ListRowEnd>{t.rows !== null && <ListValue>{n(t.rows)}</ListValue>}</ListRowEnd>
+          </ListRow>
         ))}
       </ListSection>
       {schema.views.length > 0 && (
         <ListSection title="Views" count={schema.views.length}>
           {schema.views.map((t) => (
-            <ListRow key={t.name} icon="eye" title={t.name} mono selected={t.name === picked} onClick={() => set({ table: t.name })} onContextMenu={() => tableMenu(t)} />
+            <ListRow
+              key={t.name}
+              selected={t.name === picked}
+              onClick={() => set({ table: t.name })}
+              onContextMenu={() => tableMenu(t)}
+            >
+              <ListRowIcon icon="eye" />
+              <ListRowContent title={t.name} mono />
+            </ListRow>
           ))}
         </ListSection>
       )}

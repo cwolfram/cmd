@@ -3,7 +3,7 @@
 // ones marked, the filter in the toolbar and where they run in the footer. The
 // spec for Workspace Actions, Commands and any list you act on.
 
-import { Button, Icon, IconButton, LinkButton, List, ListGroup, ListRow, ListSection, ListValue, Spinner, StatusLine, ToolbarButton, ToolbarSearchField, ToolbarSpacer, View, WindowToolbar, type ViewStateSpec } from "@cmd/ui";
+import { Button, Icon, IconButton, LinkButton, List, ListGroup, ListRow, ListRowActions, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Spinner, StatusLine, ToolbarButton, ToolbarSearchField, ToolbarSpacer, View, type ViewStateSpec, WindowToolbar } from "@cmd/ui";
 import { useState } from "react";
 import { AllSizes, RefWindow, type SizeName } from "./RefWindow.tsx";
 
@@ -26,43 +26,37 @@ const KINDS = ["Test", "Build", "Check", "Other", "Deploy", "Clean"];
 
 function Row({ a, big }: { a: Act; big?: boolean }) {
   return (
-    <ListRow
-      icon={a.icon}
-      light={a.running ? "working" : a.failed ? "danger" : undefined}
-      title={a.name}
-      mono
-      detail={a.failed ? `Failed · exit ${a.failed}` : a.detail}
-      tone={a.failed ? "danger" : undefined}
-      end={
-        <>
-          {a.url && (
-            <LinkButton tone="accent" onClick={(e) => e.stopPropagation()}>
-              {a.url}
-            </LinkButton>
-          )}
-          {(a.running ?? a.took) && <ListValue>{a.running ?? a.took}</ListValue>}
-          {big && !a.running && (
-            <Button size="sm" variant="primary" icon="play.fill">
-              Run
-            </Button>
-          )}
-        </>
-      }
-      hover={
-        a.running ? (
+    <ListRow>
+      <ListRowIcon icon={a.icon} light={a.running ? "working" : a.failed ? "danger" : undefined} />
+      <ListRowContent title={a.name} mono detail={a.failed ? `Failed · exit ${a.failed}` : a.detail} tone={a.failed ? "danger" : undefined} />
+      <ListRowEnd>
+        {a.url && (
+          <LinkButton tone="accent" onClick={(e) => e.stopPropagation()}>
+            {a.url}
+          </LinkButton>
+        )}
+        {(a.running ?? a.took) && <ListValue>{a.running ?? a.took}</ListValue>}
+        {big && !a.running && (
+          <Button size="sm" variant="primary" icon="play.fill">
+            Run
+          </Button>
+        )}
+      </ListRowEnd>
+      <ListRowActions>
+        {a.running ? (
           <>
             <IconButton size="sm" icon="arrow.clockwise" label="Restart" />
             <IconButton size="sm" icon="stop.fill" label="Stop" />
           </>
         ) : big ? undefined : (
           <IconButton size="sm" icon="play.fill" label="Run" />
-        )
-      }
-    />
+        )}
+      </ListRowActions>
+    </ListRow>
   );
 }
 
-function Actions({ size = "regular", query: q0 = "", state, describing, idle, variant = "grouped" }: { size?: SizeName; query?: string; state?: ViewStateSpec; describing?: boolean; idle?: boolean; variant?: "plain" | "grouped" }) {
+function Actions({ size = "regular", query: q0 = "", state, describing, idle }: { size?: SizeName; query?: string; state?: ViewStateSpec; describing?: boolean; idle?: boolean }) {
   const [q, setQ] = useState(q0);
   const primary = idle ? { ...PRIMARY, running: undefined, url: undefined } : PRIMARY;
   const all = [primary, ...ACTS];
@@ -102,7 +96,7 @@ function Actions({ size = "regular", query: q0 = "", state, describing, idle, va
           </StatusLine>
         }
       >
-        <List variant={variant}>
+        <List>
           {q ? (
             <ListSection title="Matches" count={matches.length}>
               {matches.map((a) => (
@@ -133,7 +127,6 @@ function Actions({ size = "regular", query: q0 = "", state, describing, idle, va
 }
 
 export const Default = () => <Actions />;
-export const Plain = () => <Actions variant="plain" />;
 export const Sizes = () => <AllSizes render={(s) => <Actions size={s} />} />;
 export const Idle = () => <Actions idle />;
 export const Filtered = () => <Actions query="e2e" />;

@@ -176,20 +176,18 @@ button.ui-dial-value:not(:disabled):hover { background: var(--bg-hover); }
 .ui-stack[data-pad] > .ui-stack:first-child > .ui-text:first-child,
 .ui-stack[data-pad] > .ui-stack:first-child > .ui-inline:first-child > .ui-text { text-box: trim-start cap alphabetic; }
 
-/* Rows in a view (ListSection, ListRow): a little room above and below; the sides are the rows' own. */
+/* Rows in a view (List, ListSection, ListRow; list.tsx): a little room above and below; the sides are the rows' own. */
 .ui-list { display: flex; flex-direction: column; padding: calc(var(--inset) - var(--list-pad)) 0; } /* a heading's or row's letters ~8px down, so on the inset */
 .ui-list-rows { display: contents; }
 /* Nav: the pages beside a page; a selected row's pill lines up with the field above it. */
-.ui-list[data-variant="nav"] { --list-inset: var(--inset); }
-/* Grouped: a plain list (the same rows, headings and insets, in a View without `inset`) whose
-   sections stand apart: --section-gap after a section that shows its rows and around the main
-   action and callouts; collapsed sections stack as a plain list's do. Nothing else differs, so
-   the two line up by construction. */
-.ui-list[data-variant="grouped"] > * + * { margin-top: var(--section-gap); }
-.ui-list[data-variant="grouped"] > .ui-list-section:not(:has(> .ui-list-rows)) + .ui-list-section { margin-top: var(--space-1-5); }
-.ui-list[data-variant="grouped"] .ui-list-heading + .ui-list-rows > :first-child { margin-top: var(--heading-gap); } /* rows are display: contents */
-/* A ListGroup's rows are display: contents: its first row takes the gap. */
-.ui-list[data-variant="grouped"] > * + .ui-list-rows > :first-child { margin-top: var(--section-gap); }
+.ui-list[data-nav] { --list-inset: var(--inset); }
+/* Sections stand apart: --section-gap after one that shows its rows, and around a ListGroup and
+   callouts; a collapsed one (no rows) is followed closely, so collapsed headings stack. */
+.ui-list > * + * { margin-top: var(--section-gap); }
+.ui-list > .ui-list-section:not(:has(> .ui-list-rows)) + * { margin-top: var(--space-1-5); }
+/* Rows are display: contents, so the gaps above a section's or a ListGroup's rows go on their first row. */
+.ui-list-heading + .ui-list-rows > :first-child { margin-top: var(--heading-gap); }
+.ui-list > * + .ui-list-rows > :first-child { margin-top: var(--section-gap); }
 /* What isn't rows in a list (a Callout) sits on the inset, the top too (the list's padding is the rows'). */
 .ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row) { margin-inline: var(--inset); }
 .ui-list > :not(.ui-list-section, .ui-list-rows, .ui-list-row):first-child { margin-top: var(--list-pad); }

@@ -335,27 +335,6 @@ export function Text({ tone, size, mono, strong, truncate, select, children }: {
 }
 
 /**
- * Rows to act on or pick from (ListSection, ListRow, ListGroup). Plain: rows run edge to
- * edge in a View without an inset, their content at the window's inset, as in a sidebar.
- * Grouped: a plain list whose sections stand apart, for lists of things to run or change
- * rather than records; in a View without `inset` too, so it lines up with a plain one.
- * Nav: the pages beside a page (Settings' sidebar), highlights on the inset like the fields
- * above them, their content inside.
- */
-export function List({ variant = "plain", children }: { variant?: "plain" | "grouped" | "nav"; children: ReactNode }) {
-  return (
-    <div className="ui-list" data-variant={variant}>
-      {children}
-    </div>
-  );
-}
-
-/** Rows in a box without a heading (a grouped List's main action). */
-export function ListGroup({ children }: { children: ReactNode }) {
-  return <div className="ui-list-rows">{children}</div>;
-}
-
-/**
  * A document to read: rendered Markdown or HTML (headings, lists, code, tables,
  * quotes) in a reading column, set in the person's text font (the font.text
  * setting, --font-text) and code font. Children, or innerHTML through its ref.

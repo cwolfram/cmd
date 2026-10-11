@@ -32,7 +32,7 @@ import { COMMANDS, COMMAND_BY_ID, DEFAULT_KEYBINDINGS, norm, prettyAccelerator, 
 import { IndexRing } from "../components/IndexRing.tsx";
 import { acceleratorOf, usableShortcut, useKeybindings } from "../lib/keybindings.ts";
 import { cmd } from "../lib/bridge.ts";
-import { Button, Callout, EmptyState, FormActions, FormRow, FormSection, IconButton, Inline, List, ListRow, NumberField, Page, ResetButton, SearchField, SecretField, Segmented, Select, ShortcutField, Spinner, Split, Stack, StatusLine, Switch, TextField, TitleBand, View } from "@cmd/ui";
+import { Button, Callout, EmptyState, FormActions, FormRow, FormSection, IconButton, Inline, List, ListRow, ListRowContent, ListRowIcon, NumberField, Page, ResetButton, SearchField, SecretField, Segmented, Select, ShortcutField, Spinner, Split, Stack, StatusLine, Switch, TextField, TitleBand, View } from "@cmd/ui";
 import { useSettings } from "./useSettings.ts";
 import { AiKeyRow, AiProviderChoice } from "../ai/Providers.tsx";
 import { useAiStatus } from "../ai/status.ts";
@@ -225,9 +225,17 @@ export function SettingsWindow() {
               <SearchField ref={input} size="lg" value={query} placeholder="Search settings" onChange={(v) => (setQuery(v), setScrolled(false))} />
             </Stack>
             <Stack gap={0} grow>
-              <List variant="nav">
+              <List nav>
                 {NAV.map((n) => (
-                  <ListRow key={n.id} icon={n.icon} title={n.title} selected={!q && n.id === page} dim={!!q && !hitPages.has(n.id)} onClick={() => (setQuery(""), setPage(n.id), setScrolled(false))} />
+                  <ListRow
+                    key={n.id}
+                    selected={!q && n.id === page}
+                    dim={!!q && !hitPages.has(n.id)}
+                    onClick={() => (setQuery(""), setPage(n.id), setScrolled(false))}
+                  >
+                    <ListRowIcon icon={n.icon} />
+                    <ListRowContent title={n.title} />
+                  </ListRow>
                 ))}
               </List>
             </Stack>

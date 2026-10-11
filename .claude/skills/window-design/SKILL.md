@@ -15,18 +15,18 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
 - **Window pieces** (`packages/ui/src/frame.tsx`, `chart.tsx`, styles in `frame.css`):
   - `View`: a window's content: `toolbar` (a `WindowToolbar`), the body, `footer` (a `StatusLine`), `state` (loading, empty, no results, error; replaces the body). `inset` pads the body; leave it off for content that runs edge to edge (a table, a list, media).
   - `Split`: a sidebar (`side="start"`) or an inspector (`side="end"`), resizable between min/ideal/max, hidden below the regular size (600px). Offer what it held another way there: `<Hide above="regular">` around a `ToolbarMenu` in the toolbar (the SQLite window's table menu).
-  - `List` (`variant="plain"`: rows edge to edge, as a sidebar; `"grouped"`: indented sections, for things to run or change), with `ListSection`, `ListRow`, `ListGroup`.
+  - `List`: one list for every window (a sidebar, things to run, records), in a View without `inset`: `ListSection` (a heading and its rows, collapsible; `role`/`aria-*` pass through, the Navigator's trees), `ListGroup` (rows without a heading: a main action), `ListRow`. Sections stand apart by `--section-gap` after an open one; collapsed ones stack. `nav` only for the pages beside a page (Settings' sidebar: pills on the inset).
   - `Panes` / `Pane`: a dashboard's sections, one column, two from 720px.
   - `DataGrid`: tables. Columns as data: `grow` (takes the leftover width), `align: "end"` (numbers), `hide: "narrow" | "regular"` (dropped as space runs out), `icon` (hugs a dot or icon). `selected` / `onRowClick` for an inspector. `rowInfo(i)` makes a row a section heading (`heading`: its cells are the section's name and totals; not selectable) or a nested row (`depth`, `expanded` + `onToggle` draw a disclosure in the first non-icon column); `onRowDoubleClick` opens a row. Task Manager uses all three.
   - `Stat`, `Chart` (line, area, bar), `Sparkline`, `Legend`: series take `--chart-N` in order.
   - `TitleBand` and `Page`: a window of its own with forms (Settings). `TitleBand` is the band under the traffic lights (`--titlebar-h`), the window drags by it: give it a `title` as a View's `toolbar` (the page's name, large, with a `line` once the body scrolls: `View onScroll`), or none at the top of a sidebar. `Page` is the column of `FormSection`s in a padded View, centred past `--page-w`. Under a section, `FormActions` (Restore Defaults; a `hint` at the left). Controls for it: `ShortcutField` (key caps to record, remove, add), `QrCode`. `Text select` is a value to copy (a path, a pid).
   - `Dial`: a value to read across the room in a ring of what's left (the Timer): as large as the view allows, click to edit (`onEdit`, `edit`); tones accent, needs, dim.
   - `Diff`: a file's changed lines in the git colours, under its `ListRow` past the disclosure (Live Diff). `Stage`: media that fills the view on the scrim, its one child stretched (YouTube's player, the Visualizer).
-  - `ListRow`: `title`, then `place` (dim, gives way first as the row narrows, then the title), `detail` (a second line; `tone="needs"` colours it), `end`, `lead` (a `Twisty`), `depth`. A file's row is its name with its folder as `place`.
+  - `ListRow` is built from slots, in order: a `Twisty` or `TwistySpace`, `ListRowIcon` (`icon`, `light`, `tone`), `ListRowContent` (`title`, then `place`, dim, giving way first as the row narrows; or `detail`, a second line that makes the row two lines tall; `tone="needs"` colours it; `mono`), `ListRowEnd` (chips, ages, `ListValue`s), `ListRowActions` (shown on hover, in place of a chip). The row itself takes `selected`, `active`, `dim`, `depth`, the handlers, `role`/`aria-*`. A file's row is its name with its folder as `place`.
   - `Tree`, `TreeRow`, `TreeHeader`, `TreeRename`: files and folders (the Files window and sidebar): disclosure, icon, name, git mark (`tone`), size and date (dropped when narrow), a dense sidebar version with guides, sortable column heads, rename in place, drop targets. A focused selection is the accent with `--on-accent` on it. States go inside the `Tree` (it still takes drops).
   - `WebStage`: a web page (the Browser): on white, faded in once painted; a device's page lifted with its caption; a `cover` state over the page.
-  - `ListRow` also takes `markTone` and passes `role`/`aria-*` through (the Navigator's tree); `TwistySpace` holds a disclosure's place. `LiveBadge`: a device on a window, its note fading (`--dur-note`). `IconButton` takes `tone` and `pulse`. A `Dialog` dressed as a window takes `window.status` at its title bar's right.
-  - `Thumb`: a small screenshot at a row's start (a `ListRow` `lead`), a placeholder without one. `WebStage` also hosts an `iframe` (a Magic widget).
+  - `Mark` (the icon that gives way to a status light) also goes in a table cell (Resources); `TwistySpace` holds a disclosure's place. `LiveBadge`: a device on a window, its note fading (`--dur-note`). `IconButton` takes `tone` and `pulse`. A `Dialog` dressed as a window takes `window.status` at its title bar's right.
+  - `Thumb`: a small screenshot at a row's start (first in a `ListRow`), a placeholder without one. `WebStage` also hosts an `iframe` (a Magic widget).
   - `Document`: a reading column for rendered Markdown or HTML, in the person's text and code fonts (the Markdown window).
   - `Viewport` (pan and zoom a picture: grab cursors, a loading cover; the view zooms) and `Picture` (a checkerboard behind transparency, crisp pixels far in): the Image window. Third-party markup (pdf.js) keeps a small stylesheet of its own, on tokens.
   - `Ribbon` (bars between two times on lanes, hour ticks) and `Timeline` / `TimelineEntry` (a time, a mark on a rail, the entry), marks in a hue with `--mark` (the Journal).
@@ -42,7 +42,7 @@ Every window in cmd, built-in or made with Magic, is drawn from one set of desig
   | `chartwindow` | watching numbers: status line, stats, charts, a short table | Resources, Agent Activity |
   | `contentwindow` | text to read: outline sidebar, reading column | Markdown, Journal, What's New |
   | `mediawindow` | one picture or video: stage, filmstrip, info inspector | Image, PDF, YouTube |
-  | `actionswindow` | things to run: main action first, grouped list | Workspace Actions, Commands |
+  | `actionswindow` | things to run: main action first, then sections | Workspace Actions, Commands |
   | `settingswindow` | forms: a sidebar of pages, a title band, sections of rows | Settings |
 
 ## Rules
@@ -58,7 +58,7 @@ Each was settled by measuring in the Workbench; keep them unless the user change
 - **Scrollbars never take room.** They float over the content (`installScrollbars`); nothing compensates for them.
 - **Tables** run edge to edge with their edge columns on the inset and 16px between columns (`--grid-pad` twice); an icon column hugs its icon. Least important columns drop as the window narrows (`hide`).
 - **Charts** line up on the left with their pane's title; the y axis sits on the right, right-aligned with the pane's unit (as Swift Charts does); no labels over the data, none on the baseline. A legend only for more than one series.
-- **Lists of things to run** are grouped: sections apart, rows indented, no boxes around them; rows highlight as pills on hover. Lists that are navigation (a sidebar) stay plain.
+- **One list.** Things to run, a sidebar, records: the same `List`, so they line up wherever they sit side by side. Sections apart, no boxes around them; rows highlight as pills on hover.
 - **No boxes in the box.** The window is the frame: don't wrap a section, list or table in a card.
 - **States replace the body**: `View state={…}`: loading, empty (with what to do), no results (with a way back), error (plain words and Try Again). Never a spinner placed by hand. Their titles and texts are centred and wrap balanced (`text-wrap: balance`, a width in characters), titles in sentence case; the icon is small (`ICON.empty`, 20px) in `--text`, the error's too. `States.story.tsx` shows them, short and long, at three widths.
 

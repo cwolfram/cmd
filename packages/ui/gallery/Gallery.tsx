@@ -7,93 +7,97 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNo
 import {
   AiField,
   type AiState,
+  Badge,
+  Button,
+  ButtonGroup,
+  Callout,
+  Card,
+  Chart,
+  Checkbox,
+  Checklist,
+  Chip,
+  CodeBlock,
+  ConfirmDialog,
+  DataGrid,
+  Dialog,
+  type DotState,
+  EmptyState,
+  ErrorBoundary,
+  FeatureList,
   FindBar,
+  FormActions,
+  FormRow,
+  FormSection,
   Highlight,
+  Icon,
+  IconButton,
+  Inline,
+  Kbd,
+  KeyValue,
+  LinkButton,
+  List,
+  ListRow,
+  ListRowActions,
+  ListRowContent,
+  ListRowEnd,
+  ListRowIcon,
+  ListSection,
+  ListValue,
+  Menu,
   NO_FIND_OPTIONS,
+  NumberField,
+  PageDots,
+  Pane,
+  Panel,
+  PanelBody,
+  PanelHeader,
+  PanelSummary,
+  Panes,
+  Popover,
+  Presence,
+  Progress,
+  ProgressRing,
+  Prose,
+  RadioGroup,
+  ResetButton,
+  SearchField,
+  SecretField,
+  SectionHeading,
+  Segmented,
+  Select,
+  Separator,
+  SheetHeader,
+  ShortcutField,
+  Spacer,
+  Sparkline,
+  Spinner,
+  Split,
+  Stack,
+  Stat,
+  StatusDot,
+  StatusLine,
+  Switch,
+  Tabs,
+  Text,
+  TextArea,
+  TextField,
+  Tiles,
+  toast,
+  Toast,
+  Toolbar,
   ToolbarAddressField,
   ToolbarButton,
   ToolbarGroup,
   ToolbarPath,
   ToolbarSearchField,
   ToolbarSpacer,
-  WindowToolbar,
-  Badge,
-  Button,
-  ButtonGroup,
-  Callout,
-  Card,
-  Chip,
-  Checkbox,
-  CodeBlock,
-  ConfirmDialog,
-  Dialog,
-  EmptyState,
-  Checklist,
-  ErrorBoundary,
-  FeatureList,
-  FormActions,
-  FormRow,
-  FormSection,
-  Icon,
-  IconButton,
-  Kbd,
-  KeyValue,
-  LinkButton,
-  DataGrid,
-  ListRow,
-  ListSection,
-  ListValue,
-  Menu,
-  NumberField,
-  Popover,
-  Presence,
-  PageDots,
-  Panel,
-  Prose,
-  PanelBody,
-  PanelHeader,
-  PanelSummary,
-  Progress,
-  ProgressRing,
-  RadioGroup,
-  ResetButton,
-  SearchField,
-  SecretField,
-  ShortcutField,
-  SectionHeading,
-  Segmented,
-  Select,
-  Separator,
-  SheetHeader,
-  Spacer,
-  Spinner,
-  StatusDot,
-  Switch,
-  Tabs,
-  TextArea,
-  TextField,
-  Toast,
-  Toolbar,
-  Chart,
-  Inline,
-  List,
-  Pane,
-  Panes,
-  Sparkline,
-  Split,
-  Stack,
-  Stat,
-  StatusLine,
-  Text,
-  Tiles,
   View,
   Window,
   WindowBar,
   WindowBarMenu,
   WindowBody,
   WindowFrame,
-  toast,
-  type DotState,
+  WindowToolbar,
 } from "../src/index.ts";
 import { allThemes, applyTheme, currentTheme, themeFor, themeVars, useTheme } from "../src/themes/registry.ts";
 import { SPACE, TOKENS } from "../src/tokens.gen.ts";
@@ -425,18 +429,28 @@ function WindowsPage() {
           </View>
         </Win>
       </Spec>
-      <Spec title="List" code='<List variant="plain" | "grouped" | "nav">' note="Plain for a sidebar of things, grouped for things to run or change: indented, no boxes; nav for the pages beside a page, its pills on the inset." plain>
+      <Spec title="List" code="<List [nav]> · <ListSection> · <ListRow> <ListRowIcon /> <ListRowContent /> <ListRowEnd /> <ListRowActions /> </ListRow>" note="One list for every window, built from slots; sections stand apart after one that's open. nav: the pages beside a page, its pills on the inset." plain>
         <div className="g-row" style={{ alignItems: "flex-start" }}>
-          {(["plain", "grouped", "nav"] as const).map((v) => (
-            <Win key={v} name={v} w={300} h={250}>
+          {([false, true] as const).map((v) => (
+            <Win key={String(v)} name={v ? "nav" : "list"} w={300} h={250}>
               <View>
-                <List variant={v}>
+                <List nav={v}>
                   <ListSection title="Test" count={2}>
-                    <ListRow icon="checkmark.circle" title="test" detail="Vitest, all packages" end={<ListValue>38s</ListValue>} />
-                    <ListRow icon="checkmark.circle" light="danger" tone="danger" title="e2e" detail="Failed · exit 1" />
+                    <ListRow>
+                      <ListRowIcon icon="checkmark.circle" />
+                      <ListRowContent title="test" detail="Vitest, all packages" />
+                      <ListRowEnd><ListValue>38s</ListValue></ListRowEnd>
+                    </ListRow>
+                    <ListRow>
+                      <ListRowIcon icon="checkmark.circle" light="danger" />
+                      <ListRowContent tone="danger" title="e2e" detail="Failed · exit 1" />
+                    </ListRow>
                   </ListSection>
                   <ListSection title="Build" count={1}>
-                    <ListRow icon="hammer" title="build" detail="Bundle the desktop app" />
+                    <ListRow>
+                      <ListRowIcon icon="hammer" />
+                      <ListRowContent title="build" detail="Bundle the desktop app" />
+                    </ListRow>
                   </ListSection>
                 </List>
               </View>
@@ -1621,12 +1635,34 @@ function ListSpecimen() {
         </PanelHeader>
         <PanelBody>
           <ListSection title="Running" count={1}>
-            <ListRow icon="terminal" light="working" mono title="pnpm dev" detail="Running · 4 min" end={<Chip hue={200}>cmd</Chip>} />
+            <ListRow>
+              <ListRowIcon icon="terminal" light="working" />
+              <ListRowContent mono title="pnpm dev" detail="Running · 4 min" />
+              <ListRowEnd><Chip hue={200}>cmd</Chip></ListRowEnd>
+            </ListRow>
           </ListSection>
           <ListSection title="Finished" count={3} open={open} onToggle={() => setOpen((o) => !o)}>
-            <ListRow icon="terminal" light="danger" mono title="pnpm test" detail="Failed · exit 1 · 12 s" tone="danger" end={<><Chip hue={200}>cmd</Chip><ListValue>2m</ListValue></>} hover={<IconButton size="sm" icon="arrow.clockwise" label="Run Again" />} />
-            <ListRow icon="terminal" mono title="git status" detail="0.2 s" selected end={<ListValue>5m</ListValue>} />
-            <ListRow icon="bell" title="One line, with a place" place="~/src/cmd" end={<ListValue strong>84%</ListValue>} />
+            <ListRow>
+              <ListRowIcon icon="terminal" light="danger" />
+              <ListRowContent mono title="pnpm test" detail="Failed · exit 1 · 12 s" tone="danger" />
+              <ListRowEnd>
+                <Chip hue={200}>cmd</Chip>
+                <ListValue>2m</ListValue>
+              </ListRowEnd>
+              <ListRowActions>
+                <IconButton size="sm" icon="arrow.clockwise" label="Run Again" />
+              </ListRowActions>
+            </ListRow>
+            <ListRow selected>
+              <ListRowIcon icon="terminal" />
+              <ListRowContent mono title="git status" detail="0.2 s" />
+              <ListRowEnd><ListValue>5m</ListValue></ListRowEnd>
+            </ListRow>
+            <ListRow>
+              <ListRowIcon icon="bell" />
+              <ListRowContent title="One line, with a place" place="~/src/cmd" />
+              <ListRowEnd><ListValue strong>84%</ListValue></ListRowEnd>
+            </ListRow>
           </ListSection>
         </PanelBody>
       </Panel>

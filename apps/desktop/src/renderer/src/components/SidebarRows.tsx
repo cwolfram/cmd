@@ -1,8 +1,8 @@
 // Sidebar rows: open windows and agents (SessionRow), past sessions from the
-// transcript index (HistoryRow), closed windows (ClosedRow), and the section
-// headings that group them.
+// transcript index (HistoryRow) and closed windows (ClosedRow), in the
+// Navigator's ListSections.
 
-import { Chip, Highlight, IconButton, ListHeading, ListRow, Text, Twisty, TwistySpace } from "@cmd/ui";
+import { Chip, Highlight, IconButton, ListRow, ListRowActions, ListRowContent, ListRowEnd, ListRowIcon, Text, Twisty, TwistySpace } from "@cmd/ui";
 import type { ReactNode } from "react";
 import type { ClosedWindow, PaneId, SearchHit, WindowId } from "@cmd/protocol";
 import { usePersisted, useStoreValue } from "../lib/store.ts";
@@ -16,27 +16,6 @@ import { countRender } from "../lib/perf.ts";
 
 /** "2h ago" → "2h": the column is narrow. */
 export const shortAgo = (ts: number, now: number) => ago(ts, now).replace(/ ago$/, "");
-
-/** A Navigator section: a tree named by its title, so a script finds `tree "Windows"` and its rows. */
-export function SidebarSection({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
-  return (
-    <section className={`ui-list-section sb-section${className ? ` ${className}` : ""}`} role="tree" aria-label={title}>
-      {children}
-    </section>
-  );
-}
-
-/** The Navigator's section headings: the kit's ListHeading. */
-export function SectionHeading(p: {
-  title: string;
-  count?: number;
-  /** Omitted: not collapsible. */
-  open?: boolean;
-  onToggle?: () => void;
-  tone?: "needs";
-}) {
-  return <ListHeading {...p} />;
-}
 
 export function SessionRow(props: {
   row: SidebarRow;
@@ -88,57 +67,54 @@ export function SessionRow(props: {
         aria-expanded={kids.length > 0 ? open : undefined}
         onClick={() => onSelect(row)}
         onContextMenu={() => props.onMenu(row)}
-        lead={kids.length > 0 ? <Twisty open={open} onToggle={() => setOpen(!open)} /> : (props.gutter || depth > 0) && <TwistySpace />}
-        icon={f.icon}
-        light={f.light}
-        markTone={f.tone}
-        title={
-          <>
-            <Slot value={{ text: f.name }} fade />
-            <DirtyDot on={!!f.dirty} />
-          </>
-        }
-        place={f.place}
-        // Status if there is one ("does this need me?"), else Place ("which one is it?").
-        detail={tall ? <Slot value={f.status} fallback={f.place ? { text: f.place } : undefined} /> : undefined}
-        tone={(f.light ?? f.tone) === "needs" ? "needs" : undefined}
-        end={
-          <>
-            {kids.length > 0 && !open && (
-              <Text size="2xs" tone="dim">
-                {doneKids}/{kids.length}
-              </Text>
-            )}
-            <RemoteBadge id={winId} compact />
-            {where && (
-              <Chip hue={where.hue} tip={where.tip}>
-                {where.text}
-              </Chip>
-            )}
-          </>
-        }
-        hover={
-          <>
-            {shortcut && (
-              <Text size="2xs" tone="dim">
-                ⌘{shortcut}
-              </Text>
-            )}
-            {winId && (
-              <IconButton
-                size="sm"
-                icon="xmark"
-                iconSize={ICON.disclosure}
-                label="Close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  props.onClose(row);
-                }}
-              />
-            )}
-          </>
-        }
-      />
+      >
+        {kids.length > 0 ? <Twisty open={open} onToggle={() => setOpen(!open)} /> : (props.gutter || depth > 0) && <TwistySpace />}
+        <ListRowIcon icon={f.icon} light={f.light} tone={f.tone} />
+        <ListRowContent
+          title={
+            <>
+              <Slot value={{ text: f.name }} fade />
+              <DirtyDot on={!!f.dirty} />
+            </>
+          }
+          place={f.place}
+          // Status if there is one ("does this need me?"), else Place ("which one is it?").
+          detail={tall ? <Slot value={f.status} fallback={f.place ? { text: f.place } : undefined} /> : undefined}
+          tone={(f.light ?? f.tone) === "needs" ? "needs" : undefined}
+        />
+        <ListRowEnd>
+          {kids.length > 0 && !open && (
+            <Text size="2xs" tone="dim">
+              {doneKids}/{kids.length}
+            </Text>
+          )}
+          <RemoteBadge id={winId} compact />
+          {where && (
+            <Chip hue={where.hue} tip={where.tip}>
+              {where.text}
+            </Chip>
+          )}
+        </ListRowEnd>
+        <ListRowActions>
+          {shortcut && (
+            <Text size="2xs" tone="dim">
+              ⌘{shortcut}
+            </Text>
+          )}
+          {winId && (
+            <IconButton
+              size="sm"
+              icon="xmark"
+              iconSize={ICON.disclosure}
+              label="Close"
+              onClick={(e) => {
+                e.stopPropagation();
+                props.onClose(row);
+              }}
+            />
+          )}
+        </ListRowActions>
+      </ListRow>
       {open &&
         kids.map((c) => (
           <SessionRow key={c.key} {...props} row={c} depth={depth + 1} active={false} />
@@ -166,19 +142,17 @@ export function HistoryRow(p: { hit: SearchHit; now: number; onOpen: (h: SearchH
       data-tip-side="right"
       tip={[h.title, h.cwd ? shortPath(h.cwd) : null, `${h.agent} · ${h.sessionId}`].filter(Boolean).join("\n")}
       onClick={() => p.onOpen(h)}
-      icon="clock.arrow.circlepath"
-      markTone="dim"
-      title={h.title || "(untitled session)"}
-      place={!p.rich && where ? where : undefined}
-      detail={p.rich ? detail : undefined}
-      end={
-        h.updatedAt && (
+    >
+      <ListRowIcon icon="clock.arrow.circlepath" tone="dim" />
+      <ListRowContent title={h.title || "(untitled session)"} place={!p.rich && where ? where : undefined} detail={p.rich ? detail : undefined} />
+      <ListRowEnd>
+        {h.updatedAt && (
           <Text size="xs" tone="dim">
             {shortAgo(h.updatedAt, p.now)}
           </Text>
-        )
-      }
-    />
+        )}
+      </ListRowEnd>
+    </ListRow>
   );
 }
 
@@ -198,15 +172,14 @@ export function ClosedRow(p: { win: ClosedWindow; now: number; onOpen: (id: Wind
       data-tip-side="right"
       tip={[title, w.cwd ? shortPath(w.cwd) : null, "Click to reopen"].filter(Boolean).join("\n")}
       onClick={() => p.onOpen(w.id)}
-      icon={w.kind === "terminal" ? "terminal" : (typeFor(w.kind)?.icon ?? "macwindow")}
-      markTone="dim"
-      title={title}
-      place={w.cwd ? project(w.cwd) : undefined}
-      end={
+    >
+      <ListRowIcon icon={w.kind === "terminal" ? "terminal" : (typeFor(w.kind)?.icon ?? "macwindow")} tone="dim" />
+      <ListRowContent title={title} place={w.cwd ? project(w.cwd) : undefined} />
+      <ListRowEnd>
         <Text size="xs" tone="dim">
           {shortAgo(w.closedAt, p.now)}
         </Text>
-      }
-    />
+      </ListRowEnd>
+    </ListRow>
   );
 }

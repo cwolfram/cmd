@@ -8,7 +8,7 @@
 // window-design skill's chart window (stats with sparklines, then tables), so
 // ResourcesView.story.tsx can show every state.
 
-import { DataGrid, LinkButton, ListMark, Pane, Panes, Sparkline, Stat, StatusLine, Text, Tiles, View } from "@cmd/ui";
+import { DataGrid, LinkButton, Mark, Pane, Panes, Sparkline, Stat, StatusLine, Text, Tiles, View } from "@cmd/ui";
 import { useEffect, useState } from "react";
 import type { Pane as TermPane, PaneId, ProcessStat } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -130,7 +130,7 @@ export function Resources(p: ResourcesProps) {
             <DataGrid
               columns={columns("Terminal", [{ key: "top", label: "Busiest", hide: "regular" }])}
               rows={terminals.map((t) => [
-                <ListMark key="m" icon={t.icon} light={t.cpu >= HOT_CPU ? "working" : undefined} />,
+                <Mark key="m" icon={t.icon} light={t.cpu >= HOT_CPU ? "working" : undefined} />,
                 { node: t.workspace ? `${t.name} · ${t.workspace}` : t.name, tip: [t.name, t.top.join(", "), t.processes > 1 ? `${t.processes} processes` : null, t.workspace].filter(Boolean).join("\n") },
                 { node: <Text tone="dim">{t.top.join(", ")}</Text> },
                 ...values(t),
@@ -149,8 +149,8 @@ export function Resources(p: ResourcesProps) {
             <DataGrid
               columns={columns("Part")}
               rows={[
-                [<ListMark key="m" icon="macwindow" />, "App", ...values(p.app)],
-                [<ListMark key="m" icon="gearshape.2" />, { node: "Background", tip: "Keeps your terminals and agents running while the app is closed" }, ...values(p.background)],
+                [<Mark key="m" icon="macwindow" />, "App", ...values(p.app)],
+                [<Mark key="m" icon="gearshape.2" />, { node: "Background", tip: "Keeps your terminals and agents running while the app is closed" }, ...values(p.background)],
               ]}
             />
           </Pane>

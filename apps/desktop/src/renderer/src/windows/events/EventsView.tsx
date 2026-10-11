@@ -7,7 +7,7 @@
 // replaces its row and moves it up. A click shows the event as stored; the
 // title bar's menu hides classes, pauses and clears.
 
-import { Chip, CodeBlock, EmptyState, ListRow, ListValue, Panel, PanelBody, ToolbarSearchField, WindowToolbar } from "@cmd/ui";
+import { Chip, CodeBlock, EmptyState, ListRow, ListRowContent, ListRowEnd, ListValue, Panel, PanelBody, ToolbarSearchField, WindowToolbar } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DataClassInfo, DataEvent } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -168,19 +168,17 @@ export function EventsView({ win }: WindowViewProps) {
     return [
       <ListRow
         key={e.id}
-        title={e.text || e.type}
-        detail={[...details(e), updates ? `recorded again ×${updates}` : null].filter(Boolean).join(" · ")}
         tip={e.id}
         selected={open === e.id}
-        end={
-          <>
-            <Chip hue={projectHue(cls)}>{cs.find((c) => c.class === cls)?.title ?? cls}</Chip>
-            <ListValue>{clock(e.at)}</ListValue>
-          </>
-        }
         onClick={() => setOpen(open === e.id ? null : e.id)}
         onContextMenu={() => rowMenu(e)}
-      />,
+      >
+        <ListRowContent title={e.text || e.type} detail={[...details(e), updates ? `recorded again ×${updates}` : null].filter(Boolean).join(" · ")} />
+        <ListRowEnd>
+          <Chip hue={projectHue(cls)}>{cs.find((c) => c.class === cls)?.title ?? cls}</Chip>
+          <ListValue>{clock(e.at)}</ListValue>
+        </ListRowEnd>
+      </ListRow>,
       open === e.id && (
         <CodeBlock key={`${e.id}:json`} maxHeight={320}>
           {JSON.stringify(e, null, 2)}

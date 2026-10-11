@@ -1,8 +1,8 @@
-// Lists like the Navigator's and the file browser's sidebar: a Panel with a
-// PanelHeader (a name that opens a menu, a summary, actions shown on hover),
-// then ListSections of ListRows (a mark that cross-fades from an icon to a
-// status light, a title, where it is, a detail line, an end that gives way to
-// actions on hover). Chip is the coloured project label rows carry.
+// Lists: List of ListSections and ListGroups of ListRows, built from slots (an icon
+// that cross-fades to a status light, the content: a title, where it is, a detail
+// line, an end that gives way to actions on hover), one set for every window; and
+// the Panel frame of the file browser's sidebar (a PanelHeader: a name that opens
+// a menu, a summary, actions shown on hover). Chip is the coloured project label.
 
 import type { CSSProperties, HTMLAttributes, MouseEvent, ReactNode } from "react";
 import { ICON, iconNode } from "./icon.tsx";
@@ -89,18 +89,39 @@ export function ListHeading({ title, count, open, onToggle, tone }: { title: Rea
   );
 }
 
-/** A heading and its rows; collapsed, only the heading. */
-export function ListSection(p: { title: ReactNode; count?: number; open?: boolean; onToggle?: () => void; tone?: "needs" | "danger"; children: ReactNode }) {
+/**
+ * Rows to act on or pick from: ListSections (a heading and its rows) and ListGroups
+ * (rows without one) of ListRows, in a View without `inset`; the rows' text sits on the
+ * window's inset and their highlights reach out of it. One list for every window: sections
+ * stand apart by --section-gap after one that shows its rows, collapsed ones stack.
+ * `nav`: the pages beside a page (Settings' sidebar), highlights on the inset like the
+ * field above them.
+ */
+export function List({ nav, children }: { nav?: boolean; children: ReactNode }) {
   return (
-    <section className="ui-list-section">
-      <ListHeading title={p.title} count={p.count} open={p.open} onToggle={p.onToggle} tone={p.tone} />
-      {p.open !== false && <div className="ui-list-rows">{p.children}</div>}
+    <div className="ui-list" data-nav={nav || undefined}>
+      {children}
+    </div>
+  );
+}
+
+/** A heading and its rows; collapsed (open false), only the heading. Other attributes (role, aria-label) go on the section. */
+export function ListSection({ title, count, open, onToggle, tone, className, children, ...rest }: { title: ReactNode; count?: number; open?: boolean; onToggle?: () => void; tone?: "needs" | "danger"; className?: string; children?: ReactNode } & Omit<HTMLAttributes<HTMLElement>, "title" | "children">) {
+  return (
+    <section className={cls("ui-list-section", className)} {...rest}>
+      <ListHeading title={title} count={count} open={open} onToggle={onToggle} tone={tone} />
+      {open !== false && <div className="ui-list-rows">{children}</div>}
     </section>
   );
 }
 
-/** An icon that gives way to a status light when there is one; `tone` colours the icon (needs: orange; dim: a past session's). */
-export function ListMark({ icon, light, tone }: { icon: string | ReactNode; light?: DotState; tone?: DotState | "dim" }) {
+/** Rows without a heading (a list's main action, above its sections). */
+export function ListGroup({ children }: { children: ReactNode }) {
+  return <div className="ui-list-rows">{children}</div>;
+}
+
+/** An icon that gives way to a status light when there is one; `tone` colours the icon (needs: orange; dim: a past session's). A row's (ListRowIcon) or a table cell's. */
+export function Mark({ icon, light, tone }: { icon: string | ReactNode; light?: DotState; tone?: DotState | "dim" }) {
   return (
     <span className={cls("ui-mark", light && "has-light")} data-tone={tone}>
       <span className="ui-mark-icon">{iconNode(icon, ICON.small)}</span>
@@ -111,47 +132,30 @@ export function ListMark({ icon, light, tone }: { icon: string | ReactNode; ligh
   );
 }
 
-export interface ListRowProps extends Omit<HTMLAttributes<HTMLDivElement>, "title" | "onClick" | "onDoubleClick" | "onContextMenu"> {
-  icon?: string | ReactNode;
-  /** A status light in place of the icon. */
-  light?: DotState;
-  /** The icon's colour while there is no light. */
-  markTone?: DotState | "dim";
-  title: ReactNode;
-  /** After the title, dim; gives way first. One-line rows only. */
-  place?: ReactNode;
-  /** A second line (status, what happened). Makes the row tall. */
-  detail?: ReactNode;
-  /** The detail in a tone: needs (orange), danger (red). */
-  tone?: "needs" | "danger";
-  /** Right end: a chip, an age, numbers. */
-  end?: ReactNode;
-  /** Right end on hover, in place of the chip: actions. */
-  hover?: ReactNode;
+export interface ListRowProps extends Omit<HTMLAttributes<HTMLDivElement>, "onClick" | "onDoubleClick" | "onContextMenu"> {
   selected?: boolean;
   /** The keyboard's row (search results). */
   active?: boolean;
   /** Faded: not among what a search found (Settings' pages while searching). */
   dim?: boolean;
+  /** Indent, for a row under another (subagents). */
   depth?: number;
-  /** Before the mark: a disclosure twisty, or its space. */
-  lead?: ReactNode;
-  mono?: boolean;
-  className?: string;
   onClick?: (e: MouseEvent<HTMLDivElement>) => void;
   onDoubleClick?: (e: MouseEvent<HTMLDivElement>) => void;
   onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
   tip?: string;
   /** Its identity across renders, for a list that moves its rows (useFlip). */
   flipKey?: string;
+  /** The row's parts, in order: Twisty or TwistySpace, ListRowIcon, ListRowContent, ListRowEnd, ListRowActions. */
+  children: ReactNode;
 }
 
-export function ListRow({ icon, light, markTone, title, place, detail, tone, end, hover, selected, active, dim, depth, lead, mono, className, onClick, onDoubleClick, onContextMenu, tip, flipKey, style, ...rest }: ListRowProps) {
+/** A row. Its height follows its content: one line, or two when ListRowContent has a detail. */
+export function ListRow({ selected, active, dim, depth, className, onClick, onDoubleClick, onContextMenu, tip, flipKey, style, children, ...rest }: ListRowProps) {
   return (
     <div
-      className={cls("ui-list-row", detail != null ? "tall" : "short", selected && "sel", active && "active", className)}
+      className={cls("ui-list-row", selected && "sel", active && "active", className)}
       data-key={flipKey}
-      data-tone={tone}
       data-dim={dim || undefined}
       data-tip={tip}
       style={depth ? ({ ...style, "--depth": depth } as CSSProperties) : style}
@@ -166,31 +170,49 @@ export function ListRow({ icon, light, markTone, title, place, detail, tone, end
       }
       {...rest}
     >
-      {lead}
-      {icon !== undefined && <ListMark icon={icon} light={light} tone={markTone} />}
-      <div className="ui-list-row-text">
-        <div className="ui-list-row-title">
-          <span className={cls("ui-list-row-name", mono && "mono")}>{title}</span>
-          {detail == null && place != null && <span className="ui-list-row-place">{place}</span>}
-        </div>
-        {detail != null && <div className="ui-list-row-detail">{detail}</div>}
-      </div>
-      {(end || hover) && (
-        <span className="ui-list-row-end">
-          {end}
-          {hover && <span className="ui-list-row-hover" onClick={(e) => e.stopPropagation()}>{hover}</span>}
-        </span>
-      )}
+      {children}
     </div>
   );
 }
 
-/** A disclosure's space in a ListRow's lead, where a row has none but its siblings do. */
+/** A row's icon (Mark): it gives way to a status light; `tone` colours it. */
+export function ListRowIcon(p: { icon: string | ReactNode; light?: DotState; tone?: DotState | "dim" }) {
+  return <Mark {...p} />;
+}
+
+/** A row's text: the title, `place` after it (dim, gives way first; one-line rows), or a `detail` line under it (makes the row two lines; `tone` colours it). */
+export function ListRowContent({ title, place, detail, tone, mono }: { title: ReactNode; place?: ReactNode; detail?: ReactNode; tone?: "needs" | "danger"; mono?: boolean }) {
+  return (
+    <div className="ui-list-row-content" data-tone={tone}>
+      <div className="ui-list-row-title">
+        <span className={cls("ui-list-row-name", mono && "mono")}>{title}</span>
+        {detail == null && place != null && <span className="ui-list-row-place">{place}</span>}
+      </div>
+      {detail != null && <div className="ui-list-row-detail">{detail}</div>}
+    </div>
+  );
+}
+
+/** The row's right end: a chip, an age, values (ListValue). A chip gives way to ListRowActions on hover. */
+export function ListRowEnd({ children }: { children: ReactNode }) {
+  return <span className="ui-list-row-end">{children}</span>;
+}
+
+/** Actions shown while the pointer is over the row (close, run); clicks stay theirs. */
+export function ListRowActions({ children }: { children: ReactNode }) {
+  return (
+    <span className="ui-list-row-actions" onClick={(e) => e.stopPropagation()}>
+      {children}
+    </span>
+  );
+}
+
+/** A disclosure's space at a ListRow's start, where a row has none but its siblings do. */
 export function TwistySpace() {
   return <span className="ui-twisty-space" />;
 }
 
-/** A disclosure twisty for a ListRow's lead. */
+/** A disclosure twisty at a ListRow's start. */
 export function Twisty({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <button

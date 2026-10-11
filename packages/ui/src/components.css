@@ -949,7 +949,6 @@ button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
 /* Nothing to list: the empty state takes the room left and centres in it. */
 .ui-panel-body > .ui-empty { flex: 1; min-height: max-content; }
 
-.ui-list-section + .ui-list-section { margin-top: var(--space-1-5); }
 .ui-list-heading { display: flex; align-items: center; gap: var(--space-1-5); height: 24px; margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--list-pad); border-radius: var(--radius); font: 600 var(--text-xs) var(--font-ui); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
 .ui-list-count { font-weight: 500; letter-spacing: 0; opacity: 0.75; font-variant-numeric: tabular-nums; }
 .ui-list-heading[data-tone="needs"] { color: var(--state-needs); }
@@ -960,24 +959,25 @@ button.ui-panel-title:hover { color: var(--text); background: var(--bg-hover); }
 .ui-list-heading.collapsible:hover { color: var(--text); }
 
 .ui-list-row { --depth: 0; display: flex; align-items: center; gap: var(--list-icon-gap); margin: 0 var(--list-inset, var(--space-1-5)); padding: 0 var(--list-pad) 0 calc(var(--list-pad) + var(--depth) * var(--space-3)); border-radius: var(--radius); cursor: default; }
-.ui-list-row.short { height: 28px; }
+.ui-list-row { height: 28px; }
 .ui-list-row + .ui-list-row { margin-top: var(--list-gap); } /* a hovered or selected row stands apart from the next */
-.ui-list-row.tall { min-height: 44px; padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.ui-list-row:has(> .ui-list-row-content > .ui-list-row-detail) { height: auto; min-height: 44px; padding-top: var(--space-1); padding-bottom: var(--space-1); } /* two lines */
 .ui-list-row:hover { background: var(--bg-hover); }
 .ui-list-row.sel { background: var(--bg-selected); }
 .ui-list-row[data-dim] { opacity: var(--disabled-opacity); }
 .ui-list-row.active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 70%, transparent); }
-.ui-list-row-text { flex: 1; min-width: 0; }
+.ui-list-row-content { flex: 1; min-width: 0; }
 .ui-list-row-title { display: flex; align-items: center; line-height: 18px; font-weight: 500; white-space: nowrap; overflow: hidden; }
 .ui-list-row-name { flex: none; max-width: 100%; overflow: hidden; text-overflow: ellipsis; } /* the place gives way first, then the name */
 .ui-list-row-name.mono { font: 500 var(--text-sm) var(--font-mono); }
 .ui-list-row-place { flex: 0 100 auto; min-width: 0; margin-left: var(--space-1-5); overflow: hidden; text-overflow: ellipsis; font-weight: 400; font-size: var(--text-sm); color: var(--text-dim); }
 .ui-list-row-detail { font-size: var(--text-sm); line-height: 16px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui-list-row[data-tone="needs"] .ui-list-row-detail { color: var(--state-needs); }
-.ui-list-row[data-tone="danger"] .ui-list-row-detail { color: var(--danger); }
+.ui-list-row-content[data-tone="needs"] .ui-list-row-detail { color: var(--state-needs); }
+.ui-list-row-content[data-tone="danger"] .ui-list-row-detail { color: var(--danger); }
 .ui-list-row-end { flex: none; display: flex; align-items: center; gap: var(--space-1-5); }
-.ui-list-row-hover { display: none; align-items: center; gap: var(--space-0-5); }
-.ui-list-row:hover .ui-list-row-hover { display: flex; }
+.ui-list-row-actions { flex: none; display: none; align-items: center; gap: var(--space-0-5); margin-left: calc(var(--space-1-5) - var(--list-icon-gap)); } /* as close to the end as its items are to each other */
+.ui-list-row:hover .ui-list-row-actions { display: flex; }
+.ui-list-row-end:empty, .ui-list-row:hover .ui-list-row-actions:empty { display: none; } /* a slot whose condition is false takes no gap */
 .ui-list-row:hover .ui-list-row-end > .ui-chip { display: none; }
 .ui-list-row-end .ui-live-badge { margin: 0; }
 .ui-list-value { font-size: var(--text-xs); color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
@@ -1638,8 +1638,8 @@ td.ui-grid-num { font-family: var(--font-mono); font-size: var(--text-xs); }
    and dialogs as sheets from the bottom edge. The desktop never matches it. */
 @media (pointer: coarse) {
   .ui-list-heading { height: var(--control-h-sm); }
-  .ui-list-row.short { height: var(--row-h); }
-  .ui-list-row.tall { min-height: var(--row-h-lg); padding-top: var(--space-1-5); padding-bottom: var(--space-1-5); }
+  .ui-list-row { height: var(--row-h); }
+  .ui-list-row:has(> .ui-list-row-content > .ui-list-row-detail) { height: auto; min-height: var(--row-h-lg); padding-top: var(--space-1-5); padding-bottom: var(--space-1-5); }
   .ui-list-row-title, .ui-list-row-detail { line-height: 1.35; }
   .ui-list-row:hover, .ui-button:hover:not(:disabled), .ui-icon-button:hover:not(:disabled) { background: none; }
   .ui-list-row:active { background: var(--bg-hover); }

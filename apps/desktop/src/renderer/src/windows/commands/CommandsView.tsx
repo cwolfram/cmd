@@ -3,7 +3,7 @@
 // core/commands.ts). Running ones first, then the rest, newest first; a failed
 // one says its exit status. A click goes to its terminal; Run Again types it there.
 
-import { Chip, EmptyState, IconButton, ListRow, ListSection, ListValue, Panel, PanelBody } from "@cmd/ui";
+import { Chip, EmptyState, IconButton, ListRow, ListRowActions, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Panel, PanelBody } from "@cmd/ui";
 import { useEffect, useMemo, useState } from "react";
 import type { CommandRun } from "@cmd/protocol";
 import { commandRunOf } from "@cmd/protocol";
@@ -88,23 +88,20 @@ export function CommandsView({ win }: WindowViewProps) {
     return (
       <ListRow
         key={r.id}
-        icon="terminal"
-        light={r.endedAt === null ? "working" : bad ? "danger" : undefined}
-        title={r.command ?? "Command"}
-        mono
-        detail={[state, workspace].filter(Boolean).join(" · ")}
-        tone={bad ? "danger" : undefined}
         tip={r.cwd}
-        end={
-          <>
-            {where && <Chip hue={where.hue}>{where.text}</Chip>}
-            {r.endedAt !== null && <ListValue>{shortAgo(r.endedAt, now)}</ListValue>}
-          </>
-        }
-        hover={<IconButton size="sm" icon="arrow.clockwise" label="Run Again" disabled={!canRerun(r)} onClick={() => rerun(r)} />}
         onClick={() => goTo(r.paneId, r.workspaceId)}
         onContextMenu={() => rowMenu(r)}
-      />
+      >
+        <ListRowIcon icon="terminal" light={r.endedAt === null ? "working" : bad ? "danger" : undefined} />
+        <ListRowContent title={r.command ?? "Command"} mono detail={[state, workspace].filter(Boolean).join(" · ")} tone={bad ? "danger" : undefined} />
+        <ListRowEnd>
+          {where && <Chip hue={where.hue}>{where.text}</Chip>}
+          {r.endedAt !== null && <ListValue>{shortAgo(r.endedAt, now)}</ListValue>}
+        </ListRowEnd>
+        <ListRowActions>
+          <IconButton size="sm" icon="arrow.clockwise" label="Run Again" disabled={!canRerun(r)} onClick={() => rerun(r)} />
+        </ListRowActions>
+      </ListRow>
     );
   };
 

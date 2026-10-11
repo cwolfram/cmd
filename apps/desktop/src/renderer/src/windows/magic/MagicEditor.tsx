@@ -17,21 +17,23 @@ import {
   Callout,
   CodeBlock,
   EmptyState,
-  Inline,
-  List,
-  ListRow,
   FormRow,
   FormSection,
+  Inline,
   KeyValue,
   LinkButton,
+  List,
+  ListRow,
+  ListRowContent,
+  ListRowEnd,
   NumberField,
   Page,
   ResetButton,
   SecretField,
-  Spacer,
-  Stack,
   Select,
+  Spacer,
   Spinner,
+  Stack,
   StatusDot,
   Switch,
   Text,
@@ -156,26 +158,26 @@ function Changes({ win, info, working, onRun }: { win: AppWindow; info: MagicWid
               <ListRow
                 key={r.n}
                 className="magic-revision"
-                lead={<Thumb src={r.shot ? fileUrl(r.shot) : null} />}
-                title={current ? <Text strong>{r.prompt}</Text> : r.prompt}
                 tip={r.prompt}
-                detail={
+              >
+                <Thumb src={r.shot ? fileUrl(r.shot) : null} />
+                <ListRowContent title={current ? <Text strong>{r.prompt}</Text> : r.prompt} detail={
                   <Inline gap={1}>
                     <StatusDot size="sm" state={r.ok ? "success" : "warning"} />
                     {r.ok ? "checks passed" : `${r.problems?.length ?? "some"} problem${r.problems?.length === 1 ? "" : "s"} left`} · {ago(r.at, Date.now())}
                     {r.model ? ` · ${r.model}` : ""} · v{r.n}
                   </Inline>
-                }
-                end={
-                  current ? (
+                } />
+                <ListRowEnd>
+                  {current ? (
                     <Badge>shown</Badge>
                   ) : (
                     <Button size="sm" disabled={working} onClick={() => void cmd.call("magic.restore", { id: win.id, revision: r.n })}>
                       Restore
                     </Button>
-                  )
-                }
-              />
+                  )}
+                </ListRowEnd>
+              </ListRow>
             );
           })}
         </List>

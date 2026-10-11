@@ -10,7 +10,7 @@
 // sticky ctrl) and a compose bar; the menu switches sizing and closes it.
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Dialog, IconButton, ListRow, StatusDot, TextField, Icon } from "@cmd/ui";
+import { Button, Dialog, Icon, IconButton, ListRow, ListRowContent, ListRowIcon, StatusDot, TextField } from "@cmd/ui";
 import { terminalColors, useTheme } from "@cmd/ui/themes";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -261,24 +261,22 @@ function TerminalMenu(p: { conn: Connection; pane: Pane; control: boolean; fitti
     <div className="menu-rows">
       <ListRow
         role="button"
-        icon="arrow.up.left.and.arrow.down.right"
-        title={p.fitting ? "Use the Mac's Size" : "Fit to This Phone"}
-        detail={p.fitting ? `Now ${p.pane.cols}×${p.pane.rows}, sized for this phone` : "The Mac's terminal takes this screen's size while you look at it"}
         onClick={() => p.onFit(!p.fitting)}
-      />
+      >
+        <ListRowIcon icon="arrow.up.left.and.arrow.down.right" />
+        <ListRowContent title={p.fitting ? "Use the Mac's Size" : "Fit to This Phone"} detail={p.fitting ? `Now ${p.pane.cols}×${p.pane.rows}, sized for this phone` : "The Mac's terminal takes this screen's size while you look at it"} />
+      </ListRow>
       <ListRow
         role="button"
-        icon="xmark"
-        markTone="danger"
-        title={confirm ? "Tap Again to Close" : "Close Terminal"}
-        detail="Ends what runs in it, on the Mac too"
-        tone="danger"
         onClick={() => {
           if (!confirm) return setConfirm(true);
           void p.conn.client?.call("pane.kill", { paneId: p.pane.id }).catch(() => {});
           p.onClosed();
         }}
-      />
+      >
+        <ListRowIcon icon="xmark" tone="danger" />
+        <ListRowContent title={confirm ? "Tap Again to Close" : "Close Terminal"} detail="Ends what runs in it, on the Mac too" tone="danger" />
+      </ListRow>
     </div>
   );
 }

@@ -4,7 +4,7 @@
 // the two never disagree; a click goes to the agent's terminal. The counts are
 // the title bar's status, and its menu switches the scope.
 
-import { Button, List, ListRow, Stack, Text, View, useFlip, type DotState } from "@cmd/ui";
+import { Button, type DotState, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Stack, Text, useFlip, View } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { bucketOf, type Agent } from "@cmd/protocol";
 import { newAgent, selectPane } from "../../lib/actions.ts";
@@ -133,12 +133,11 @@ export function AgentActivityView({ lines, scope, listRef, onNew }: { lines: Act
             key={l.key}
             flipKey={l.key}
             depth={l.depth}
-            icon={l.icon}
-            light={l.light}
-            title={l.name}
-            tone={l.needs ? "needs" : undefined}
-            detail={l.status}
-            end={
+            onClick={l.onClick}
+          >
+            <ListRowIcon icon={l.icon} light={l.light} />
+            <ListRowContent title={l.name} tone={l.needs ? "needs" : undefined} detail={l.status} />
+            <ListRowEnd>
               <Stack gap={0} align="end">
                 <span data-tip={l.placeTip}>
                   <Text size="xs" tone="dim" truncate>
@@ -149,9 +148,8 @@ export function AgentActivityView({ lines, scope, listRef, onNew }: { lines: Act
                   {l.time}
                 </Text>
               </Stack>
-            }
-            onClick={l.onClick}
-          />
+            </ListRowEnd>
+          </ListRow>
         ))}
       </List>
     </View>

@@ -5,7 +5,7 @@
 // every workspace's; those about nothing in particular show in every workspace. A click
 // goes to the terminal or window it is about.
 
-import { EmptyState, ListRow, ListSection, ListValue, Panel, PanelBody, useFlip } from "@cmd/ui";
+import { EmptyState, ListRow, ListRowContent, ListRowEnd, ListRowIcon, ListSection, ListValue, Panel, PanelBody, useFlip } from "@cmd/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { notificationOf, type AppNotification } from "@cmd/protocol";
 import { copy } from "../../lib/actions.ts";
@@ -99,15 +99,16 @@ export function NotificationsView({ win }: WindowViewProps) {
               <ListRow
                 key={n.id}
                 flipKey={n.id}
-                icon={ICONS[n.source] ?? "bell"}
-                title={n.title}
-                detail={n.body || " "}
-                tone={n.urgent && n.source !== "timer" ? "needs" : undefined}
                 tip={n.body.length > 60 ? n.body : undefined}
-                end={<ListValue>{n.at >= today ? new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : shortAgo(n.at, now)}</ListValue>}
                 onClick={() => open(n)}
                 onContextMenu={() => rowMenu(n)}
-              />
+              >
+                <ListRowIcon icon={ICONS[n.source] ?? "bell"} />
+                <ListRowContent title={n.title} detail={n.body || " "} tone={n.urgent && n.source !== "timer" ? "needs" : undefined} />
+                <ListRowEnd>
+                  <ListValue>{n.at >= today ? new Date(n.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : shortAgo(n.at, now)}</ListValue>
+                </ListRowEnd>
+              </ListRow>
             ))}
           </ListSection>
         ))}

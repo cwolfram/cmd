@@ -4,7 +4,7 @@
 // checkout), and by polling while cmd is in front for edits anywhere below. The
 // branch and totals are the title bar's status.
 
-import { Badge, Button, Diff, List, ListRow, Inline, Text, Twisty, View } from "@cmd/ui";
+import { Badge, Button, Diff, Inline, List, ListRow, ListRowContent, ListRowEnd, ListRowIcon, Text, Twisty, View } from "@cmd/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GitFile, GitStatus } from "@cmd/protocol";
 import { cmd } from "../../lib/bridge.ts";
@@ -175,16 +175,20 @@ export function LiveDiffView(p: { state: "loading" | "noRepo" | "ok"; dir: strin
           return (
             <div key={f.abs} role="group" aria-label={f.rel}>
               <ListRow
-                lead={<Twisty open={f.open} onToggle={() => p.onToggle(f.rel, !f.open)} />}
-                icon={
-                  <Badge size="sm" tone={st.tone} tip={what}>
-                    {st.letter}
-                  </Badge>
-                }
-                title={f.rel.replace(/\/$/, "").split("/").pop()}
-                place={f.rel.includes("/") ? f.rel.replace(/\/?[^/]+\/?$/, "") : undefined}
                 tip={`${f.rel}\nDouble-click to open`}
-                end={
+                onClick={() => p.onToggle(f.rel, !f.open)}
+                onDoubleClick={() => p.onOpen(f.abs)}
+              >
+                <Twisty open={f.open} onToggle={() => p.onToggle(f.rel, !f.open)} />
+                <ListRowIcon
+                  icon={
+                    <Badge size="sm" tone={st.tone} tip={what}>
+                      {st.letter}
+                    </Badge>
+                  }
+                />
+                <ListRowContent title={f.rel.replace(/\/$/, "").split("/").pop()} place={f.rel.includes("/") ? f.rel.replace(/\/?[^/]+\/?$/, "") : undefined} />
+                <ListRowEnd>
                   <Inline gap={1.5}>
                     {f.added > 0 && (
                       <Text size="xs" mono tone="success">
@@ -197,10 +201,8 @@ export function LiveDiffView(p: { state: "loading" | "noRepo" | "ok"; dir: strin
                       </Text>
                     )}
                   </Inline>
-                }
-                onClick={() => p.onToggle(f.rel, !f.open)}
-                onDoubleClick={() => p.onOpen(f.abs)}
-              />
+                </ListRowEnd>
+              </ListRow>
               {f.open && (f.note ? <Diff note={f.note} /> : f.lines?.length ? <Diff lines={f.lines} /> : null)}
             </div>
           );
