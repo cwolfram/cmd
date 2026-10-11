@@ -20,6 +20,7 @@ import { decodeDoc, decodeRows, decodeTurn } from "../../kernel/stored.ts";
 import type { DataService } from "../service.ts";
 import type { ViewsStore } from "./views.ts";
 import { projectIdOf } from "../project.ts";
+import { eventId } from "../ids.ts";
 
 const log = logger("activity");
 
@@ -59,7 +60,6 @@ export interface EventsQuery {
 export class ActivityView {
   #data: DataService;
   #views: ViewsStore;
-  #n = 0;
   readonly recordedBy: string | null;
 
   /** The view's rules changed (or it is new): rebuild() is due. With `deferRebuild` the owner runs it (Core.start). */
@@ -101,7 +101,7 @@ export class ActivityView {
     const body = typeof r.payload.prompt === "string" ? r.payload.prompt : typeof r.payload.last_assistant_message === "string" ? r.payload.last_assistant_message : null;
     const toolId = typeof r.payload.tool_use_id === "string" ? r.payload.tool_use_id : null;
     const ev = this.#data.record({
-      id: `hook:${paneId ?? "-"}:${Math.round(r.at * 1000)}:${r.name}:${this.#n++}`,
+      id: eventId("agent.hook", r.key ? `${paneId ?? "-"}:${r.key}` : null),
       at: r.at,
       type: "agent.hook",
       source: `hook:${r.agent ?? "?"}${agentVersion ? `@${agentVersion}` : ""}`,
@@ -132,7 +132,7 @@ export class ActivityView {
 
   /** Stores something the core inferred or noticed (interrupt, anomaly). */
   note(kind: "interrupt" | "anomaly", text: string, at: number, paneId: PaneId | null, agentId: AgentId | null, agent: AgentKind | null): ActivityEvent {
-    const ev = this.#data.record({ id: `note:${paneId ?? "-"}:${Math.round(at * 1000)}:${kind}:${this.#n++}`, at, type: "agent.note", source: `cmd:${this.recordedBy ?? "?"}`, agentId, paneId, workspaceId: paneId ? this.workspaceOf(paneId) : null, text, data: { name: kind, agent, text } });
+    const ev = this.#data.record({ id: eventId("agent.note"), at, type: "agent.note", source: `cmd:${this.recordedBy ?? "?"}`, agentId, paneId, workspaceId: paneId ? this.workspaceOf(paneId) : null, text, data: { name: kind, agent, text } });
     if (!ev) throw new Error("agent notes are always recorded");
     return toActivity(ev, false);
   }

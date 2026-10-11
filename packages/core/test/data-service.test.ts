@@ -51,7 +51,7 @@ describe("DataService", () => {
     d.record({ id: "new-look", at: now - 9 * day, type: "user.look", source: "user", data: { agentId: "a" } });
     const r = d.prune();
     expect(r.events).toBe(2);
-    expect(d.query({}).map((e) => e.id).sort()).toEqual(["data:prune:1800000000000", "new-cmd", "new-look", "old-git"]);
+    expect(d.query({}).map((e) => (e.type === "data.op" ? "data.op" : e.id)).sort()).toEqual(["data.op", "new-cmd", "new-look", "old-git"]);
   });
 
   it("imports what an older cmd kept, once", () => {
@@ -110,5 +110,40 @@ describe("retention in batches", () => {
     expect(d.prune(5)).toMatchObject({ events: 5, more: true });
     expect(d.prune(5)).toMatchObject({ events: 2, more: false });
     expect(d.query({ types: ["user.look"] })).toEqual([]);
+  });
+
+  it("keeps an event of another type under the same id apart, with its own payload", () => {
+    const d = service();
+    d.record({ id: "dup", at: 1, type: "note", source: "cmd", text: "a note", data: { by: "user", agentSession: null } });
+    d.record({ id: "dup", at: 2, type: "user.look", source: "user", data: { agentId: "a" } });
+    const all = d.query({ types: ["note", "user.look"] });
+    expect(all.map((e) => [e.type, e.data])).toEqual([
+      ["note", { by: "user", agentSession: null }],
+      ["user.look", { agentId: "a" }],
+    ]);
+  });
+
+  it("records a hook event's spool file once, however often it's read", async () => {
+    const { ActivityView } = await import("../src/data/views/activity.ts");
+    const { ViewsStore } = await import("../src/data/views/views.ts");
+    const d = service();
+    const view = new ActivityView(d, new ViewsStore(null));
+    const raw = { at: 1000, agent: "claude" as const, name: "Stop", payload: { hook_event_name: "Stop", session_id: "s" }, key: "1760000000.4242.Stop.json@1760000000123456789" };
+    view.insert(raw, "p1", "a1");
+    view.insert(raw, "p1", "a1"); // the core died before deleting the file: read again
+    view.insert({ ...raw, key: undefined }, "p1", "a1"); // sent over the socket: its own event
+    expect(d.query({ types: ["agent.hook"] })).toHaveLength(2);
+  });
+
+  it("flags a batch's events that redaction changed, done here or by the transcript reader", () => {
+    const d = service();
+    const secret = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789";
+    const msg = (id: string, text: string, flags?: number) => ({ id, at: 1, type: "transcript.message" as const, source: "t", text, data: { role: "user" }, ...(flags ? { flags } : {}) });
+    d.recordAll([msg("plain", "hello"), msg("secret", `my key is ${secret}`)]);
+    // The reader's worker redacted already and marked what it changed.
+    d.recordBatch([msg("worker-plain", "hello"), msg("worker-secret", "my key is [redacted]", DATA_FLAGS.redacted)], { redacted: true });
+    const flagged = (id: string) => !!(d.store.get(id)!.flags & DATA_FLAGS.redacted);
+    expect(["plain", "secret", "worker-plain", "worker-secret"].map(flagged)).toEqual([false, true, false, true]);
+    expect(d.store.get("secret")!.text).not.toContain(secret);
   });
 });

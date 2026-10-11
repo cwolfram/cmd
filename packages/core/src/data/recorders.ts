@@ -16,6 +16,7 @@ import type { DataService } from "./service.ts";
 import { describeWorkspace, describeWindow } from "./describe.ts";
 import { projectIdOf } from "./project.ts";
 import type { SessionsView } from "./views/sessions.ts";
+import { eventId } from "./ids.ts";
 
 /** A page seen again within this long is the same visit (its title arrives after its URL). */
 const VISIT_MS = 30 * 60_000;
@@ -46,7 +47,7 @@ export function recordWindows(data: DataService, windows: WindowManager): void {
     const w = closed.get(id);
     closed.delete(id);
     seen.delete(id);
-    if (w) data.record({ id: `window:${id}:close:${Date.now()}`, at: Date.now(), type: "window.close", source: "window", workspaceId: w.workspaceId, windowId: id, text: w.title || w.kind, data: { kind: w.kind, title: w.title } });
+    if (w) data.record({ id: eventId("window.close"), at: Date.now(), type: "window.close", source: "window", workspaceId: w.workspaceId, windowId: id, text: w.title || w.kind, data: { kind: w.kind, title: w.title } });
   });
 }
 
@@ -57,12 +58,12 @@ export function recordWorkspaces(data: DataService, workspaces: WorkspaceManager
     describeWorkspace(data, s);
     const first = !known.has(s.id);
     known.set(s.id, s);
-    if (first && s.id !== HOME_WORKSPACE_ID) data.record({ id: `workspace:${s.id}:open:${Date.now()}`, at: Date.now(), type: "workspace.open", source: "user", workspaceId: s.id, projectId: `dir:${projectOf(s.root) ?? s.root}`, text: s.name, data: { name: s.name, root: s.root } });
+    if (first && s.id !== HOME_WORKSPACE_ID) data.record({ id: eventId("workspace.open"), at: Date.now(), type: "workspace.open", source: "user", workspaceId: s.id, projectId: `dir:${projectOf(s.root) ?? s.root}`, text: s.name, data: { name: s.name, root: s.root } });
   });
   workspaces.on("removed", (id: string) => {
     const s = known.get(id);
     known.delete(id);
-    if (s) data.record({ id: `workspace:${id}:close:${Date.now()}`, at: Date.now(), type: "workspace.close", source: "user", workspaceId: id, projectId: `dir:${projectOf(s.root) ?? s.root}`, text: s.name, data: { name: s.name, root: s.root } });
+    if (s) data.record({ id: eventId("workspace.close"), at: Date.now(), type: "workspace.close", source: "user", workspaceId: id, projectId: `dir:${projectOf(s.root) ?? s.root}`, text: s.name, data: { name: s.name, root: s.root } });
   });
 }
 

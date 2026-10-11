@@ -11,11 +11,12 @@ import type { DatabaseSync } from "node:sqlite";
 import { Worker } from "node:worker_threads";
 import { DATA_CLASSES, DATA_FLAGS, classOf, type DataClass, type DataClassInfo, type DataEvent, type DataQuery, type DataStats, type NewDataEvent, type Settings } from "@cmd/protocol";
 import { logger } from "@cmd/protocol/node";
-import { redact, redactDeep, redactEvent } from "../lib/redact.ts";
+import { redact, redactDeep, redactEvent, wasRedacted } from "../lib/redact.ts";
 import { hookEvents, journalEvents, remoteAudit } from "./sources/legacy.ts";
 import { DataStore, type StoreEvent } from "./store.ts";
 import { excludedBy, parseExclude, type ExcludeRules } from "./exclude.ts";
 import { checkoutOf, remoteOf } from "../lib/checkout.ts";
+import { eventId } from "./ids.ts";
 
 /** A project's attributes from its folder: name, path, and the repository's remote when it has one. */
 function projectAttrs(id: string): Record<string, unknown> {
@@ -194,7 +195,8 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
         const e = o.redacted ? raw : redactEvent(raw);
         const cap = DATA_CLASSES[c].cap;
         let content = e.content ?? null;
-        let flags = DATA_FLAGS.imported;
+        // Redacted by the caller (the transcript reader's worker): it says so in the event's flags.
+        let flags = DATA_FLAGS.imported | (o.redacted ? ((raw as StoreEvent).flags ?? 0) & DATA_FLAGS.redacted : wasRedacted(raw, e) ? DATA_FLAGS.redacted : 0);
         if (cap && typeof content === "string" && content.length > cap) (content = content.slice(0, cap)), (flags |= DATA_FLAGS.cut);
         const { inserted } = this.store.record({ ...e, content, flags });
         this.#entities(e);
@@ -352,7 +354,7 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
         return n;
       }),
     );
-    this.record({ id: `data:forget:${now}`, at: now, type: "data.op", source: "cmd", data: { op: "forget", detail: { events: n, session: !!w.sessionId, project: !!w.projectId, before: w.before ?? null, types: w.types ?? null } } });
+    this.record({ id: eventId("data.op"), at: now, type: "data.op", source: "cmd", data: { op: "forget", detail: { events: n, session: !!w.sessionId, project: !!w.projectId, before: w.before ?? null, types: w.types ?? null } } });
     if (n) this.emit("removed", { types, count: n, ...(hit?.seqs ? { seqs: hit.seqs } : {}) });
     if (n) this.#scrubbing = this.#scrubbing.then(() => this.#scrub());
     return n;
@@ -423,7 +425,7 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
     }
     this.store.sweepBlobs();
     if (n) {
-      this.record({ id: `data:rules:${this.#now}`, at: this.#now, type: "data.op", source: "cmd", data: { op: "prune", detail: { events: n, rules: true } } });
+      this.record({ id: eventId("data.op"), at: this.#now, type: "data.op", source: "cmd", data: { op: "prune", detail: { events: n, rules: true } } });
       this.emit("removed", { types: [...types], count: n });
     }
     return n;
@@ -467,7 +469,7 @@ export class DataService extends EventEmitter<{ recorded: [DataEvent]; batch: [D
     const blobs = this.store.sweepBlobs();
     if (events || blobs) {
       log.info("pruned", { events, blobs, more });
-      this.record({ id: `data:prune:${now}`, at: now, type: "data.op", source: "cmd", data: { op: "prune", detail: { events, blobs } } });
+      this.record({ id: eventId("data.op"), at: now, type: "data.op", source: "cmd", data: { op: "prune", detail: { events, blobs } } });
     }
     return { events, blobs, more };
   }

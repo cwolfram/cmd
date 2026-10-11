@@ -40,6 +40,8 @@ export function drainSpool(root: string, paneId: PaneId): { events: RawEvent[]; 
             payload: p,
             // Spool files exist since format 2, which didn't write its number yet.
             hook: typeof root.v === "number" ? root.v : 2,
+            // Its name (seconds, the hook's pid, the event) and its time to the nanosecond: the same file read again, not another.
+            key: `${name}@${ns}`,
             ...(env && Object.keys(env).length ? { env } : {}),
           },
           ns,

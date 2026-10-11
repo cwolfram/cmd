@@ -24,6 +24,7 @@ import { webClientDir } from "./webroot.ts";
 import type { Transport } from "./transport.ts";
 import { HostChannel, type ChannelHost } from "./session.ts";
 import { FailureLimiter } from "./limiter.ts";
+import { eventId } from "../data/ids.ts";
 
 const log = logger("remote");
 
@@ -464,7 +465,7 @@ export function createRemote(core: Pick<CoreContext, "store" | "data" | "setting
   return new RemoteService({
     store: core.store,
     audit: {
-      record: (kind, deviceId, detail) => core.data.record({ id: `remote:${Date.now()}:${kind}:${Math.random().toString(36).slice(2, 7)}`, at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
+      record: (kind, deviceId, detail) => core.data.record({ id: eventId("remote.audit"), at: Date.now(), type: "remote.audit", source: "cmd", deviceId, text: `${kind}${detail ? `: ${detail}` : ""}`, data: { kind, detail } }),
       list: (limit) => core.data.query({ types: ["remote.audit"], by: "time", order: "desc", limit }).map((e) => ({ at: e.at, kind: (e.data as { kind: string }).kind, deviceId: e.deviceId, detail: (e.data as { detail: string | null }).detail })),
     },
     settings: core.settings,

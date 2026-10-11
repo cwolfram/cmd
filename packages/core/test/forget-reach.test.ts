@@ -94,7 +94,7 @@ describe("forget, the log's own parts", () => {
     const d = service();
     d.recordAll([msg("old", "claude:s", 100), msg("new", "claude:s", 300), { id: "c", at: 100, type: "note", source: "cmd", text: "n", data: { by: "user", agentSession: null } }]);
     d.forget({ before: 200, types: ["transcript."] });
-    expect(d.query({}).map((e) => e.id).filter((id) => !id.startsWith("data:"))).toEqual(["new", "c"]);
+    expect(d.query({}).filter((e) => e.type !== "data.op").map((e) => e.id)).toEqual(["new", "c"]);
     // A reindex reads the transcript again: what came before the time stays out, the rest is news as usual.
     expect(d.recordAll([msg("old", "claude:s", 100), msg("older", "claude:s", 150), msg("later", "claude:s", 400)])).toBe(1);
     expect(d.query({ types: ["transcript."] }).map((e) => e.id)).toEqual(["new", "later"]);

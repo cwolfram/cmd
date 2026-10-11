@@ -137,7 +137,7 @@ export function runCommand(id: string, via: Via = "other", target?: Target): voi
   const c = commandContext(target);
   if (!command || !(command.when?.(c) ?? true)) return;
   command.run(c);
-  void cmd.call("data.record", { event: { id: `command:${Date.now()}:${id}`, at: Date.now(), type: "user.command", source: "user", data: { command: id, via } } }).catch(() => {});
+  void cmd.call("data.record", { event: { id: `user.command:${crypto.randomUUID()}`, at: Date.now(), type: "user.command", source: "user", data: { command: id, via } } }).catch(() => {});
 }
 
 /** The menu bar's state: every command enabled as it applies, the checkable ones checked. */

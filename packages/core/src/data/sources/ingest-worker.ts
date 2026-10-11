@@ -7,12 +7,12 @@
 
 import fs from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
-import type { AgentKind } from "@cmd/protocol";
+import { DATA_FLAGS, type AgentKind } from "@cmd/protocol";
 import { registerBuiltinSources } from "../../search/builtin.ts";
 import { covers, isDir, locateContext, TranscriptSources, type TranscriptRoot } from "../../search/sources.ts";
 import type { StoreEvent } from "../store.ts";
 import { planPass, scanFiles, type FileState, type FoundFile } from "./ingest-pass.ts";
-import { redactEvent } from "../../lib/redact.ts";
+import { redactEvent, wasRedacted } from "../../lib/redact.ts";
 import { readTranscript } from "./transcripts.ts";
 
 export interface WorkerInit {
@@ -78,7 +78,11 @@ async function pass(): Promise<void> {
       }
       const state: FileState = { path: f.path, rootDir: f.root.dir, size: f.size, mtime: f.mtime, offset: result.offset, lines: result.lines, agent: result.agent };
       known.set(f.path, state);
-      const parts = chunks(result.events.map(redactEvent));
+      // Redacted here, off the core's thread; an event something was taken out of says so (DATA_FLAGS.redacted).
+      const parts = chunks(result.events.map((e) => {
+        const r = redactEvent(e);
+        return wasRedacted(e, r) ? { ...r, flags: (r.flags ?? 0) | DATA_FLAGS.redacted } : r;
+      }));
       for (const [j, events] of parts.entries()) {
         const wait = acked();
         post({ type: "file", file: f, state, events, sessionId: result.sessionId, more: j < parts.length - 1 });

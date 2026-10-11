@@ -20,7 +20,7 @@ function windows() {
       return w;
     },
   };
-  return { m: m as unknown as WindowManager, set: (state: Record<string, unknown>) => m.update("t1", { state }) };
+  return { m: m as unknown as WindowManager, set: (state: Record<string, unknown>) => m.update("t1", { state }), remove: () => e.emit("removed", "t1") };
 }
 
 afterEach(() => vi.useRealTimers());
@@ -43,5 +43,39 @@ describe("timers", () => {
     expect(rung).toHaveLength(1);
     expect(vi.getTimerCount()).toBe(0); // rung: the check stops with it
     alarms.close();
+  });
+
+  it("rings a long timer past setTimeout's limit, once, on time", () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const { m, set } = windows();
+    const rung: string[] = [];
+    const alarms = new TimerAlarms(m, (_w, _t, body) => rung.push(body));
+    set({ endsAt: Date.now() + 30 * 86400_000 }); // 30 days: over 2^31 ms
+    vi.advanceTimersByTime(29 * 86400_000);
+    expect(rung).toEqual([]);
+    vi.advanceTimersByTime(86400_000);
+    expect(rung).toEqual(["Time's up"]);
+    alarms.close();
+  });
+
+  it("says when a timer ended if it rings late, and never rings one whose window went", () => {
+    vi.useFakeTimers({ now: 1_000_000 });
+    const late = windows();
+    const bodies: string[] = [];
+    const a = new TimerAlarms(late.m, (_w, _t, body) => bodies.push(body));
+    late.set({ endsAt: Date.now() + 60_000 });
+    vi.setSystemTime(Date.now() + 10 * 60_000); // asleep through it
+    vi.advanceTimersByTime(CHECK_MS);
+    expect(bodies[0]).toMatch(/^Ended at /);
+    a.close();
+    const gone = windows();
+    const rung: string[] = [];
+    const b = new TimerAlarms(gone.m, (_w, title) => rung.push(title));
+    gone.set({ endsAt: Date.now() + 60_000 });
+    gone.remove();
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(rung).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+    b.close();
   });
 });

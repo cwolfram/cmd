@@ -19,6 +19,8 @@ export interface RawEvent {
   env?: Record<string, string>;
   /** The hook script's record format (HOOK_FORMAT); none: sent over the socket. */
   hook?: number;
+  /** The spool file it came from: its event id's key, so a file read again (a core that died before deleting it) dedupes. */
+  key?: string;
 }
 
 const KINDS: Record<string, ActivityKind> = {

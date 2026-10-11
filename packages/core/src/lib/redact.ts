@@ -110,3 +110,8 @@ export function redactDeep<T>(v: T, key?: string): T {
 export function redactEvent<E extends { text?: string | null; body?: string | null; data?: unknown; content?: string | Buffer | null }>(e: E): E {
   return { ...e, text: e.text ? redact(e.text) : e.text, body: e.body ? redact(e.body) : e.body, data: redactDeep(e.data), content: typeof e.content === "string" ? redact(e.content) : e.content };
 }
+
+/** Whether redactEvent took something out of `e` (`r` is what it made of it): the event's DATA_FLAGS.redacted. */
+export function wasRedacted(e: { text?: string | null; body?: string | null; data?: unknown; content?: string | Buffer | null }, r: typeof e): boolean {
+  return r.text !== e.text || r.body !== e.body || r.content !== e.content || JSON.stringify(r.data) !== JSON.stringify(e.data);
+}

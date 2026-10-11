@@ -8,6 +8,7 @@ import type { CoreContext } from "../kernel/context.ts";
 import { IN_CORE, slice } from "../kernel/handlers.ts";
 import { rewrite } from "./activity/fixture.ts";
 import { hookEventName } from "./state.ts";
+import { eventId } from "../data/ids.ts";
 
 export const agentHandlers = (core: CoreContext) =>
   slice({
@@ -29,7 +30,7 @@ export const agentHandlers = (core: CoreContext) =>
     "agent.markSeen": (p) => {
       core.agents.markSeen(p.agentId);
       const a = core.agents.get(p.agentId);
-      core.data.record({ id: `look:${p.agentId}:${Date.now()}`, at: Date.now(), type: "user.look", source: "user", agentId: p.agentId, paneId: a?.paneId ?? null, workspaceId: a?.workspaceId ?? null, data: { agentId: p.agentId } });
+      core.data.record({ id: eventId("user.look"), at: Date.now(), type: "user.look", source: "user", agentId: p.agentId, paneId: a?.paneId ?? null, workspaceId: a?.workspaceId ?? null, data: { agentId: p.agentId } });
       return null;
     },
     "agent.summarize": async (p) => {

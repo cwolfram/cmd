@@ -188,7 +188,12 @@ export class DataStore {
     const raw = e.content == null ? null : typeof e.content === "string" ? Buffer.from(e.content, "utf8") : e.content;
     const blob = raw ? hashOf(raw) : null;
     const data = JSON.stringify(e.data ?? null);
-    const before = this.#stmt(`SELECT seq, blob, at, until, text, json(data) AS data, parent_id, workspace_id, project_id, session_id, agent_id, pane_id, window_id, device_id, flags FROM events WHERE id = ?`).get(e.id) as Before | undefined;
+    const before = this.#stmt(`SELECT seq, type, blob, at, until, text, json(data) AS data, parent_id, workspace_id, project_id, session_id, agent_id, pane_id, window_id, device_id, flags FROM events WHERE id = ?`).get(e.id) as (Before & { type: string }) | undefined;
+    // An id an event of another type has: a bug in whoever made it. Its own row, not the other's payload.
+    if (before && before.type !== e.type) {
+      log.warn(`event id ${e.id} is a ${before.type}'s, not a ${e.type}'s: recorded as ${e.type}:${e.id}`);
+      return this.record({ ...e, id: `${e.type}:${e.id}` });
+    }
     // Handed in again with nothing new (a transcript read again, an archived copy): nothing written, not even
     // the blob's count. Every row written is a page in the WAL, and a re-read of the whole log churned gigabytes.
     if (before && unchanged(before, e, data, blob)) return { seq: before.seq, inserted: false };
