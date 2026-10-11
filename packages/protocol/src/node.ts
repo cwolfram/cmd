@@ -5,7 +5,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { RpcClient, RpcError, lineSplitter } from "./client.ts";
-import type { CoreHello } from "./rpc.ts";
+import type { CoreHello } from "./version.ts";
 import { defaultSocketPath } from "./instance.ts";
 
 export * from "./log.ts";

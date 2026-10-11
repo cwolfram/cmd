@@ -1,6 +1,7 @@
 // Transport-agnostic JSON-RPC client. Node transport lives in ./node.ts.
 
-import { UNKNOWN_METHOD, type CoreEvent, type CoreHello, type Method, type Params, type Result, type RpcMessage } from "./rpc.ts";
+import type { CoreEvent, Method, Params, Result, RpcMessage } from "./rpc.ts";
+import { UNKNOWN_METHOD, type CoreHello } from "./version.ts";
 
 export class RpcError extends Error {
   code: number;

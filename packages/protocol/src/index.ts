@@ -8,6 +8,7 @@ export { JOURNAL_SCHEMA, SOURCES_FORMAT, THREADS_FORMAT, WRITER_FORMAT } from ".
 export type * from "./events.ts";
 export { DATA_CLASSES, DATA_FLAGS, EVENT_V, classOf, commandRunOf, notificationOf } from "./events.ts";
 export * from "./rpc.ts";
+export * from "./version.ts";
 export * from "./attention.ts";
 export * from "./workspace.ts";
 export * from "./settings.ts";
